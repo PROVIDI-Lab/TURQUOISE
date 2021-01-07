@@ -1,0 +1,100 @@
+classdef Database < handle
+    methods (Static)
+        
+        function PrepareDatabase(app)
+           %Prepares a new database
+           
+           %Prompt for a database location
+           fp = uigetdir('Select a folder');
+           if(isnumeric(fp) && fp == 0)
+               return
+           end
+           
+           %Prompt for a profile
+           Interaction.PromptProfile(app, fp)
+           
+           %Create a list of subfolders with the studies
+           Database.FindStudies(app, fp)
+           
+           %TODO: reslice all studies
+           
+           %Open first study
+           IOUtils.PrepareStudy(app, app.dataset{1})
+           
+        end
+        
+        function FindStudies(app, fp)
+            %Finds all the subfolders in the database directory and sets
+            %them in the app.
+            
+            app.dataset     = [];
+            
+            %TODO: more sophisticated version..
+            contents     = dir(fp);
+            for i   = 3:size(contents,1)
+                if contents(i).isdir
+                    app.dataset{end+1} =                                ...
+                        [contents(i).folder '\' contents(i).name];
+                end
+            end
+            
+            
+            %Add items to listbox
+            app.AvailableStudiesListBox.Items = {};
+                for idx=1:length(app.dataset)
+                    text        = app.dataset{idx};
+                    [~,name,~] = fileparts(text);
+                    app.AvailableStudiesListBox.Items{idx} = name;
+                end
+            
+        end
+        
+        function PrevStudy(app)
+            %Called when PrevStudyButton (<--) button is pressed
+            
+            %find current index and switch to the previous one.
+            index   = find(strcmp(app.dataset, app.filepath));
+            Database.SwitchToStudy(app, index - 1)
+        end
+        
+        function NextStudy(app)
+            %Called when NextStudyButton (<--) button is pressed
+            
+            %find current index and switch to the next one
+            index   = find(strcmp(app.dataset, app.filepath));
+            Database.SwitchToStudy(app, index + 1)
+        end
+        
+        function SwitchToStudy(app, varargin)
+            %Called when a new study is selected in the availablestudies
+            %listbox. Switches to that study.
+            %inputs:    app - the RMSStudio app
+            %varargin:  optional, the index to switch to.
+            
+            if ~isempty(varargin)
+                index   = varargin{1};
+                app.AvailableStudiesListBox.Value =                     ...
+                    app.AvailableStudiesListBox.Items{index};
+            else            
+                %Find index 
+                index   = -1;
+                for idx=1:length(app.dataset)
+                    text        = app.dataset{idx};
+                    [~,name,~] = fileparts(text);
+                    if app.AvailableStudiesListBox.Value == name
+                        index   = idx;
+                        break;
+                    end
+                end
+            end
+            
+            %Load the study at the index
+            if index < size(app.dataset,2) && index > 0
+                Interaction.Save(app);
+                IOUtils.PrepareStudy(app, app.dataset{index})
+            end
+        end
+            
+            
+    end
+end

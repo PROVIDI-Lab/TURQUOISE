@@ -1,0 +1,692 @@
+classdef Interaction < handle
+    %This static class deals with user interaction. All interactions should
+    %provide callbacks in the appdesigner code that then call functions in
+    %this class. The functions here will then call functions in the other
+    %classes to complete the user interaction.
+    
+    methods (Static)         
+        function ChangeListBoxValue(app, index)
+        %Changes the value of the AvailableImageListBox
+            
+            %Don't do anything if the indexes are the same
+            if app.current_image_idx == index
+                Study.SwitchImage(app, index)
+                return
+            end
+            
+            %Get the name of the file at the index
+            name = app.AvailableimagesListBox.Items{index};
+            app.AvailableimagesListBox.Value = name;
+            
+            Interaction.ListBoxChanged(app)
+        end
+        
+        function ListBoxChanged(app)
+            %Finds the new index of the AvailableImagesListBox and calls
+            %functions to update the app acoordingly. 
+            
+            value = app.AvailableimagesListBox.Value;
+            index = -1;
+            for ij = 1:length(app.AvailableimagesListBox.Items)
+                if(strcmp(app.AvailableimagesListBox.Items{ij},value) > 0)
+                    index = ij;
+                    break;
+                end
+            end
+            
+            if(index == -1)
+                return
+            end
+            
+            %Update app
+            Study.SwitchImage(app, index)
+        end
+        
+        function ROIBoxChanged(app)
+            %Called when the user selects one of the items in the ROIBox.
+            %Finds the index of the selected value and switches the GUI to
+            %the right slice & view.
+            
+            index   = app.ROIBox.Value;
+            
+            if index <= 0
+                return
+            end
+                
+            
+            %Find index of corresponding segmentation
+            if ~isempty(app.segmentation)
+                [x,y,z]     = ind2sub(size(app.segmentation.img),           ...
+                                      find(app.segmentation.img == index));
+            else
+                x   = app.roiPoints(app.roiPointIndex == index,1); 
+                y   = app.roiPoints(app.roiPointIndex == index,2); 
+                z   = app.roiPoints(app.roiPointIndex == index,3); 
+            end
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+            
+            %Switch slice and view            
+            app.view_axis       = view;
+            app.current_slice   = slice;
+            
+            app.UpdateSliceSlider();
+            app.UpdateImage();
+            
+            %Update GUI
+            GUI.UpdateAxisButtons(app)
+            
+        end
+        
+        function SwitchViewAndFocus(app,new_view_idx,caller_name)
+        % When switching to another view, store current properties for
+        % later recalling them
+        % Input: new_view_idx - idx of view that was pressed
+        %        caller_name - object that was pressed, used to manage
+        %        calling this function from unknown sources (not
+        %        pre-defined).
+        
+            GUI.DisableAllButtonsAndActions(app);
+            GUI.RevertControlsStatus(app);
+           
+%             app.slice_per_view(app.current_view)     = app.current_slice;
+            app.current_view = new_view_idx;
+%             app.current_slice        = app.slice_per_view(app.current_view);
+                      
+            app.View1Button.BackgroundColor = [.96 .96 .96];
+            app.View2Button.BackgroundColor = [.96 .96 .96];
+            
+            eval(['app.' caller_name '.BackgroundColor = [.96 .96 .0];']);
+                       
+            %Switch to the correct image
+            %TODO: maybe make different function for this.
+            index   = app.image_per_view(app.current_view);
+            Interaction.ChangeListBoxValue(app, index)
+        end
+        
+        function MouseClickedInImage(app,hit)
+            %Handles clicks in the image area. Calls functions depending on
+            %the state of various buttons.
+            %Input: hit - the location where the mouse was pressed.
+            
+            
+            %Check if the screen that was pressed is different from the
+            %current view.
+            if( (hit.Source.Parent == app.UIAxes1                       ...
+                    && app.current_view == 2)       ||                  ...
+                (hit.Source.Parent == app.UIAxes2                       ...
+                    && app.current_view == 1)   )
+            
+                    %Switch focus to the screen that was pressed
+                    Backups.CreateBackup(app);
+                    if(hit.Source.Parent == app.UIAxes1)
+                        Interaction.SwitchViewAndFocus(app,1,'View1Button');
+                    else
+                        Interaction.SwitchViewAndFocus(app,2,'View2Button');
+                    end
+                    
+            end
+            
+            hitx = round(hit.IntersectionPoint(1));
+            hity = round(hit.IntersectionPoint(2));
+            
+            if(app.should_show_selection == true)
+                % Here we want to delete something by clicking
+                Interaction.MouseDeleteObjectAtCoordinates(app,hitx,hity);
+                
+            elseif(app.drawing.active == true)
+                % Here we are manually drawing an ROI
+                if hit.Button == 1
+                    ROI.AddPointToPolygon(app,hitx,hity);
+                elseif hit.Button == 3
+                    ROI.ValidateDrawingPoints(app);
+                end
+                
+            elseif(app.drawing.edit == true)
+                %Here we want to drag a point
+                
+                ROI.StartDragging(app, hit)
+                
+            elseif(app.drawing.magic == true)
+                % Here we are using the automatic ROI drawing
+                Segmentation.MouseMagicDraw(app,hit,hitx,hity);
+                
+            elseif(app.drawing.measure_line == true)
+                % Here we are adding a manual measurement
+                Measurements.MouseMeasurementLines(app,hit,hitx,hity);
+            end
+            app.UpdateImage();
+            
+        end
+        
+        function MouseReleasedInImage(app, hit)
+            %
+           if app.drawing.edit == false
+               return
+           end
+           
+           set(hit.Source,                                              ...
+                    'WindowButtonMotionFcn',                            ...
+                    '')
+           set(hit.Source,                                              ...
+                    'WindowButtonUpFcn',                                ...
+                    '')
+           
+           %Change segmentation
+           ROI.ValidateModifiedROIPoints(app)
+           app.UpdateImage()
+           
+           app.currentDragPoint     = -1;
+           app.dragPoint            = [];
+           
+           GUI.SetButtonDownFcn(app)           
+        end
+        
+        
+        function MouseDraggedInImage(app, hit)
+            %Triggers when the mouse moves in the image after the
+            %windowbuttonmotionFCN has been set for the UIAxes elements.
+            %Calls ROI.MoveROIPoint with the new position of the cursor 
+            %relative to the top left corner with the scale of the image.
+            
+            if isempty(app.dragPoint)
+                return
+            end
+            
+            x   = app.dragPoint(1);
+            xp  = app.dragPoint(2);
+            y   = app.dragPoint(3);
+            yp  = app.dragPoint(4);
+            x2p = hit.Source.CurrentPoint(1);
+            y2p = hit.Source.CurrentPoint(2);
+            
+            scaleX  = hit.Source.InnerPosition(3) /                     ...
+                size(app.data.img, 1);
+            scaleY = hit.Source.InnerPosition(4) /                     ...
+                size(app.data.img, 2);
+             
+            x2  = x + (x2p - xp) / scaleX;
+            y2  = y + (yp - y2p) / scaleY;
+             
+%             x2  = x + (x2p - xp);
+%             y2  = y + (yp - y2p);
+            
+            ROI.MoveROIPoint(app, [x2, y2])
+        end
+        
+        function BackspacePressed(app)
+            %Remove the last points in app.drawing
+            
+            if ~isfield(app.drawing, 'points')
+                return
+            end
+            if isempty(app.drawing.points)
+                return
+            end
+            
+            app.drawing.points(end, :) = [];
+            app.UpdateImage();
+            
+        end
+        
+        function ToggleZoom(app)
+            %Toggle the zoom function of the current UIAxes.
+            ax  = [app.UIAxes1, app.UIAxes2];
+            ax  = ax(app.current_view);            
+            
+            if app.zoomToggle
+                zoom(ax, 'off')
+                app.zoomToggle = false;
+            else
+                zoom(ax, 'on')
+                app.zoomToggle = true;
+            end            
+        end
+        
+        % TODO: split
+        function MouseDeleteObjectAtCoordinates(app,hitx,hity)
+            %This handles the deletion of objects when the mouse is pressed
+            %at the object location. Measurements have priority over
+            %segmentation when deleting objects. 
+            %
+            %Input: hitx - the x-coordinate of the mouse
+            %       hity - the y-coordinate of the mouse
+            
+            %Create backup
+            Backups.CreateBackup(app);
+            
+            %Remove any previous deletion contours.
+            if(app.selection_contour ~= -1)
+                delete(app.selection_contour);
+                app.selection_contour = -1;
+            end
+            
+            %manage a backup - TODO: put in different function.
+%             app.bkseg = app.segmentation;
+            
+            %             app.should_show_selection = false;
+            
+            %Find the object type to be deleted. Either Measurement or ROI.
+            delObj = Study.FindObjectTypeAtPos(app, hitx, hity);
+            
+            %Remove the objects
+            if(delObj == 1)
+                % DELETE ROI
+                ROI.RemoveSegmentation(app, ij)
+            else
+                % DELETE MEASUREMENT
+                %TODO: put in different function.
+                IDX_2_DELETE =                                      ...
+                    false(size(app.drawing.measurement_lines,1),1);
+                for m_id=1:length(meas_pts)
+                    if(mod(meas_pts(m_id),2) == 1)
+                        % the first of the two points
+                        IDX_2_DELETE(                               ...
+                            meas_pts(m_id):meas_pts(m_id)+1         ...
+                            ) = true;
+                    else
+                        % the second of the two points
+                        IDX_2_DELETE(                               ...
+                            meas_pts(m_id):-1:meas_pts(m_id)-1      ...
+                            ) = true;
+                    end
+                end
+                app.drawing.measurement_lines(IDX_2_DELETE,:) = [];
+            end
+        end       
+        
+        function DeleteROIsAndMeasurements(app)
+        % Removes any measurements and segmentations stored in the current
+        % image. 
+            
+            %Create backup
+            Backups.CreateBackup(app);
+        
+            %Remove measurements
+            Measurements.RemoveAllMeasurements(app);
+            %Remove ROIs
+            ROI.RemoveAllROIs(app);
+            
+            app.UpdateImage();
+        end
+        
+        function Save(app)
+        %Called when the user presses the 'save_edited' button. Writes the
+        %segmentation to the disk as well as any measurements and ROI
+        %properties.
+        %Input:
+        %   app - the RMSstudio app
+        %
+        
+            if isempty(app.AvailableimagesListBox.Items)
+                return
+            end
+        
+            GUI.DisableControlsStatus(app);
+            pause(0.01);
+            drawnow
+            Study.SaveToDisk(app)
+            pause(0.05);
+            drawnow;
+            GUI.RevertControlsStatus(app);
+        end
+        
+        function LoadNewLabels(app)
+            %Loads a new segmentation for the current image.
+            defPath         = strcat(app.filepath, "\.rmsstudio");
+            [file, path]    = uigetfile('*.nii',                        ...
+                                'Load Segmentation',                    ...
+                                defPath);
+            fp              = fullfile(path, file);
+            if ~exist(fp)
+                return
+            end
+            
+            IOUtils.LoadSegmentation(app, fp);  
+            app.segmentation    = app.segmentation_list{                ...
+                                        app.current_image_idx};
+            ROI.UpdateROIBox(app)
+            
+            %Switch to new labels
+            items   = app.ROIBox.Items;
+            app.ROIBox.Value    = length(items) - 1;
+            Interaction.ROIBoxChanged(app);
+        end
+        
+        function LoadROIPoints(app)
+        %Loads a new segmentation for the current image.
+            defPath         = strcat(app.filepath, "\.rmsstudio");
+            [file, path]    = uigetfile('*.json',                       ...
+                                'Load ROI points',                      ...
+                                defPath);
+            fp              = fullfile(path, file);
+            
+            IOUtils.loadSegmentationPoints(app, fp);  
+            app.roiPoints    = app.roiPointList{app.current_image_idx};
+            app.UpdateImage();
+        end
+        
+        function DrawPolygon(app)
+            %Called when the user presses the 'draw polygon' button.
+            
+            DP_D = ~isfield(app.drawing,'active') ||                     ...
+               app.drawing.active == false;
+            GUI.DisableAllButtonsAndActions(app);
+            if(DP_D)
+                app.drawing.active = true;
+                app.DrawPolygonButton.BackgroundColor = [.96 .96 0];
+                Graphics.UpdateSelectionContour(app);
+            elseif(app.drawing.active == true)
+                app.drawing.active = false;
+            end
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app); 
+        end
+        
+        function EditPolygon(app)
+            %Toggles the edit function on or off.
+            %TODO: add button gui stuff.
+            
+            if isempty(app.roiPoints)
+                return
+            end
+                      
+            if app.drawing.edit == true
+                app.drawing.edit = false;
+                app.EditPolygonButton.BackgroundColor = [.96 .96 .96];
+                GUI.RemoveButtonDownFcn(app);
+                app.currentDragPoint    = -1;
+                app.dragPoint           = [];
+%                 setptr(app.UI, 'pointer');
+            else
+                app.drawing.edit = true;
+                app.EditPolygonButton.BackgroundColor = [.96 .96 0];
+                GUI.SetButtonDownFcn(app);
+%                 setptr(gcf, 'hand');
+            end
+        end
+        
+        
+        function PointsToSegmentation(app)
+            %Called when the user chooses the PointsToSegmentation Menu
+            %option. Calls functions to construct segmentation objects from
+            %the points in the image.
+            
+            GUI.DisableAllButtonsAndActions(app)
+            ROI.PointsToSegmentation(app)     
+            app.UpdateImage()
+            GUI.RevertControlsStatus(app)
+        end
+        
+        
+        function PerformAutomaticEllipseMeasurement(app)
+            % Called when the user presses the 'measure auto' button.
+            
+            %Create Backup
+            Backups.CreateBackup(app);
+            Measurements.PerformAutomaticEllipseMeasurement(app)
+        end
+        
+        function MagicDraw(app)
+            %Called when the user presses the 'magic draw' button.
+            DP_D = app.drawing.magic;
+            GUI.DisableAllButtonsAndActions(app);
+            if(~DP_D)
+%                 app.MagicdrawButton.BackgroundColor = [.96 .96 0];
+                app.drawing.magic = true;
+            end
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app); 
+        end
+        
+        
+        function choice = RegisterSelectedImageToDialog(app)
+            %Called when the user presses the 'align labels' button. 
+            %Prompts the user for an image to which the current labels 
+            %should be registered, then registers them.
+            
+            GUI.DisableControlsStatus(app);
+            app.UIFigure.Visible = 'off';
+            drawnow;
+            
+            d = dialog('Position',                                      ...
+                       [300 300 250 150],                               ...
+                       'Name',                                          ...
+                       'Select Target');
+            txt = uicontrol('Parent',d,                                 ...
+                'Style','text',                                         ...
+                'Position',[20 80 210 40],                              ...
+                'String','Select the registration target');
+            
+            popup = uicontrol('Parent',d,                               ...
+                'Style','popup',                                        ...
+                'Position',[75 70 100 25],                              ...
+                'String',app.AvailableimagesListBox.Items,              ...
+                'Callback',@popup_callback);
+            
+            btn = uicontrol('Parent',d,                                 ...
+                'Position',[89 20 70 25],                               ...
+                'String','Align!',                                      ...
+                'Callback','delete(gcf)');
+            
+            choice = app.AvailableimagesListBox.Items{1};
+            
+            % Wait for d to close before running to completion
+            uiwait(d);
+            app.UIFigure.Visible = 'on';
+            GUI.RevertControlsStatus(app);
+            
+            function popup_callback(popup,event)
+                idx = popup.Value;
+                popup_items = popup.String;
+                % This code uses dot notation to get properties.
+                % Dot notation runs in R2014b and later.
+                % For R2014a and earlier:
+                % idx = get(popup,'Value');
+                % popup_items = get(popup,'String');
+                choice = char(popup_items(idx,:));
+                delete(gcf);
+                app.UIFigure.Visible = 'on';
+                drawnow
+                MathUtils.PerformElastixRegistration(app,choice);
+            end
+        end
+        
+        function Undo(app)
+            %Called when Undo-button is pressed. 
+%             Study.Undo(app)
+            Backups.RestoreBackup(app)
+        end
+        
+%         function MakeBackup(app)
+%             %Called when the us
+%             Backups.CreateBackup(app)
+%         end
+%         
+        function UpdateSlice(app, value)
+            %Sets the current_slice to the new value, then updates the GUI
+            %Input:
+            %   value - new value for current_slice
+            app.current_slice = round(value);
+            imgSize             = size(app.data.img);
+            %Limit the value between 1 and max
+            if(app.current_slice < 1)
+                app.current_slice = 1;
+            end
+            if(app.current_slice > imgSize(app.view_axis))
+                app.current_slice = imgSize(app.view_axis);
+            end
+            
+            %Update the GUI
+            
+            app.UpdateSliceSlider();
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app);
+            
+            
+        end
+        
+        function choice = PromptName()
+            %Called when the user finishes drawing an ROI or measurement.
+            %Prompts them for a name that is either in the selection box or
+            %a custom one.
+            
+            d = dialog('Position',[300 300 250 150],'Name','Select One');
+            txt = uicontrol('Parent',d,...
+                   'Style','text',...
+                   'Position',[20 80 210 40],...
+                   'String','Name of the measurement / ROI');
+
+            popup = uicontrol('Parent',d,...
+                   'Style','popup',...
+                   'Position',[75 70 100 25],...
+                   'String',{'Tumour';'Soft Tissue';'Bone';'Other'},    ...
+                   'Callback',@popup_callback);
+
+            btn = uicontrol('Parent',d,...
+                   'Position',[89 20 70 25],...
+                   'String','Select',...
+                   'Callback',@select);
+            
+           %Default
+            choice = {};
+               
+            % Wait for d to close before running to completion
+            uiwait(d);
+
+                function popup_callback(popup,event)
+                   idx = popup.Value;
+                   popup_items = popup.String;
+                   res = char(popup_items(idx,:));
+                  
+                   if strcmp(res, 'Other') == 1
+                       choice = inputdlg("Enter measurement / ROI name");
+                       delete(gcf)
+                   else
+                       choice = {res};
+                   end
+                end
+               
+                function select(btn, event)
+                   popupItem  = btn.Parent.Children(2);
+                   idx  = popupItem.Value;
+                   res  = char(popupItem.String(idx,:));
+
+                   choice = {res};
+                   delete(gcf);
+
+                end
+        end
+        
+        
+        function PromptProfile(app, varargin)
+            %Called when the user launches the app for the first time. Asks
+            %them for a profile name to be used in separating the
+            %segmentations.
+            
+            %If a filepath is given, first check if a list with profile
+            %names already exists.
+            
+            profile = '';
+            
+            if nargin() == 2
+                file    = fullfile(varargin, 'profiles.txt');
+                file    = file{1};
+                if exist(file, 'file') == 2
+                    fileID  = fopen(file,    'r');
+                    names   = {};
+                    name    = fgetl(fileID);
+                    while name ~= -1
+                        names{end+1}    = name;
+                        name    = fgetl(fileID);
+                    end
+                    fclose(fileID);
+                    names{end+1}        = 'Other';
+                    
+                    d = dialog('Position',[300 300 250 150],'Name',     ...
+                        'Select One');
+                    txt = uicontrol('Parent',d,...
+                           'Style','text',...
+                           'Position',[20 80 210 40],...
+                           'String','Choose profile name');
+
+                    popup = uicontrol('Parent',d,...
+                           'Style','popup',...
+                           'Position',[75 70 100 25],...
+                           'String',names,    ...
+                           'Callback',@popup_callback);
+
+                    btn = uicontrol('Parent',d,...
+                           'Position',[89 20 70 25],...
+                           'String','Select',...
+                           'Callback','delete(gcf)');
+
+                   %Default
+                    profile = {names{1}};
+                    
+                    uiwait(d);
+
+                else
+                    %A path is specified but not file exists.
+                    
+                    %prompt for profile and write to file.
+                    profile = inputdlg("Enter profile name");
+%                     profile = upper(profile);      
+                    fid     = fopen(file, 'wt');
+                    fprintf(fid, strcat(profile{1}, '\n'));
+                    fclose(fid);
+                    
+                end
+            else
+            %If no filepath is given, prompt for the profile and don't do
+            %anything else.
+                profile = inputdlg(['Enter profile name.' newline            ...
+                '(We suggest the first three letters of your name']);
+            
+                if isempty(profile)
+                    profile = {''};
+                end
+            end
+            
+            %Add the profile to the app
+            profile  = upper(profile);
+            
+            %Add to app
+            if strcmp(app.user_profile, profile)
+                return
+            end
+            app.user_profile    = profile;
+            app.backup_list     = [];
+            
+            
+            %When the file exists, but 'other' is chosen, prompt for new
+            %profile name and add it to the file.
+            function popup_callback(popup,  event)
+                idx = popup.Value;
+                popup_items = popup.String;
+                res = char(popup_items(idx,:));
+
+                if strcmp(res, 'Other') == 1
+                  profile = inputdlg("Enter profile name");
+                  profile  = upper(profile);
+                  
+                  fid   = fopen(file, 'a+');
+                  fprintf(fid, strcat(profile{1}, '\n'));
+                  fclose(fid);
+                  
+                  delete(gcf)
+                  
+                else
+                  profile = {res};
+                end
+            end
+        end
+    end
+end
