@@ -31,12 +31,30 @@ classdef MathUtils < handle
                     
                     
                     [Xq, Yq, Zq]= meshgrid(1:1/ratio(1):size(in_vol,1), ...
-                                           1:1/ratio(2):size(in_vol,2), ...
-                                           1:1/ratio(3):size(in_vol,3));
+                                           1:1/ratio(1):size(in_vol,2), ...
+                                           1:1/ratio(1):size(in_vol,3));
+%                     Speed up the case where only z is anisotropic
+                    if ratio(1) == ratio(2) == 1
+                        for z=1:size(out_vol,3)
+                            nz = 1+floor((z-1)/ratio(3));
+                            V(:,:,z) = C(:,:,nz);
+                        end
+                        out_vol(:,:,:,idx_4d) = V;
+                        continue
+                    end
                     
-                    %Interpolate
-                    V           = interp3(X, Y, Z, C, Xq, Yq, Zq);
-                    out_vol     = cat(4,out_vol, V);
+                    %If multiple axes are anisotropic
+                    for x = 1:size(out_vol,1)
+                        nx = 1+floor((x-1)/ratio(1));
+                        for y=1:size(out_vol,2)
+                            ny = 1+floor((y-1)/ratio(2));
+                            for z=1:size(out_vol,3)
+                                nz = 1+floor((z-1)/ratio(3));
+                                V(x,y,z) = C(nx,ny,nz);
+                            end
+                        end
+                    end
+                    out_vol(:,:,:,idx_4d) = V;
                 end
             else
                 out_vol = in_vol;

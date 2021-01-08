@@ -55,11 +55,9 @@ classdef GUI < handle
             app.view_axis                        = 3;
             app.current_view                     = 1;
             app.image_per_view                   = [1,1];
-            app.Align                            = '';
            
             GUI.UpdateAxisButtons(app);
             GUI.UpdateViewButtons(app);
-            GUI.UpdateAlignButtons(app);
            
             h = imagesc(app.UIAxes1, zeros(100));
             set(h,'ButtonDownFcn',@app.MouseClickedInImage);
@@ -213,16 +211,16 @@ classdef GUI < handle
         
         
         
-        % This enables it back (user interaction)
+        % This prevents user interaction
         function RevertControlsStatus(app,only_non_action_buttons)
             if(nargin < 2 || only_non_action_buttons == false)
 %                 app.SelectDeleteButton.Enable           = 'on';
 %                 app.UndoButton.Enable                   = 'on';
 %                 app.SelectionsensitivityButton.Enable   = 'on';
-                app.DrawPolygonButton.Enable            = 'on';
+                app.DrawpolygonButton.Enable            = 'on';
                 app.EditPolygonButton.Enable            = 'on';
-                app.AlignLRButton.Enable                = 'on';
-                app.AlignRLButton.Enable                = 'on';
+                app.AlignLRButton.Enable                = 'off';
+                app.AlignRLButton.Enable                = 'off';
 %                 app.MagicdrawButton.Enable              = 'on';
 %                 app.SensitivitySlider.Enable            = 'on';
 %                 app.DCheckBox.Enable                    = 'on';
@@ -267,7 +265,7 @@ classdef GUI < handle
         end
         
         
-        % This prevents user interaction
+        % This enables it back (user interaction)
         function DisableControlsStatus(app,only_action_buttons)
             app.FileMenu.Enable                     = 'off';
             app.ViewMenu.Enable                     = 'off';
@@ -277,7 +275,7 @@ classdef GUI < handle
 %             app.SelectDeleteButton.Enable           = 'off';
 %             app.UndoButton.Enable                   = 'off';
 %             app.SelectionsensitivityButton.Enable   = 'off';
-            app.DrawPolygonButton.Enable            = 'off';
+            app.DrawpolygonButton.Enable            = 'off';
             app.EditPolygonButton.Enable            = 'off';
             app.AlignLRButton.Enable                = 'off';
             app.AlignRLButton.Enable                = 'off';

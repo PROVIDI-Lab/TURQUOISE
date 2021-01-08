@@ -80,15 +80,10 @@ classdef Study < handle
         function LoadFromList(app, index)
             %Add all previously loaded objects from the list to the current
             %working environment.
-            
-%             if(isempty(app.data_list{index}))
-%                     GUI.RevertControlsStatus(app);
-%                     return
-%             end
-%                 
+             
             %Image
             IOUtils.LoadNii(app, index);
-
+            
             %Segmentations
             if(~(index>length(app.segmentation_list)))
                 if(~isempty(app.segmentation_list{index}))

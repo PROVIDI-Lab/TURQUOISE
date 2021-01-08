@@ -116,9 +116,6 @@ classdef Interaction < handle
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
             
-            if isempty(app.data)
-                return
-            end
             
             %Check if the screen that was pressed is different from the
             %current view.
@@ -379,10 +376,6 @@ classdef Interaction < handle
         function DrawPolygon(app)
             %Called when the user presses the 'draw polygon' button.
             
-            if isempty(app.data)
-                return
-            end
-            
             DP_D = ~isfield(app.drawing,'active') ||                     ...
                app.drawing.active == false;
             GUI.DisableAllButtonsAndActions(app);
@@ -457,18 +450,16 @@ classdef Interaction < handle
         function AlignLeftRight(app, alignment)
             %Switches the alignment between the two views 
             
-            if isempty(app.Align)
-                app.Align = '';
-            end
-            
-            %Turn off alignment when pressing on the same button
-            if strcmp(alignment, app.Align)
+            if alignment == app.Align
                 app.Align = '';
             else
                 app.Align = alignment;
             end
             
             GUI.UpdateAlignButtons(app)
+            
+            
+            
         end
         
         function choice = RegisterSelectedImageToDialog(app)

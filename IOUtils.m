@@ -30,8 +30,8 @@ classdef IOUtils < handle
             nii.img, ratio = MathUtils.ResampleVolume(nii.img,          ...
                                min_vs*ones(1,3),                        ...
                                nii.hdr.dime.pixdim(2:4));
-        end
-
+        end 
+        
         function ResliceResampleNii(app, index)
         %Loads the .rmsstudio_reslice.nii file associated with the current
         %image. Sets the nii file as the current image.
@@ -63,7 +63,7 @@ classdef IOUtils < handle
                 %Save back to disk
                 save_nii(nii, reslice_name);
             end
-        end      
+        end   
         
         function LoadNii(app, index)
         %Loads the .rmsstudio_reslice.nii file associated with the current
