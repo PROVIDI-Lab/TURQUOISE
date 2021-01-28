@@ -82,29 +82,24 @@ classdef IOUtils < handle
             nii     = load_nii(reslice_name);
             nii.img = single(nii.img);
             
-            app.data{app.imIdx}     = nii;
+            Cv                      = app.current_view;
+            app.data{Cv}            = nii;
             app.current_4d_idx      = 1;
             app.DSlider.Value       = 1;
         
         end
         
-        function saveSegmentations(niis, fn)
+        function saveSegmentations(nii, fn)
         %Saves the array with the segmentation labels to a .nii file
         %Input:
-        %   niis 	- the segmentation to be saved
-        %   fn      - name of the .nii output file
+        %   nii - the segmentation to be saved
+        %   fn  - name of the .nii output file
         
-            for i = 1:length(niis)
-                nii     = niis{i};
-                name    = niis.properties{i}{1}{2};
-                out_fn  = strcat(name, '_', fn);
-                try
-                    save_nii(nii, out_fn);
-                catch err
-                    uialert(uifigure,err.message,...
-                        'Unable to save segmentation');
-                end             
-            end
+            try
+                save_nii(nii, fn);
+            catch err
+                uialert(uifigure,err.message,'Unable to save segmentation');
+            end             
         end
         
         
@@ -195,7 +190,7 @@ classdef IOUtils < handle
         
         function LoadSegmentation(app, name)
             
-            index = app.imIdx;
+            index = app.current_image_idx;
             
             if(exist(name,'file') > 0)
                 nii     = load_nii(name);
@@ -214,7 +209,7 @@ classdef IOUtils < handle
         
         function LoadSegmentationProperties(app, name)
             
-            index = app.imIdx;
+            index = app.current_image_idx;
             
             propfn  = [name(1:end-4) '.csv'];
             table   = readtable(propfn);
@@ -249,7 +244,7 @@ classdef IOUtils < handle
            %Loads the points stored in the -segmentation.json file 
            %associated with the current image.
            
-           index = app.imIdx;
+           index = app.current_image_idx;
             
            if(exist(name,'file') > 0)
                fid  = fopen(name, 'r');
@@ -269,14 +264,14 @@ classdef IOUtils < handle
         end
         
         function LoadMeasurements(app, name)
-        %Load all the measurements from the disk
+            %..
             
-            index = app.imIdx;
+            index = app.current_image_idx;
             
             if(exist(name,'file') > 0)
                 
                 %preallocate measurement_lines
-                app.measure_lines{app.current_view}     = [];
+                app.measure_lines  = [];
                 
                 %Read measurement from .xlsx file
                 table = readtable(name);

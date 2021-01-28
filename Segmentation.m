@@ -4,10 +4,13 @@ classdef Segmentation < handle
         function MouseMagicDraw(app,hit,hitx,hity)
         % This handles the magic draw, in 2D and 3D, for different
         % algorithms
+        
+            Cv      = app.current_view;
             if(hit.Button == 1)
-                if(~isfield(app.segmentation,'hdr'))
-                    app.segmentation.hdr = app.data.hdr;
-                    app.segmentation.img = zeros(size(app.data.img(:,:,:,1)));
+                if(~isfield(app.segmentation{Cv},'hdr'))
+                    app.segmentation{Cv}.hdr = app.data{app.imIdx}.hdr;
+                    app.segmentation{Cv}.img =...
+                        zeros(size(app.data{app.imIdx}.img(:,:,:,1)));
                 end
 
                 GUI.DisableControlsStatus(app);
@@ -27,26 +30,28 @@ classdef Segmentation < handle
                 %                     app.UIFigure.Visible = 'on';
                 GUI.RevertControlsStatus(app);
             elseif(hit.Button == 3)
-                app.drawing.magic = false;
+                app.drawing.mode = 0;
                 app.MagicdrawButton.BackgroundColor = [.96 .96 .96];
             end
         end
         
         function Seg2D(app, hitx, hity)
-            
+        %..    
             
             %TODO: fix x&y
                 %Change to work with current ROI functions
             
+            Cv      = app.current_view;
             if(app.view_axis == 3)
                 TheImg =                                                ...
-                    app.data.img(:,:,app.current_slice,app.current_4d_idx);
+                    app.data{app.imIdx}.img(...
+                    :,:,app.current_slice,app.current_4d_idx);
             elseif(app.view_axis == 2)
                 TheImg =                                                ...
-                    squeeze(app.data.img(                               ...
+                    squeeze(app.data{app.imIdx}.img(...
                     :,app.current_slice,:,app.current_4d_idx));
             elseif(app.view_axis == 1)
-                TheImg = squeeze(app.data.img(                          ...
+                TheImg = squeeze(app.data{app.imIdx}.img(...
                     app.current_slice,:,:,app.current_4d_idx));
             end
             TheImg = single(TheImg);
@@ -58,8 +63,8 @@ classdef Segmentation < handle
                     u = TheImg >                                        ...
                         TheVal-TheVal*app.drawing.magic_sensitivity/10;
                 elseif(app.drawing.magic_method == 2)
-                    u = TheImg <                                        ...
-                        TheVal+TheVal*app.drawing.magic_sensitivity/10 &...
+                    u = TheImg < TheVal+TheVal*...
+                        app.drawing.magic_sensitivity/10 &...
                         TheImg > -1;
                 end
                 [LA,NA] = bwlabeln(u);
@@ -69,7 +74,7 @@ classdef Segmentation < handle
                         u(lLA > 0) = 0;
                     end
                 end
-            elseif(app.drawing.magic_method == 3 ||                     ...
+            elseif(app.drawing.magic_method == 3 ||...
                     app.drawing.magic_method == 4)
                 if(app.drawing.magic_method == 4)
                     TheImg = imcomplement(TheImg);
@@ -104,17 +109,19 @@ classdef Segmentation < handle
             end
 
             if(app.view_axis == 3)
-                L = app.segmentation.img(:,:,app.current_slice);
+                L = app.segmentation{Cv}.img(:,:,app.current_slice);
                 L(u > 0) = 1;
-                app.segmentation.img(:,:,app.current_slice) = L;
+                app.segmentation{Cv}.img(:,:,app.current_slice) = L;
             elseif(app.view_axis == 2)
-                L = squeeze(app.segmentation.img(:,app.current_slice,:));
+                L = squeeze(app.segmentation{Cv}.img(...
+                    :,app.current_slice,:));
                 L(u > 0) = 1;
-                app.segmentation.img(:,app.current_slice,:) = L;
+                app.segmentation{Cv}.img(:,app.current_slice,:) = L;
             elseif(app.view_axis == 1)
-                L = squeeze(app.segmentation.img(app.current_slice,:,:));
+                L = squeeze(app.segmentation{Cv}.img(...
+                    app.current_slice,:,:));
                 L(u > 0) = 1;
-                app.segmentation.img(app.current_slice,:,:) = L;
+                app.segmentation{Cv}.img(app.current_slice,:,:) = L;
             end
 
             ROI.UpdateSegmentationProperties(app)          
@@ -122,9 +129,12 @@ classdef Segmentation < handle
         
         
         function Seg3D(app, hitx, hity)
-            
-           TheImg = single(app.data.img(:,:,:,app.current_4d_idx));
-            TheImg = TheImg / max(TheImg(:)) * 255;
+        %...
+        
+            Cv      = app.current_view;
+            TheImg  = ...
+                single(app.data{app.imIdx}.img(:,:,:,app.current_4d_idx));
+            TheImg  = TheImg / max(TheImg(:)) * 255;
             if(app.drawing.magic_method < 3)
                 if(app.view_axis == 3)
                     TheVal = TheImg(hity,hitx,app.current_slice);
@@ -137,8 +147,8 @@ classdef Segmentation < handle
                     u = TheImg >                                        ...
                         TheVal-TheVal*app.drawing.magic_sensitivity/10;
                 elseif(app.drawing.magic_method == 2)
-                    u = TheImg <                                        ...
-                        TheVal+TheVal*app.drawing.magic_sensitivity/10  ...
+                    u = TheImg < TheVal + ...
+                        TheVal*app.drawing.magic_sensitivity/10  ...
                         & TheImg > -1;
                 end
                 [LA,NA] = bwlabeln(u);
@@ -155,7 +165,7 @@ classdef Segmentation < handle
                         u(lLA > 0) = 0;
                     end
                 end
-            elseif(app.drawing.magic_method == 3 ||                     ...
+            elseif(app.drawing.magic_method == 3 ||...
                     app.drawing.magic_method == 4)
                 if(app.drawing.magic_method == 4)
                     TheImg = imcomplement(TheImg);
@@ -198,17 +208,15 @@ classdef Segmentation < handle
                     'ContractionBias',                                  ...
                     app.drawing.magic_sensitivity / 10.0);
             end
-            if(any(size(app.segmentation.img) ~=                        ...
-                    size(app.data.img(:,:,:,1))))
-                app.segmentation.img = u > 0;
+            if(any(size(app.segmentation{Cv}.img) ~=...
+                    size(app.data{app.imIdx}.img(:,:,:,1))))
+                app.segmentation{Cv}.img = u > 0;
             else
-                app.segmentation.img = app.segmentation.img | u > 0;
+                app.segmentation{Cv}.img =...
+                    app.segmentation{Cv}.img | u > 0;
             end
             ROI.UpdateSegmentationProperties(app)     
-            
         end
-        
-        
-        
+
     end
 end

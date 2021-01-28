@@ -5,35 +5,57 @@ classdef Graphics < handle
     
     methods (Static)
         
-                
+        function UpdateImage(app)
+        %Updates the image for the current view
+            axes    = [app.UIAxes1, app.UIAxes2];
+            ax      = axes(app.current_view);
+            Graphics.UpdateImageForAxis(app, ax)
+        end
+
         % Handles all graphics updates. Todo: split in multiple sub-calls
         function UpdateImageForAxis(app,the_axis)
 %             if(length(app.current_image) < img_idx)
 %                 return
 %             end
-
             Graphics.DrawImageInAxis(app,the_axis);
-            
             %Draw user-objects
-            Graphics.DrawROIsInAxis(app,the_axis);
+            Graphics.DrawChangedUserObjects(app, the_axis);
+%             Graphics.DrawROIsInAxis(app,the_axis);
             Graphics.DrawPointsInAxis(app,the_axis);
-            Graphics.DrawMeasurementsInAxis(app,the_axis);
+%             Graphics.DrawMeasurementsInAxis(app,the_axis);
             Graphics.UpdateUIAxesLabel(app);
-            
         end
         
-        function UpdateUserObjectsForAxis(app, the_axis)
-            %Draw user-objects
-            Graphics.DrawROIsInAxis(app,the_axis);
-            Graphics.DrawPointsInAxis(app,the_axis);
-            Graphics.DrawMeasurementsInAxis(app,the_axis);
-            Graphics.UpdateUIAxesLabel(app);
-        end
+        function DrawChangedUserObjects(app, the_axis)
+        %Draws any UserObj in app.userObjects that is both changed and 
+        %visible.
+        
+            for idx = 1:length(app.userObjects)
+                obj     = app.userObjects{idx};
+                if obj.imageIdx ~= app.image_per_view(app.current_view)...
+                        || ~obj.changed ...
+                        || ~obj.visible
+                    continue
+                end
+                
+               switch obj.type 
+
+                   case 1
+                       Graphics.DrawROIInAxis(app, the_axis, obj)
+                   case 2
+                       Graphics.DrawMeasurementInAxis(...
+                           app, the_axis, obj)
+                   otherwise
+                       continue
+               end
+                
+            end
+        end        
         
         % This draws the image slice
-        function DrawImageInAxis(app,the_axis)
+        function DrawImageInAxis(app,the_axis)            
             if(isprop(app,'data'))
-                SL = app.data;
+                SL = app.data{app.imIdx};
                 if(app.view_axis == 3)
                     SL = SL.img(:,:,app.current_slice,app.current_4d_idx);
                 elseif(app.view_axis == 2)
@@ -50,7 +72,7 @@ classdef Graphics < handle
                 if (isempty(app.cMinValue) || isempty(app.cMaxValue))
                     app.cMinValue = 0;
                     app.cMaxValue = 10;
-                elseif(any(~isfinite([app.cMinValue app.cMaxValue])) ||     ...
+                elseif(any(~isfinite([app.cMinValue app.cMaxValue])) ||...
                         app.cMinValue == app.cMaxValue)
                     app.cMinValue = 0;
                     app.cMaxValue = 10;
@@ -60,118 +82,240 @@ classdef Graphics < handle
             end          
         end
         
-        % This draws ROIs and the points during drawing
-        function DrawROIsInAxis(app,the_axis)          
-            % Draw the ROIs
-            if(~isfield(app.segmentation, 'img'))
-                return
-            end
+        function DrawROIInAxis(app,the_axis, obj)          
+        %This draws the countour of a visible segmentation stored in obj.
             
-            if(~isempty(app.segmentation.img))
-                for l_id=1:max(app.segmentation.img(:))
-                    L = app.segmentation.img == l_id;
-                    if(app.view_axis == 3)
-                        SL = L(:,:,app.current_slice);
-                    elseif(app.view_axis == 2)
-                        SL = squeeze(L(:,app.current_slice,:));
-                    elseif(app.view_axis == 1)
-                        SL = squeeze(L(app.current_slice,:,:));
-                    end
-                    
-                    SL = permute(SL,[2 1]);
-                    if(~isempty(find(SL,1)))
-                        hold(the_axis,'on');
-                        % Actually draw the contours
-                        if(app.should_show_selection == true)
-                            contour(the_axis,                       ...
-                            SL,                                     ...
-                            'r',                                    ...
-                            'HitTest',                              ...
-                            'on',                                   ...
-                            'ButtonDownFcn',                        ...
-                            @app.MouseClickedInImage);
-                        else
-                            contour(the_axis,                       ...
-                            SL,                                     ...
-                            'LineWidth',                            ...
-                            2,                                      ...
-                            'Color',                                ...
-                            app.colors_list(l_id,:),                ...
-                            'HitTest',                              ...
-                            'on',                                   ...
-                            'ButtonDownFcn',                        ...
-                            @app.MouseClickedInImage);
-
-                            % Now draw the annotations
-                            VS       = min(                         ...
-                                        app.data.hdr.dime.pixdim(2:4));
-                            Area     = length(find(SL))*VS^2;
-                            Prop     = app.segmentation.properties;
-                            Name     = Prop{l_id}{1}{2};
-                            Volume   = Prop{l_id}{2}{2};
-                            MeanSig  = Prop{l_id}{3}{2};
-
-                            String   = strcat(Name,                 ...
-                                        '\nArea: %.2fmm^2\nVolume:',...
-                                        '%.2fmm^3\nMean: %.2f');
-                            String   = sprintf(String,              ...
-                                               Area,                ...
-                                               Volume,              ...
-                                               MeanSig);
-
-                            [Mx,My,MX,MY] =                         ...
-                                    MathUtils.WeightedCenterOfROI(SL);
-
-                            %Add label to image
-                            t = text(the_axis,                      ...
-                                MY,                                 ...
-                                MX,                                 ...
-                                String,                             ...
-                                'Color',                            ...
-                                app.colors_list(l_id,:),            ...
-                                'HitTest',                          ...
-                                'on',                               ...
-                                'ButtonDownFcn',                    ...
-                                @app.MouseClickedInImage,           ...
-                                'BackgroundColor',                  ...
-                                'k');
-                        end
-                        hold(the_axis,'off');
-                    end
-                end
+            L   = obj.data;
+            if(app.view_axis == 3)
+                SL = L(:,:,app.current_slice);
+            elseif(app.view_axis == 2)
+                SL = squeeze(L(:,app.current_slice,:));
+            elseif(app.view_axis == 1)
+                SL = squeeze(L(app.current_slice,:,:));
             end
-        end         
+                    
+            SL = permute(SL,[2 1]);
+            if(~isempty(find(SL,1)))
+                hold(the_axis,'on');
+                %First draw the contours
+                if(app.should_show_selection == true)
+                    contour(the_axis,                       ...
+                    SL,                                     ...
+                    'r',                                    ...
+                    'HitTest',                              ...
+                    'on',                                   ...
+                    'ButtonDownFcn',                        ...
+                    @app.MouseClickedInImage);
+                else
+                    contour(the_axis,                       ...
+                    SL,                                     ...
+                    'LineWidth',                            ...
+                    2,                                      ...
+                    'Color',                                ...
+                    app.colors_list(obj.ID,:),              ...
+                    'HitTest',                              ...
+                    'on',                                   ...
+                    'ButtonDownFcn',                        ...
+                    @app.MouseClickedInImage);
+
+                    % Now draw the annotations
+                    VS       = min(app.data{...
+                                app.imIdx}.hdr.dime.pixdim(2:4));
+                    Area     = length(find(SL))*VS^2;
+                    Name     = obj.name;
+                    Volume   = obj.prop.volume;
+                    MeanSig  = obj.prop.mean;
+
+                    String   = strcat(Name,                 ...
+                                '\nArea: %.2fmm^2\nVolume:',...
+                                '%.2fmm^3\nMean: %.2f');
+                    String   = sprintf(String,              ...
+                                       Area,                ...
+                                       Volume,              ...
+                                       MeanSig);
+
+                    [~,~,MX,MY] =                         ...
+                            MathUtils.WeightedCenterOfROI(SL);
+
+                    %Add label to image
+                    t = text(the_axis,                      ...
+                        MY,                                 ...
+                        MX,                                 ...
+                        String,                             ...
+                        'Color',                            ...
+                        app.colors_list(obj.ID,:),          ...
+                        'HitTest',                          ...
+                        'on',                               ...
+                        'ButtonDownFcn',                    ...
+                        @app.MouseClickedInImage,           ...
+                        'BackgroundColor',                  ...
+                        'k');
+                end
+                hold(the_axis,'off');
+            end
+        end
         
+        function DrawMeasurementInAxis(app,the_axis, obj) 
+        % This draws a measurement.
+                
+            hold(the_axis,'on');
+
+            P1    = obj.points(1,:);
+            P2    = obj.points(2,:);
+            direction = P2-P1;
+            L     = obj.prop.length;
+            name  = obj.name;
+
+            labelText   = strcat(name,'\nLength: %.2fmm');
+
+            %Plot lines that are visible in current view
+            ax = app.view_axis;
+            if P1(ax) == P2(ax) && P1(ax) == app.current_slice
+                P1(ax) = [];
+                P2(ax) = [];
+
+                plot(the_axis,                                  ...
+                    [P1(1) P2(1)],                              ...
+                    [P1(2) P2(2)],                              ...
+                    '.-',                                       ...
+                    'LineWidth',                                ...
+                    2,                                          ...
+                    'HitTest',                                  ...
+                    'on',                                       ...
+                    'ButtonDownFcn',                            ...
+                    @app.MouseClickedInImage,                   ...
+                    'Color',                                    ...
+                    app.colors_list(obj.ID,:));
+                % Annotate it as well
+                text(the_axis,                                  ...
+                    P1(1)-1*direction(2),                       ...
+                    P1(2)-0.4*direction(1),                     ...
+                    sprintf(labelText, L),                      ...
+                    'Color',                                    ...
+                    app.colors_list(obj.ID,:),                  ...
+                    'HitTest',                                  ...
+                    'on',                                       ...
+                    'ButtonDownFcn',                            ...
+                    @app.MouseClickedInImage,                   ...
+                    'BackgroundColor',                          ...
+                    'k');
+            end
+            hold(the_axis,'off');
+        end
+        
+        
+%         % This draws ROIs and the points during drawing
+%         function DrawROIsInAxis(app,the_axis)          
+%             % Draw the ROIs
+%             
+%             Cv  = app.current_view;  
+%             if(~isfield(app.segmentation{Cv}, 'img'))
+%                 return
+%             end
+%                       
+%             if(~isempty(app.segmentation{Cv}.img))
+%                 nSegmentations      = size(app.segmentation{Cv}.img,2);
+%                 for l_id=1:nSegmentations
+%                     L = app.segmentation{Cv}.img{l_id};
+%                     if(app.view_axis == 3)
+%                         SL = L(:,:,app.current_slice);
+%                     elseif(app.view_axis == 2)
+%                         SL = squeeze(L(:,app.current_slice,:));
+%                     elseif(app.view_axis == 1)
+%                         SL = squeeze(L(app.current_slice,:,:));
+%                     end
+%                     
+%                     SL = permute(SL,[2 1]);
+%                     if(~isempty(find(SL,1)))
+%                         hold(the_axis,'on');
+%                         % Actually draw the contours
+%                         if(app.should_show_selection == true)
+%                             contour(the_axis,                       ...
+%                             SL,                                     ...
+%                             'r',                                    ...
+%                             'HitTest',                              ...
+%                             'on',                                   ...
+%                             'ButtonDownFcn',                        ...
+%                             @app.MouseClickedInImage);
+%                         else
+%                             contour(the_axis,                       ...
+%                             SL,                                     ...
+%                             'LineWidth',                            ...
+%                             2,                                      ...
+%                             'Color',                                ...
+%                             app.colors_list(l_id,:),                ...
+%                             'HitTest',                              ...
+%                             'on',                                   ...
+%                             'ButtonDownFcn',                        ...
+%                             @app.MouseClickedInImage);
+% 
+%                             % Now draw the annotations
+%                             VS       = min(                         ...
+%                                         app.data{...
+%                                         app.imIdx}.hdr.dime.pixdim(2:4));
+%                             Area     = length(find(SL))*VS^2;
+%                             Prop     = app.segmentation{Cv}.properties;
+%                             Name     = Prop{l_id}{1}{2};
+%                             Volume   = Prop{l_id}{2}{2};
+%                             MeanSig  = Prop{l_id}{3}{2};
+% 
+%                             String   = strcat(Name,                 ...
+%                                         '\nArea: %.2fmm^2\nVolume:',...
+%                                         '%.2fmm^3\nMean: %.2f');
+%                             String   = sprintf(String,              ...
+%                                                Area,                ...
+%                                                Volume,              ...
+%                                                MeanSig);
+% 
+%                             [Mx,My,MX,MY] =                         ...
+%                                     MathUtils.WeightedCenterOfROI(SL);
+% 
+%                             %Add label to image
+%                             t = text(the_axis,                      ...
+%                                 MY,                                 ...
+%                                 MX,                                 ...
+%                                 String,                             ...
+%                                 'Color',                            ...
+%                                 app.colors_list(l_id,:),            ...
+%                                 'HitTest',                          ...
+%                                 'on',                               ...
+%                                 'ButtonDownFcn',                    ...
+%                                 @app.MouseClickedInImage,           ...
+%                                 'BackgroundColor',                  ...
+%                                 'k');
+%                         end
+%                         hold(the_axis,'off');
+%                     end
+%                 end
+%             end
+%         end         
+
         function DrawPointsInAxis(app,the_axis)
             %Draws all the points stored in app.drawing.points and 
             %app. roiPoints on the screen. 
             %Input:
             %   the_axis - UIAxes objects of the view currently in focus
             
-            
-                        
-            if(~isfield(app.drawing,'handles'))
-                app.drawing.handles = [];
-            else
-                Graphics.DeleteAllDrawingPoints(app);
+            Cv  = app.current_view;
+            if ~isempty(app.tempDrawings)
+                Graphics.DeleteAllTempDrawings(app);
             end
-
+            
             %Plot app.drawing.points
-            if(isfield(app.drawing,'points') &&                     ...
-                            ~isempty(app.drawing.points))
-                tmp = app.drawing.points;
+            if(~isempty(app.points{Cv}))
+                tmp = app.points{Cv};
                 tmp(:,app.view_axis)    = [];
                 x                       = tmp(:,1);
                 y                       = tmp(:,2);
                 hold(the_axis,'on');
                 h = plot(the_axis, x, y, '.-g');
                 hold(the_axis,'off');
-                app.drawing.handles = [app.drawing.handles; h];
+                app.tempDrawings = [app.tempDrawings; h];
             end
             
             %Plot app.roiPoints
-            if(~isempty(app.roiPoints))
-                tmp = app.roiPoints;
+            if(~isempty(app.roiPoints{Cv}))
+                tmp = app.roiPoints{Cv};
                 
                 %Only display points in the current slice
                 idx     = tmp(:, app.view_axis) == app.current_slice;
@@ -182,88 +326,112 @@ classdef Graphics < handle
                 x2                      = tmp(:,1);
                 y2                      = tmp(:,2);
                 hold(the_axis,'on');
-                h2 = plot(the_axis, x2, y2, '*r');
+                h2  = plot(the_axis, x2, y2, '*r');
                 hold(the_axis,'off');
-                app.drawing.handles = [app.drawing.handles; h2];
+                app.tempDrawings = [app.tempDrawings; h2];
             end
         end
         
-        function DrawMeasurementsInAxis(app,the_axis) 
-        % This draws the measurements
-        
-        % Parameters:
-        % app       - rmsstudio app
-        % the_axis  - 
-        % img_idx   - current image view (?)
-        
-            if(isfield(app.drawing,'measurement_lines'))
-%                 disp(app.drawing.measurement_lines);
-                hold(the_axis,'on');
-                
-                for line_id = 1 : 2 : size(app.drawing.measurement_lines,1)
-                    
-                    P1        = app.drawing.measurement_lines(line_id,:);
-                    P2        = app.drawing.measurement_lines(line_id+1,:);
-                    direction = P2-P1;
-%                     CL        = norm(direction,2);
-%                     L         = CL*min(app.data.hdr.dime.pixdim(2:4));
-                    L       = app.measure_length(round(line_id/2));
-                    name    = app.measure_names{round(line_id/2)};
-                    
-                    %deal with various ways of storing the string
-                    while iscell(name)
-                        name        = name{1};
-                    end
-                    
-                    labelText   = strcat(name,'\nLength: %.2fmm');
-                    
-                    
-                    %Plot lines that are visible in current view
-                    ax = app.view_axis;
-                    if P1(ax) == P2(ax) && P1(ax) == app.current_slice
-                        P1(ax) = [];
-                        P2(ax) = [];
-                        
-                        plot(the_axis,                                  ...
-                            [P1(1) P2(1)],                              ...
-                            [P1(2) P2(2)],                              ...
-                            '.-',                                       ...
-                            'LineWidth',                                ...
-                            2,                                          ...
-                            'HitTest',                                  ...
-                            'on',                                       ...
-                            'ButtonDownFcn',                            ...
-                            @app.MouseClickedInImage,                   ...
-                            'Color',                                    ...
-                            app.colors_list(line_id,:));
-                        % Annotate it as well
-                        text(the_axis,                                  ...
-                            P1(1)-1*direction(2),                       ...
-                            P1(2)-0.4*direction(1),                     ...
-                            sprintf(labelText, L),                      ...
-                            'Color',                                    ...
-                            app.colors_list(line_id,:),                 ...
-                            'HitTest',                                  ...
-                            'on',                                       ...    
-                            'ButtonDownFcn',                            ...
-                            @app.MouseClickedInImage,                   ...
-                            'BackgroundColor',                          ...
-                            'k');
-                    end
-                end
-                hold(the_axis,'off');
+        function DrawCircleInAxis(app, the_axis)
+        %Plots a circle when the user is drawing a circular ROI.
+            
+            if ~isempty(app.tempDrawings)
+                Graphics.DeleteAllTempDrawings(app);
             end
+            
+            x0      = app.currentCircle(1);
+            y0      = app.currentCircle(2);
+            x1      = app.currentCircle(3);
+            y1      = app.currentCircle(4);
+            rad     = pdist([x0,y0; x1,y1],'euclidean');
+
+            nPoints = round(2 * rad * pi); 
+            angles  = linspace(0, 2*pi, nPoints);
+            x       = round(rad * cos(angles) + x0);
+            y       = round(rad * sin(angles) + y0);
+            
+            hold(the_axis,'on');
+            h = plot(the_axis, x, y, 'b-');
+            hold(the_axis,'off');
+            app.tempDrawings = [app.tempDrawings; h];
+            
         end
         
+%         function DrawMeasurementsInAxis(app,the_axis) 
+%         % This draws the measurements
+%         
+%         % Parameters:
+%         % app       - rmsstudio app
+%         % the_axis  - 
+%         % img_idx   - current image view (?)
+%         
+%         Cv  = app.current_view;
+%         
+%             if(~isempty(app.measure_lines))
+%                 hold(the_axis,'on');
+%                 
+%                 for line_id = 1 : 2 : ...
+%                         size(app.measure_lines{Cv},1)
+%                     
+%                     P1    = app.measure_lines{Cv}(line_id,:);
+%                     P2    = app.measure_lines{Cv}(line_id+1,:);
+%                     direction = P2-P1;
+%                     L       = app.measure_length{Cv}(round(line_id/2));
+%                     name    = app.measure_names{Cv}{round(line_id/2)};
+%                     
+%                     %deal with various ways of storing the string
+%                     while iscell(name)
+%                         name        = name{1};
+%                     end
+%                     
+%                     labelText   = strcat(name,'\nLength: %.2fmm');
+%                     
+%                     
+%                     %Plot lines that are visible in current view
+%                     ax = app.view_axis;
+%                     if P1(ax) == P2(ax) && P1(ax) == app.current_slice
+%                         P1(ax) = [];
+%                         P2(ax) = [];
+%                         
+%                         plot(the_axis,                                  ...
+%                             [P1(1) P2(1)],                              ...
+%                             [P1(2) P2(2)],                              ...
+%                             '.-',                                       ...
+%                             'LineWidth',                                ...
+%                             2,                                          ...
+%                             'HitTest',                                  ...
+%                             'on',                                       ...
+%                             'ButtonDownFcn',                            ...
+%                             @app.MouseClickedInImage,                   ...
+%                             'Color',                                    ...
+%                             app.colors_list(line_id,:));
+%                         % Annotate it as well
+%                         text(the_axis,                                  ...
+%                             P1(1)-1*direction(2),                       ...
+%                             P1(2)-0.4*direction(1),                     ...
+%                             sprintf(labelText, L),                      ...
+%                             'Color',                                    ...
+%                             app.colors_list(line_id,:),                 ...
+%                             'HitTest',                                  ...
+%                             'on',                                       ...
+%                             'ButtonDownFcn',                            ...
+%                             @app.MouseClickedInImage,                   ...
+%                             'BackgroundColor',                          ...
+%                             'k');
+%                     end
+%                 end
+%                 hold(the_axis,'off');
+%             end
+%         end
         
         function UpdateUIAxesLabel(app)
             %Updates the label on the UIAxes containing the name and slice
             %number of the current image.
             
             sliceString = strcat(num2str(app.current_slice), " / ",     ...
-                             num2str(size(app.data.img, app.view_axis)));
+                 num2str(size(app.data{app.imIdx}.img, app.view_axis)));
             nameString  = app.AvailableimagesListBox.Items{             ...
-                            app.current_image_idx};
+                            app.imIdx};
             string      = sprintf('%s\n%s',sliceString, nameString);
             
             if app.current_view == 1
@@ -273,21 +441,18 @@ classdef Graphics < handle
             end
         end        
         
-        
         % Delete all points of manual drawing
-        function DeleteAllDrawingPoints(app)
-            if(isfield(app.drawing,'handles'))
-                for ij=1:length(app.drawing.handles)
-                    delete(app.drawing.handles(ij));
-                end
+        function DeleteAllTempDrawings(app)
+            for ij=1:length(app.tempDrawings)
+                delete(app.tempDrawings(ij));
             end
-            app.drawing.handles = [];
+            app.tempDrawings = [];
         end
         
-        % Manages the vertices during manual drawing
+        % Shows selection contour for deleting
         function UpdateSelectionContour(app)
             if(app.selection_contour ~= -1)
-                delete(app.selection_contour);
+                delete(app.seleection_contour);
                 app.selection_contour = -1;
             end
             if(app.should_show_selection == true)

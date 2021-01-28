@@ -5,7 +5,7 @@ classdef Backups < handle
             %Creates a backupObj that stores the current state of the app.
             obj = BackupObj();
             
-            obj.current_image_idx   = app.current_image_idx;
+            obj.current_image_idx   = app.imIdx;
             obj.image_per_view      = app.image_per_view;
             obj.current_4d_idx      = app.current_4d_idx;
             obj.view_axis           = app.view_axis;
@@ -14,19 +14,22 @@ classdef Backups < handle
             obj.MinValue            = app.MinValue;
             obj.MaxValue            = app.MaxValue;
             
+            
+            Cv  = app.current_view;
+            
             if isfield(app.segmentation, 'img')
                 obj.segmentation        = Backups.To1DArray(            ...
-                                                app.segmentation.img);
-                obj.seg_prop            = app.segmentation.properties;
-                obj.seg_names           = app.seg_names;
-                obj.seg_shape           = size(app.segmentation.img);
-                obj.roiPoints           = app.roiPoints;
-                obj.roiPointIndex       = app.roiPointIndex;
+                                                app.segmentation{Cv}.img);
+                obj.seg_prop            = app.segmentation{Cv}.properties;
+                obj.seg_names           = app.seg_names{Cv};
+                obj.seg_shape           = size(app.segmentation{Cv}.img);
+                obj.roiPoints           = app.roiPoints{Cv};
+                obj.roiPointIndex       = app.roiPointIndex{Cv};
             end
             
-            if isfield(app.drawing, 'measurement_lines')
-                obj.measurements         = app.drawing.measurement_lines;
-                obj.measure_names        = app.measure_names;
+            if ~isempty(app.measure_lines)
+                obj.measurements    = app.measure_lines{Cv};
+                obj.measure_names   = app.measure_names{Cv};
             end
 
             %Add to list
@@ -57,7 +60,7 @@ classdef Backups < handle
                                               button);
 
            %If image is different
-           elseif app.current_image_idx ~= obj.current_image_idx
+           elseif app.imIdx ~= obj.current_image_idx
                Interaction.ChangeListBoxValue(app,                  ...
                                               obj.current_image_idx)
            end
@@ -69,25 +72,25 @@ classdef Backups < handle
            app.MinValue             = obj.MinValue;
            app.MaxValue             = obj.MaxValue;
            
-           if ~isequaln(obj.segmentation, app.segmentation)
+           Cv   = app.current_view;
+           if ~isequaln(obj.segmentation, app.segmentation{Cv})
                if isempty(obj.segmentation)
-                   app.segmentation         = [];
-                   app.seg_names            = [];
+                   app.segmentation{Cv}         = [];
+                   app.seg_names{Cv}            = [];
                else
-                   app.segmentation.img     = Backups.ToNDArray(        ...
-                                         obj.segmentation, obj.seg_shape);
-                   app.seg_names                = obj.seg_names;
-                   app.segmentation.properties  = obj.seg_prop;
-                   app.roiPoints                = obj.roiPoints;
-                   app.roiPointIndex            = obj.roiPointIndex;
+                   app.segmentation{Cv}.img = Backups.ToNDArray(...
+                                     obj.segmentation, obj.seg_shape);
+                   app.seg_names{Cv}                = obj.seg_names;
+                   app.segmentation{Cv}.properties  = obj.seg_prop;
+                   app.roiPoints{Cv}                = obj.roiPoints;
+                   app.roiPointIndex{Cv}            = obj.roiPointIndex;
                end
                
            end
            
-           if any(size(obj.measurements) ~=                             ...
-                  size(app.drawing.measurement_lines))
-               app.drawing.measurement_lines = obj.measurements;
-               app.measure_names             = obj.measure_names;
+           if any(size(obj.measurements) ~= size(app.measure_lines{Cv}))
+               app.measure_lines{Cv}            = obj.measurements;
+               app.measure_names{Cv}            = obj.measure_names;
            end
            
            %Remove from list

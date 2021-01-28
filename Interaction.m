@@ -8,17 +8,9 @@ classdef Interaction < handle
         function ChangeListBoxValue(app, index)
         %Changes the value of the AvailableImageListBox
             
-            %Don't do anything if the indexes are the same
-            if app.current_image_idx == index
-                Study.SwitchImage(app, index)
-                return
-            end
-            
             %Get the name of the file at the index
             name = app.AvailableimagesListBox.Items{index};
             app.AvailableimagesListBox.Value = name;
-            
-            Interaction.ListBoxChanged(app)
         end
         
         function ListBoxChanged(app)
@@ -39,7 +31,7 @@ classdef Interaction < handle
             end
             
             %Update app
-            Study.SwitchImage(app, index)
+            Study.SwitchImage(app, index, app.current_view)
         end
         
         function ROIBoxChanged(app)
@@ -52,26 +44,7 @@ classdef Interaction < handle
             if index <= 0
                 return
             end
-                
-            
-            %Find index of corresponding segmentation
-            if ~isempty(app.segmentation)
-                [x,y,z]     = ind2sub(size(app.segmentation.img),           ...
-                                      find(app.segmentation.img == index));
-            else
-                x   = app.roiPoints(app.roiPointIndex == index,1); 
-                y   = app.roiPoints(app.roiPointIndex == index,2); 
-                z   = app.roiPoints(app.roiPointIndex == index,3); 
-            end
-            %Find most occurring value
-            [Mx, Fx]    = mode(x);
-            [My, Fy]    = mode(y);
-            [Mz, Fz]    = mode(z);
-            
-            [~,  view]  = max([Fx, Fy, Fz]);
-            
-            modes       = [Mx, My, Mz];
-            slice       = modes(view);
+            [view, slice] = ROI.GetROIViewAndSlice(app, index);    
             
             %Switch slice and view            
             app.view_axis       = view;
@@ -85,6 +58,21 @@ classdef Interaction < handle
             
         end
         
+        function AlgorithmChanged(app)
+        %Sets the right algorithm selection   
+        
+            value = app.AlgorithmDropDown.Value;
+            for ij=1:length(app.AlgorithmDropDown.Items)
+                if(strcmp(value, app.AlgorithmDropDown.Items{ij}) > 0)
+                    break
+                end
+            end
+            app.drawing.magic_method = ij; 
+        end
+        
+        
+    %% UIAxes interactions
+    
         function SwitchViewAndFocus(app,new_view_idx,caller_name)
         % When switching to another view, store current properties for
         % later recalling them
@@ -95,10 +83,8 @@ classdef Interaction < handle
         
             GUI.DisableAllButtonsAndActions(app);
             GUI.RevertControlsStatus(app);
-           
-%             app.slice_per_view(app.current_view)     = app.current_slice;
-            app.current_view = new_view_idx;
-%             app.current_slice        = app.slice_per_view(app.current_view);
+            prev_view           = app.current_view;
+            app.current_view    = new_view_idx;
                       
             app.View1Button.BackgroundColor = [.96 .96 .96];
             app.View2Button.BackgroundColor = [.96 .96 .96];
@@ -106,8 +92,8 @@ classdef Interaction < handle
             eval(['app.' caller_name '.BackgroundColor = [.96 .96 .0];']);
                        
             %Switch to the correct image
-            %TODO: maybe make different function for this.
-            index   = app.image_per_view(app.current_view);
+            index   = app.image_per_view(new_view_idx);
+            Study.SwitchImage(app, index, prev_view)
             Interaction.ChangeListBoxValue(app, index)
         end
         
@@ -116,7 +102,7 @@ classdef Interaction < handle
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
             
-            if isempty(app.data)
+            if isempty(app.data{app.imIdx})
                 return
             end
             
@@ -130,11 +116,12 @@ classdef Interaction < handle
                     %Switch focus to the screen that was pressed
                     Backups.CreateBackup(app);
                     if(hit.Source.Parent == app.UIAxes1)
-                        Interaction.SwitchViewAndFocus(app,1,'View1Button');
+                        Interaction.SwitchViewAndFocus(...
+                        app,1,'View1Button');
                     else
-                        Interaction.SwitchViewAndFocus(app,2,'View2Button');
+                        Interaction.SwitchViewAndFocus(...
+                        app,2,'View2Button');
                     end
-                    
             end
             
             hitx = round(hit.IntersectionPoint(1));
@@ -144,54 +131,65 @@ classdef Interaction < handle
                 % Here we want to delete something by clicking
                 Interaction.MouseDeleteObjectAtCoordinates(app,hitx,hity);
                 
-            elseif(app.drawing.active == true)
+            elseif(app.drawing.mode == 1)
                 % Here we are manually drawing an ROI
                 if hit.Button == 1
                     ROI.AddPointToPolygon(app,hitx,hity);
                 elseif hit.Button == 3
                     ROI.ValidateDrawingPoints(app);
+                    app.drawing.mode                        = 0;
+                    app.DrawPolygonButton.BackgroundColor   = ...
+                                            [.96 .96 .96];
+                    
                 end
                 
-            elseif(app.drawing.edit == true)
+            elseif(app.drawing.mode == 2)
                 %Here we want to drag a point
-                
                 ROI.StartDragging(app, hit)
-                
-            elseif(app.drawing.magic == true)
-                % Here we are using the automatic ROI drawing
-                Segmentation.MouseMagicDraw(app,hit,hitx,hity);
-                
-            elseif(app.drawing.measure_line == true)
+            
+            elseif(app.drawing.mode == 3)
                 % Here we are adding a manual measurement
                 Measurements.MouseMeasurementLines(app,hit,hitx,hity);
+                
+            elseif(app.drawing.mode == 4)
+                % Here we are using the automatic ROI drawing
+                Segmentation.MouseMagicDraw(app,hit,hitx,hity);
+            
+            elseif app.drawing.mode == 5
+                %Here we are drawing a circular ROI
+                ROI.StartDrawingCircular(app, hit);                
             end
-            app.UpdateImage();
+            
+            Graphics.UpdateImage(app)
             
         end
         
         function MouseReleasedInImage(app, hit)
-            %
-           if app.drawing.edit == false
-               return
-           end
-           
-           set(hit.Source,                                              ...
-                    'WindowButtonMotionFcn',                            ...
+        %When editing an ROIpoint, finalize the editing
+            
+            if app.drawing.mode == 2
+                %Change segmentation
+                ROI.ValidateModifiedROIPoints(app)
+            elseif app.drawing.mode == 5
+                ROI.FinishDrawingCircular(app)
+            else
+                return
+            end
+            
+            app.currentDragPoint    = -1;
+            app.dragPoint           = [];
+            app.currentCircle       = [];
+            
+            app.UpdateImage()
+            set(hit.Source,...
+                    'WindowButtonMotionFcn',...
                     '')
-           set(hit.Source,                                              ...
-                    'WindowButtonUpFcn',                                ...
+            set(hit.Source,...
+                    'WindowButtonUpFcn',...
                     '')
-           
-           %Change segmentation
-           ROI.ValidateModifiedROIPoints(app)
-           app.UpdateImage()
-           
-           app.currentDragPoint     = -1;
-           app.dragPoint            = [];
-           
-           GUI.SetButtonDownFcn(app)           
-        end
-        
+            GUI.SetButtonDownFcn(app)           
+            end
+
         
         function MouseDraggedInImage(app, hit)
             %Triggers when the mouse moves in the image after the
@@ -209,32 +207,63 @@ classdef Interaction < handle
             yp  = app.dragPoint(4);
             x2p = hit.Source.CurrentPoint(1);
             y2p = hit.Source.CurrentPoint(2);
-            
+
+            %TODO get scale right
+
             scaleX  = hit.Source.InnerPosition(3) /                     ...
-                size(app.data.img, 1);
+                size(app.data{app.imIdx}.img, 1);
             scaleY = hit.Source.InnerPosition(4) /                     ...
-                size(app.data.img, 2);
-             
+                size(app.data{app.imIdx}.img, 2);
+
             x2  = x + (x2p - xp) / scaleX;
             y2  = y + (yp - y2p) / scaleY;
-             
-%             x2  = x + (x2p - xp);
-%             y2  = y + (yp - y2p);
             
-            ROI.MoveROIPoint(app, [x2, y2])
+            %Edit ROI
+            if app.drawing.mode == 2
+                
+                ROI.MoveROIPoint(app, [x2, y2])
+            %Circular ROI
+            elseif app.drawing.mode == 5
+                hitx = round(hit.IntersectionPoint(1));
+                hity = round(hit.IntersectionPoint(2));
+                ROI.DrawCircularROI(app, [hitx, hity])
+            end
+            
+        end
+        
+        %% Keypresses
+        
+        function UIKeyPress(app, event)
+        % Manages keypresses when UIAxes are in focus
+            
+            key     = event.Key;
+            if(~isfield(app.data{app.imIdx},'img') ||...
+                    isempty(app.data{app.imIdx}.img))
+                return
+            end
+            if(strcmp(key,'uparrow'))
+                GUI.SliceUp(app)
+            elseif(strcmp(key,'downarrow'))
+                GUI.SliceDown(app)
+            elseif(strcmp(key, 'backspace'))
+                Interaction.BackspacePressed(app)
+            elseif(strcmp(key, 'z'))
+                Interaction.ToggleZoom(app)
+            end
         end
         
         function BackspacePressed(app)
-            %Remove the last points in app.drawing
+        %Remove the last points in app.drawing
             
-            if ~isfield(app.drawing, 'points')
+            Cv = app.current_view;
+            if ~isempty(app.points)
                 return
             end
-            if isempty(app.drawing.points)
+            if isempty(app.points{Cv})
                 return
             end
             
-            app.drawing.points(end, :) = [];
+            app.points{Cv}(end, :) = [];
             app.UpdateImage();
             
         end
@@ -271,39 +300,101 @@ classdef Interaction < handle
                 app.selection_contour = -1;
             end
             
-            %manage a backup - TODO: put in different function.
-%             app.bkseg = app.segmentation;
-            
-            %             app.should_show_selection = false;
-            
             %Find the object type to be deleted. Either Measurement or ROI.
-            delObj = Study.FindObjectTypeAtPos(app, hitx, hity);
+            [delOb, ij, meas] = Study.FindObjectTypeAtPos(app, hitx, hity);
             
             %Remove the objects
-            if(delObj == 1)
-                % DELETE ROI
+            if(delOb == 1)
                 ROI.RemoveSegmentation(app, ij)
-            else
-                % DELETE MEASUREMENT
-                %TODO: put in different function.
-                IDX_2_DELETE =                                      ...
-                    false(size(app.drawing.measurement_lines,1),1);
-                for m_id=1:length(meas_pts)
-                    if(mod(meas_pts(m_id),2) == 1)
-                        % the first of the two points
-                        IDX_2_DELETE(                               ...
-                            meas_pts(m_id):meas_pts(m_id)+1         ...
-                            ) = true;
-                    else
-                        % the second of the two points
-                        IDX_2_DELETE(                               ...
-                            meas_pts(m_id):-1:meas_pts(m_id)-1      ...
-                            ) = true;
-                    end
-                end
-                app.drawing.measurement_lines(IDX_2_DELETE,:) = [];
+            elseif(delOb == 2)
+                Measurements.RemoveMeasurement(app, meas)
+            end
+            
+            if delOb ~= 0
+               app.should_show_selection = false;
             end
         end       
+        
+        
+        %% UI buttons
+        
+        function Axial(app)
+        %Switches view to axial
+            app.view_axis = 3;
+            if(app.current_slice > size(app.data{app.imIdx}.img,3))
+                app.current_slice =...
+                    round(size(app.data{app.imIdx}.img,3)/2);
+            end
+            app.UpdateSliceSlider();
+            app.UpdateImage();
+            app.AxialButton.BackgroundColor     = [.96 .96 0];
+            app.SagittalButton.BackgroundColor  = [.96 .96 .96];
+            app.CoronalButton.BackgroundColor   = [.96 .96 .96];
+        end
+        
+        function Sagittal(app)
+        %Switches view to sagittal
+            app.view_axis   = 2;
+            if(app.current_slice > size(app.data{app.imIdx}.img,2))
+                app.current_slice =...
+                    round(size(app.data{app.imIdx}.img,2)/2);
+            end
+            app.UpdateSliceSlider();
+            app.UpdateImage();
+            app.AxialButton.BackgroundColor     = [.96 .96 .96];
+            app.SagittalButton.BackgroundColor  = [.96 .96 0];
+            app.CoronalButton.BackgroundColor   = [.96 .96 .96];
+        end
+        
+        function Coronal(app)
+        %Switches view to coronal
+            app.view_axis   = 1;
+            if(app.current_slice > size(app.data{app.imIdx}.img,1))
+                app.current_slice =...
+                    round(size(app.data{app.imIdx}.img,1)/2);
+            end
+            app.UpdateSliceSlider();
+            app.UpdateImage();
+            app.AxialButton.BackgroundColor     = [.96 .96 .96];
+            app.SagittalButton.BackgroundColor  = [.96 .96 .96];
+            app.CoronalButton.BackgroundColor   = [.96 .96 0];
+        end
+        
+        function ResetStudy(app)
+        %Removes the entire .rmsstudio folder
+            GUI.DisableControlsStatus(app);
+            app.UIFigure.Visible = 'off';
+            drawnow;
+            answer = questdlg(...
+                'This will reset this study folder, are you sure?', ...
+               	'Study reset', ...
+               	'Yes','No','No');
+            if(strcmp(answer,'Yes') > 0)
+                delete(fullfile(app.current_folder,'*rmsstudio*'));
+                GUI.DisableControlsStatus(app);
+            else
+                GUI.RevertControlsStatus(app);
+            end
+            GUI.DisableAllButtonsAndActions(app);
+            app.UIFigure.Visible = 'on';
+        end
+        
+        function RemoveSingle(app)
+        %Toggles removal of userobjects when clicking
+            if(~isfield(app.segmentation{app.current_view},'img') &&...
+                    isempty(app.measure_lines{app.current_view}))
+                return
+            end
+            SL_D = app.should_show_selection;
+            GUI.DisableAllButtonsAndActions(app);
+            if(SL_D == false)
+                app.should_show_selection = true;
+            else
+                app.should_show_selection = false;
+            end
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app);
+        end
         
         function DeleteROIsAndMeasurements(app)
         % Removes any measurements and segmentations stored in the current
@@ -336,7 +427,7 @@ classdef Interaction < handle
             pause(0.01);
             drawnow
             Study.SaveToDisk(app)
-            pause(0.05);
+            pause(0.01);
             drawnow;
             GUI.RevertControlsStatus(app);
         end
@@ -352,9 +443,10 @@ classdef Interaction < handle
                 return
             end
             
+            Cv  = app.current_view;
             IOUtils.LoadSegmentation(app, fp);  
-            app.segmentation    = app.segmentation_list{                ...
-                                        app.current_image_idx};
+            app.segmentation{Cv}    = app.segmentation_list{...
+                                        app.imIdx};
             ROI.UpdateROIBox(app)
             
             %Switch to new labels
@@ -371,27 +463,29 @@ classdef Interaction < handle
                                 defPath);
             fp              = fullfile(path, file);
             
+            Cv  = app.current_view;
             IOUtils.loadSegmentationPoints(app, fp);  
-            app.roiPoints    = app.roiPointList{app.current_image_idx};
+            app.roiPoints{Cv}    = app.roiPointList{Cv}{...
+                                        app.imIdx};
             app.UpdateImage();
         end
         
         function DrawPolygon(app)
             %Called when the user presses the 'draw polygon' button.
             
-            if isempty(app.data)
+            if isempty(app.data{app.imIdx})
                 return
             end
             
-            DP_D = ~isfield(app.drawing,'active') ||                     ...
-               app.drawing.active == false;
-            GUI.DisableAllButtonsAndActions(app);
+            DP_D = app.drawing.mode ~= 1;
             if(DP_D)
-                app.drawing.active = true;
+                app.drawing.mode = 1;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 0];
-                Graphics.UpdateSelectionContour(app);
-            elseif(app.drawing.active == true)
-                app.drawing.active = false;
+            else
+                app.drawing.mode = 0;
+                app.DrawPolygonButton.BackgroundColor = [.96 .96 .96];
+                ROI.ValidateDrawingPoints(app);
+                app.UpdateImage();
             end
             app.UpdateImage();
             Graphics.UpdateSelectionContour(app); 
@@ -401,25 +495,39 @@ classdef Interaction < handle
             %Toggles the edit function on or off.
             %TODO: add button gui stuff.
             
-            if isempty(app.roiPoints)
+            Cv  = app.current_view;
+            if isempty(app.roiPoints{Cv})
                 return
             end
-                      
-            if app.drawing.edit == true
-                app.drawing.edit = false;
+            
+            if app.drawing.mode == 2
+                app.drawing.mode = 0;
                 app.EditPolygonButton.BackgroundColor = [.96 .96 .96];
                 GUI.RemoveButtonDownFcn(app);
                 app.currentDragPoint    = -1;
                 app.dragPoint           = [];
 %                 setptr(app.UI, 'pointer');
             else
-                app.drawing.edit = true;
+                app.drawing.mode = 2;
                 app.EditPolygonButton.BackgroundColor = [.96 .96 0];
                 GUI.SetButtonDownFcn(app);
 %                 setptr(gcf, 'hand');
             end
         end
         
+        function CircularROI(app)
+        %Prepares drawing a Circular ROI
+            if isempty(app.data{app.imIdx})
+                return
+            end
+            if(app.drawing.mode ~= 5)
+                app.drawing.mode = 5;
+            else
+                app.drawing.mode = 0;
+            end
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app); 
+        end
         
         function PointsToSegmentation(app)
             %Called when the user chooses the PointsToSegmentation Menu
@@ -441,13 +549,27 @@ classdef Interaction < handle
             Measurements.PerformAutomaticEllipseMeasurement(app)
         end
         
+        function MeasureLine(app)
+        %Toggles 
+            DP_D = app.drawing.mode;
+            GUI.DisableAllButtonsAndActions(app);
+            if(DP_D ~= 3)
+                app.drawing.mode    = 3;
+            else
+                app.drawing.mode    = 0;
+                app.points{Cv}      = [];
+            end 
+        end
+        
         function MagicDraw(app)
             %Called when the user presses the 'magic draw' button.
-            DP_D = app.drawing.magic;
+            DP_D = app.drawing.mode;
             GUI.DisableAllButtonsAndActions(app);
-            if(~DP_D)
+            if(DP_D ~= 4)
 %                 app.MagicdrawButton.BackgroundColor = [.96 .96 0];
-                app.drawing.magic = true;
+                app.drawing.mode = 4;
+            else
+                app.drawing.mode = 0;
             end
             app.UpdateImage();
             Graphics.UpdateSelectionContour(app); 
@@ -475,6 +597,8 @@ classdef Interaction < handle
             %Called when the user presses the 'align labels' button. 
             %Prompts the user for an image to which the current labels 
             %should be registered, then registers them.
+            
+            IOUtils.SaveSegmentations(app);
             
             GUI.DisableControlsStatus(app);
             app.UIFigure.Visible = 'off';
@@ -529,17 +653,12 @@ classdef Interaction < handle
             Backups.RestoreBackup(app)
         end
         
-%         function MakeBackup(app)
-%             %Called when the us
-%             Backups.CreateBackup(app)
-%         end
-%         
         function UpdateSlice(app, value)
-            %Sets the current_slice to the new value, then updates the GUI
-            %Input:
-            %   value - new value for current_slice
+        %Sets the current_slice to the new value, then updates the GUI
+        %Input:
+        %   value - new value for current_slice
             app.current_slice = round(value);
-            imgSize             = size(app.data.img);
+            imgSize             = size(app.data{app.imIdx}.img);
             %Limit the value between 1 and max
             if(app.current_slice < 1)
                 app.current_slice = 1;
@@ -553,8 +672,6 @@ classdef Interaction < handle
             app.UpdateSliceSlider();
             app.UpdateImage();
             Graphics.UpdateSelectionContour(app);
-            
-            
         end
         
         function choice = PromptName()
@@ -571,7 +688,12 @@ classdef Interaction < handle
             popup = uicontrol('Parent',d,...
                    'Style','popup',...
                    'Position',[75 70 100 25],...
-                   'String',{'Tumour';'Soft Tissue';'Bone';'Other'},    ...
+                   'String',{   'Whole Tumor';...
+                                'Viable Tumor';...
+                                'Necrosis';...
+                                'Cyste';...
+                                'Hemorrhage';...
+                                'Other'},...
                    'Callback',@popup_callback);
 
             btn = uicontrol('Parent',d,...
@@ -579,7 +701,7 @@ classdef Interaction < handle
                    'String','Select',...
                    'Callback',@select);
             
-           %Default
+            %Default
             choice = {};
                
             % Wait for d to close before running to completion
@@ -608,7 +730,6 @@ classdef Interaction < handle
 
                 end
         end
-        
         
         function PromptProfile(app, varargin)
             %Called when the user launches the app for the first time. Asks
@@ -671,7 +792,7 @@ classdef Interaction < handle
             else
             %If no filepath is given, prompt for the profile and don't do
             %anything else.
-                profile = inputdlg(['Enter profile name.' newline            ...
+                profile = inputdlg(['Enter profile name.' newline       ...
                 '(We suggest the first three letters of your name']);
             
                 if isempty(profile)
@@ -692,7 +813,7 @@ classdef Interaction < handle
             
             %When the file exists, but 'other' is chosen, prompt for new
             %profile name and add it to the file.
-            function popup_callback(popup,  event)
+            function popup_callback(popup, event)
                 idx = popup.Value;
                 popup_items = popup.String;
                 res = char(popup_items(idx,:));
@@ -712,5 +833,14 @@ classdef Interaction < handle
                 end
             end
         end
+        
+        function ShuffleColors(app)
+        %Shuffles the colors of the measurements & segmentations
+            IX = randperm(size(app.colors_list,1));
+            app.colors_list = app.colors_list(IX,:);
+            app.UpdateImage();
+            Graphics.UpdateSelectionContour(app);
+        end
+        
     end
 end

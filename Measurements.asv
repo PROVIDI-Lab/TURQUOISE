@@ -72,12 +72,8 @@ classdef Measurements < handle
             if size(name,1) == 0
                 name    = Interaction.PromptName();
             end
-            Cv  = app.current_view;
-            Objects.AddNewUserObj(app,...
-                    "type", 2, ...
-                    "points", app.points{Cv}, ...
-                    "name", name{1})
             
+            Cv  = app.current_view;
             if ~isempty(name) && strcmp(name, ' ') ~= 1
                 app.measure_names{Cv}{end+1} = name{1};
             else %if the user presses cancel, remove the measurement
@@ -102,13 +98,8 @@ classdef Measurements < handle
             GUI.DisableAllButtonsAndActions(app);
         end
         
-        function RemoveMeasurement(app, idx)
-        %removes the measurement(s) at the indexes
-            Cv  = app.current_view;
-            app.measure_lines{Cv}(2*idx,:)      = [];
-            app.measure_lines{Cv}(2*idx-1,:)    = [];
-            app.measure_names{Cv}(idx)          = [];
-            app.measure_length{Cv}(idx)         = [];
+        function RemoveMeasurement(app, indx)
+        %removes
         end
         
         

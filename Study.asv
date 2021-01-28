@@ -20,7 +20,6 @@ classdef Study < handle
             app.roiPointIndexList   = {};
             
             %View objects
-            app.userObjects         = {};
             app.segmentation        = {};
             app.seg_names           = {};
             app.measure_names       = {};
@@ -94,8 +93,7 @@ classdef Study < handle
             
             %Segmentations
             if(~(index>length(app.segmentation_list)))
-                if(~isempty(app.segmentation_list{index}) || ...
-                        ~isempty(app.roiPointList{index}))
+                if(~isempty(app.segmentation_list{index}))
                     app.segmentation{Cv}    = app.segmentation_list{index};
                     app.seg_names{Cv}       = app.seg_names_list{index};
                     ROI.UpdateSegmentationProperties(app);
@@ -142,7 +140,7 @@ classdef Study < handle
             
             
             %First save the most recent changes to the list
-            Study.SaveToList(app, app.current_view)
+            Study.SaveToList(app)
             
             
             for image_id=1:length(app.segmentation_list)
@@ -190,26 +188,30 @@ classdef Study < handle
             end
         end
         
-        function SaveToList(app, Pv)
+        function SaveToList(app)
             %Writes all the user objects to their respective lists so that
             %they can be loaded when the user switches back to that image.
             
-            idx = app.imIdx;            
+            idx = app.imIdx;
             
             %Segmentation
-            app.segmentation_list{idx}  = app.segmentation{Pv};
-            app.seg_names_list{idx}     = app.seg_names{Pv};
-            app.roiPointList{idx}       = app.roiPoints{Pv};
-            app.roiPointIndexList{idx}  = app.roiPointIndex{Pv};
+            Cv                          = app.current_view;
+            app.segmentation_list{idx}  = app.segmentation{Cv};
+            app.seg_names_list{idx}     = app.seg_names{Cv};
+            app.roiPointList{idx}       = app.roiPoints{Cv};
+            app.roiPointIndexList{idx}  = app.roiPointIndex{Cv};
             
             
-            %Measurements
-            app.measurement_list{idx}   = app.measure_lines{Pv};
-            app.measure_names_list{idx} = app.measure_names{Pv};
-            app.measure_length_list{idx}= app.measure_length{Pv};
+            if isfield(app, 'measure_lines')
+                %Measurements
+                app.measurement_list{idx}   =                       ...
+                                app.measure_lines{Cv};
+                app.measure_names_list{idx} = app.measure_names{Cv};
+                app.measure_length_list{idx}= app.measure_length{Cv};
+            end
         end
         
-        function SwitchImage(app, index, prev_view)
+        function SwitchImage(app, index)
         % Switches workspace and display to a different image.
         % Input:
         %   app, reference to the RMSStudio app
@@ -219,8 +221,8 @@ classdef Study < handle
             drawnow            
             
             %Save all current user objects back to the list
-            Study.SaveToList(app, prev_view)
-
+            Study.SaveToList(app)
+            %Store current image slice
             app.slice_per_image{app.imIdx} = app.current_slice;
             
             %Switch to new image
@@ -296,7 +298,7 @@ classdef Study < handle
                     end
                     [d, idx]    = min(distances);
                     if d <= selector
-                        meas    = idx;
+                        meas    = [lines(2*idx -1,:); lines(2*idx,:)];
                     end
                     
 %                     meas = find(lines(:,3) == app.current_slice &       ...
@@ -327,7 +329,7 @@ classdef Study < handle
                     end
                     [d, idx]    = min(distances);
                     if d <= selector
-                        meas    = idx;
+                        meas    = [lines(2*idx -1); lines(2*idx)];
                     end
                 end
                 
@@ -353,7 +355,7 @@ classdef Study < handle
                     end
                     [d, idx]    = min(distances);
                     if d <= selector
-                        meas    = idx;
+                        meas    = [lines(2*idx -1); lines(2*idx)];
                     end
                 end
             end

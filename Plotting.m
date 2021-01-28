@@ -1,16 +1,19 @@
 classdef Plotting < handle
     methods (Static)
         
-        % Show a 3D plot of the labels
+        
         function Labels3DView(app)
+        % Show a 3D plot of the labels    
             f=figure;
             ax = axes(f);
             hold(ax,'on');
             axis(ax,'vis3d');
             axis(ax,'off');
             cameratoolbar(f);
-            for N=1:max(app.segmentation.img(:))
-               L = app.segmentation.img == N;
+            
+            Cv  = app.current_view;
+            for N=1:max(app.segmentation{Cv}.img(:))
+               L = app.segmentation{Cv}.img == N;
                L = smooth3(L,'gaussian',5);
                h(N) = patch(ax,isosurface(L,0.3),                       ...
                    'FaceColor',                                         ...
@@ -30,10 +33,10 @@ classdef Plotting < handle
             end
         end
         
-        
-        % Show statistics of each label
         function LabelsStatsPlot(app)
-            CV      = app.data.img(:,:,:,app.current_4d_idx);
+            % Show statistics of each label
+            Cv      = app.current_view;
+            im      = app.data{app.imIdx}.img(:,:,:,app.current_4d_idx);
             min_val = inf;
             max_val = -inf;
             f       = figure;
@@ -41,11 +44,11 @@ classdef Plotting < handle
             %First find the range that the histogram needs to be shown
             %with:
             %iterate over all labels in image
-            for N=1:max(app.segmentation.img(:))
+            for N=1:max(app.segmentation{Cv}.img(:))
                 
                %Get list of all labeled values
-               L = app.segmentation.img == N;
-               S = CV(L(:) > 0);
+               L = app.segmentation{Cv}.img == N;
+               S = im(L(:) > 0);
                if(isempty(S))
                    continue
                end
@@ -60,11 +63,11 @@ classdef Plotting < handle
             end
             
             %iterate over all labels in image
-            for N=1:max(app.segmentation.img(:))
+            for N=1:max(app.segmentation{Cv}.img(:))
                 
                %Get list of all labeled values
-               L = app.segmentation.img == N;
-               S = CV(L(:) > 0);
+               L = app.segmentation{Cv}.img == N;
+               S = im(L(:) > 0);
                if(isempty(S))
                    continue
                end
@@ -82,7 +85,7 @@ classdef Plotting < handle
                Name        = app.seg_names{N};
                
                %Plot histogram
-               ax=subplot(max(app.segmentation.img(:)),1,N);
+               ax=subplot(max(app.segmentation{Cv}.img(:)),1,N);
                bar(ax,range,h);
                hold on;
                Nvoxels = length(S);

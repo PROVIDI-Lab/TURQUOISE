@@ -1,0 +1,57 @@
+classdef UserObj < matlab.mixin.SetGet
+    
+    properties (Access = public)
+       imageIdx,                %Image on which obj is drawn
+       type,                    %ROI = 1, measurement = 2, ...
+       graphics,                %Graphics of the object
+       changed      = true,     %Stores whether to redraw
+       visible      = true,     %Stores whether to display
+       data,                    %Seg, other
+       points,                  %ROIPoints, drawing points
+       name,                    %Name of the object
+       prop,                    %Other properties
+       ID,                      %Which userObj is this
+       
+    end
+    
+    methods        
+        function obj = makeProperties(obj, app)
+            
+            if obj.type == 1
+                L           = obj.data == 1;
+                VS          = ...
+                    min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+                Volume      = length(find(L))*VS^3;
+                V           = ...
+                    app.data{app.imIdx}.img(:,:,:,app.current_4d_idx);
+                MeanVolSig  = mean(V(L(:)));
+                MaxVolSig   = max(V(L(:)));
+                MinVolSig   = min(V(L(:)));
+                StdVolSig   = std(V(L(:)));
+                perc25Vol   = prctile(V(L(:)), 25, 'all');
+                perc50Vol   = prctile(V(L(:)), 50, 'all');
+                perc75Vol   = prctile(V(L(:)), 75, 'all');
+
+                obj.prop = { ...
+                        {'Name',   Name},                   ...
+                        {'Volume', Volume},                 ...
+                        {'Mean',   MeanVolSig},             ...
+                        {'Max',    MaxVolSig},              ...
+                        {'Min',    MinVolSig},              ...
+                        {'Std',    StdVolSig},              ...
+                        {'perc25',  perc25Vol},             ...
+                        {'perc50',  perc50Vol},             ...
+                        {'perc75',  perc75Vol}
+                        };
+                    
+            elseif obj.type == 2
+                
+                
+            end
+            
+        end
+        
+        
+    end
+    
+end

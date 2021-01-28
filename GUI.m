@@ -19,9 +19,9 @@ classdef GUI < handle
                 
                 if size(app.AvailableimagesListBox.Items,2) > 1
                     app.current_view      = 2;
-                    app.AvailableimagesListBox.Value =                      ...
+                    app.AvailableimagesListBox.Value =...
                         app.AvailableimagesListBox.Items{2};
-                    app.current_image_idx = 2;
+                    app.imIdx = 2;
                     %Load the image, segmentations and measurement
                     Study.LoadFromList(app, 2)
                     %Show everything
@@ -35,7 +35,7 @@ classdef GUI < handle
                 
                 app.AvailableimagesListBox.Value =                      ...
                     app.AvailableimagesListBox.Items{1};
-                app.current_image_idx = 1;
+                app.imIdx = 1;
                 %Load the image, segmentations and measurement
                 Study.LoadFromList(app, 1)
                 %Show everything
@@ -47,6 +47,17 @@ classdef GUI < handle
             
             GUI.RevertControlsStatus(app);
             
+        end
+        
+        function h = SetupAxis(the_ax)
+        %Constructs the UIAxes
+            rect = get(the_ax,'OuterPosition');
+            bg = zeros(rect([4 3]));
+            bg(round(end/2),round(end/2)) = 1;
+            h = imagesc(the_ax,bg);
+            colormap(the_ax,'gray');
+            axis(the_ax,'off');
+            the_ax.BackgroundColor = 'k';
         end
         
         function ResetViews(app)
@@ -74,7 +85,7 @@ classdef GUI < handle
         %Input:
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
-        
+            
             app.view_axis                       = 3;
             app.AxialButton.BackgroundColor     = [.96 .96   0];
             app.SagittalButton.BackgroundColor  = [.96 .96 .96];
@@ -84,17 +95,21 @@ classdef GUI < handle
             
             
             %Find correct slice
+            Cv                      = app.current_view;
             if isempty(app.current_slice)
                 app.current_slice   = round(size(                       ...
-                                            app.data.img,               ...
+                                            app.data{Cv}.img,...
                                             app.view_axis)/2);
+                
             elseif app.current_slice == -1 ||                           ...
-                   app.current_slice >= size(app.data.img,app.view_axis)
+                   app.current_slice >=...
+                   size(app.data{Cv}.img,app.view_axis)
                 app.current_slice   = round(size(                       ...
-                                            app.data.img,               ...
+                                            app.data{Cv}.img,...
                                             app.view_axis)/2);
             end
-            
+            app.slice_per_image{app.imIdx} =...
+                    app.current_slice;
             %Reset zoom level
             ax  = [app.UIAxes1, app.UIAxes2];
             ax  = ax(app.current_view);
@@ -102,12 +117,12 @@ classdef GUI < handle
             ax.YLim = [-inf, inf];
                         
             %Update all GUI elements
-            app.UpdateSliceSlider();
-            app.UpdateMinMaxSlider();
+            GUI.UpdateSliceSlider(app);
+            GUI.UpdateMinMaxSlider(app);
             ROI.UpdateROIBox(app);
             
             app.UpdateImage();
-            pause(0.05);
+            pause(0.01);
             drawnow
             
 %             fn = app.AvailableimagesListBox.Items{index};
@@ -122,6 +137,135 @@ classdef GUI < handle
             app.StatusLamp.Color     = [0.9100 0.4100 0.1700];
             app.StatusLampLabel.Text = 'Error';
         end
+        
+        %% Sliders && UI elements
+        
+        function Scroll(app, event)
+        %Manages the scrollwheelEvent 
+            
+            verticalScrollAmount    = event.VerticalScrollAmount;
+            verticalScrollCount     = event.VerticalScrollCount;
+            Cv                      = app.current_view;
+            if(~isfield(app.data{Cv},'img') || isempty(app.data{Cv}.img))
+                return
+            end
+            
+            %Increase slice
+            if(verticalScrollAmount > 0 && verticalScrollCount < 0)
+                GUI.SliceUp(app)
+                
+            %Decrease slice
+            elseif(verticalScrollAmount > 0 && verticalScrollCount > 0)
+                GUI.SliceDown(app)
+            end            
+        end
+        
+        
+        function SliceUp(app)
+        %Increases the slice of the current image by one
+            Cv                = app.current_view;
+            app.current_slice = app.current_slice + 1;
+            if(app.current_slice < 1)
+                app.current_slice = 1;
+            end
+            if(app.current_slice >...
+                    size(app.data{Cv}.img, app.view_axis))
+                app.current_slice =...
+                    size(app.data{Cv}.img, app.view_axis);
+            end
+            app.SliceSlider.Value = app.current_slice;
+            app.UpdateImage();
+        end
+        
+        function SliceDown(app)
+        %Decreases the slice of the current image by one
+            Cv                = app.current_view;
+            app.current_slice = app.current_slice - 1;
+            if(app.current_slice < 1)
+                app.current_slice = 1;
+            end
+            if(app.current_slice >...
+                    size(app.data{Cv}.img,app.view_axis))
+                app.current_slice =...
+                    size(app.data{Cv}.img,app.view_axis);
+            end
+            app.SliceSlider.Value = app.current_slice;
+            app.UpdateImage();
+        end
+        
+        function SensitivitySlider(app)
+        %Sets the sensitivityslider value to the program
+            value = app.SensitivitySlider.Value;
+            value = round(value);
+            app.SensitivitySlider.Value = value;
+            app.drawing.magic_sensitivity = value; 
+        end
+        
+        function UpdateSliceSlider(app)
+        % Sets the limits and current value of the slice slider
+            if(isempty(app.data{app.current_view}))
+                return
+            end
+            
+            %Get data dimensions
+            refvol = app.data{app.imIdx}.img;
+            
+            %Update SliceSlider
+            app.SliceSlider.Limits = [1 size(refvol,app.view_axis)];
+            max_ticks = 4;
+            step = round(size(refvol,app.view_axis)/(max_ticks-1));
+            app.SliceSlider.MajorTicks = ...
+                [1:step:size(refvol,app.view_axis)...
+                size(refvol,app.view_axis)];
+            app.SliceSlider.MinorTicks = 1:1:size(refvol,app.view_axis);
+            app.SliceSlider.Value = double(app.current_slice);
+            
+            
+            %Update dimensionSlider
+            app.DSlider.MajorTicks = 1:1:size(refvol,4);
+            if(size(refvol,4) > 20)
+                app.DSlider.MajorTicks = 1:10:size(refvol,4);
+            end
+            if(size(refvol,4) > 1)
+                app.DSlider.Limits = [1 size(refvol,4)];
+            else
+                app.DSlider.Limits = [1 2];
+            end
+            app.DSlider.Value = double(app.current_4d_idx); 
+        end
+        
+        
+        function UpdateMinMaxSlider(app)
+        %Updates the min and max sliders
+            if ~isfield(app.data{app.imIdx}, 'img')
+                return
+            end
+%             V = app.data_list{app.current_image(app.imIdx)}.img(:,:,:,1);
+            V = app.data{app.imIdx}.img(:,:,:,1);
+            app.MinValue = min(V(:));
+            if app.MinValue <0
+                app.MinValue = 0;
+            end
+            app.MaxValue = max(V(:));
+            app.cMinValue = app.MinValue;
+            app.cMaxValue = app.MaxValue;
+            if(app.MinValue == app.MaxValue)
+                app.MinValue = 0;
+                app.MaxValue = 100;
+            end
+%             max_ticks = 6;
+%             step = round((100)/max_ticks);
+            app.MinvalSlider.MajorTicks = [0 50 100];
+            app.MinvalSlider.Value      =...
+                double(floor(app.MinValue/app.MaxValue*100));
+            app.MaxvalSlider.MajorTicks = [0 50 100];
+            app.MaxvalSlider.Value      =...
+                double(floor(app.MaxValue/app.MaxValue*100));
+        end
+        
+        
+        
+        %% Update buttons
         
         function UpdateViewButtons(app)
             %Updates the view buttons to display the correct one.
@@ -174,6 +318,116 @@ classdef GUI < handle
                
         end
         
+        %% UOBox
+        
+        function UpdateUOBox(app)
+        %Updates the box with the different user-made ROIs.
+            
+            %Clear items
+            app.UOBox.Items    = {};
+            
+            %Add ROIs
+            counter     = 1;
+            for idx     = 1:length(app.userObjects)
+                obj  = app.userObjects{idx};
+                if obj.imageIdx ~= app.image_per_view(app.current_view)
+                   continue
+                end
+
+                name     = obj.name;
+                if ~ischar(name)
+                       name =  num2str(name);
+                end
+
+                [view, slice]   = ROI.GetUOViewAndSlice(obj);
+                views           = {'Sag', 'Cor', 'Ax'};
+                view            = views{view};
+                types           = {'ROI', 'MSR'};
+                type            = types{obj.type};
+                name            = ROI.GetUOBoxName(...
+                                    type, name, slice, view, obj.visible);
+
+                app.UOBox.Items{counter}        = name.char;
+                app.UOBox.ItemsData(counter)    = counter;
+                counter = counter + 1;           
+            end   
+            
+            %Add 'None'
+            idx     = size(app.UOBox.Items, 2) + 1;
+            app.UOBox.Items{idx}       = 'None';
+            app.UOBox.ItemsData(idx)   = -1;
+        end
+        
+        function [view, slice] = GetUOViewAndSlice(obj)
+        %Finds the most occuring slice per view axis. Returns the view & 
+        %slice for which the most voxels are included in the segmentation
+        %at the given index.
+        
+            %Find index of corresponding segmentation
+            if ~isempty(obj.data)
+                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
+            else
+                x   = obj.points(:,1); 
+                y   = obj.points(:,2); 
+                z   = obj.points(:,3); 
+            end
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+            
+        end
+        
+        function name = GetUOBoxName(del, name, slice, view, visible)
+        %Creates a name that fits in the UOBox. 
+        %TODO: don't hardcode amount of characters
+        
+            %35 characters
+            %DEL##NAME##############slc#viw#vis
+            %  5           17        4   3   1
+
+            ddel    = 5 - length(del);
+            for i = 1:ddel
+                del = del + " ";
+            end
+
+            dname   = 17 - length(name);
+            if dname <= 0
+                name = name(1:13) + "... ";
+            else
+                for i = 1:dname
+                    name = name + " ";
+                end
+            end
+
+            slice   = num2str(slice);
+            dslice  = 4 - length(slice);
+            for i = 1:dslice
+               slice = slice + " "; 
+            end
+
+            if length(view) > 3
+                view = view(1:3);
+            end
+            
+            if visible
+                vis     = "●";
+            else
+                vis     = "○";
+            end
+
+            name = del + name + slice + view + vis;
+            
+        end
+        
+        
+        %% Enable / disable user interaction
+        
         function SetButtonDownFcn(app)
            %Sets the button down function on all the UIAxes children, 
            %except for the last (the image), to trigger the
@@ -210,8 +464,6 @@ classdef GUI < handle
            set(children,'ButtonDownFcn','');
             
         end
-        
-        
         
         % This enables it back (user interaction)
         function RevertControlsStatus(app,only_non_action_buttons)
@@ -252,7 +504,8 @@ classdef GUI < handle
             app.SliceIncreaseButton.Enable      = 'on';
 %             app.ShufflecolorsButton.Enable      = 'on';
             
-            if(~isempty(app.data) && ndims(app.data.img) > 3)
+            Cv      = app.current_view;
+            if(~isempty(app.data{Cv}) && ndims(app.data{Cv}.img) > 3)
                 app.DSlider.Enable          = 'on';
                 app.Decrease4DButton.Enable = 'on';
                 app.Increase4DButton.Enable = 'on';
@@ -320,11 +573,8 @@ classdef GUI < handle
         
         function DisableAllButtonsAndActions(app)
             % Resets actions to baseline
-            app.should_show_selection               = false;
-            app.drawing.active                      = false;
-            app.drawing.magic                       = false;
-            app.drawing.measure_line                = false;
-            app.drawing.edit                        = false;
+            app.should_show_selection                   = false;
+            app.drawing.mode                            = 0;
             
             app.currentDragPoint                    = -1;
             app.dragPoint                           = [];

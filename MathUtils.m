@@ -59,16 +59,16 @@ classdef MathUtils < handle
                 elastix_b   = strcat(elastix.path, '\elastix_64');
                 transformix = strcat(elastix.path, '\trasnformix_64');
                 
-%                 if(exist(elastix_b,'file') < 1)
-%                     warning(["Matlab can't find elastix_64.exe on its path. "... 
-%                     "Make sure it's installed and added to the path.\n"...
-%                     "This can be done with 'addpath()'."]);
-%                 end
-%                 if(exist(transformix,'file') < 1)
-%                     warning(["Matlab can't find transformix_64.exe on its path. "... 
-%                     "Make sure it's installed and added to the path.\n"...
-%                     "This can be done with 'addpath()'."]);
-%                 end
+%         if(exist(elastix_b,'file') < 1)
+%             warning(["Matlab can't find elastix_64.exe on its path. "... 
+%             "Make sure it's installed and added to the path.\n"...
+%             "This can be done with 'addpath()'."]);
+%         end
+%         if(exist(transformix,'file') < 1)
+%          warning(["Matlab can't find transformix_64.exe on its path. "... 
+%                  "Make sure it's installed and added to the path.\n"...
+%                  "This can be done with 'addpath()'."]);
+%         end
             else
                 warning(["Matlab can't find elastix on its path. "... 
                 "Make sure it's installed and added to the path.\n"...
@@ -77,7 +77,9 @@ classdef MathUtils < handle
             end
             
             %todo, change parameter_files location lookup
-            parameter_files = {'C:\Users\user\Dropbox\MRIToolkit\ImageRegistrations\elastix_parameters\parrig_NN.txt'};
+            parameter_files =...
+                {strcat('C:\Users\user\Dropbox\MRIToolkit\',...
+                'ImageRegistrations\elastix_parameters\parrig_NN.txt')};
             fp = app.current_folder;
             fn1 = app.AvailableimagesListBox.Value(1:end-4);
             fn2 = target(1:end-4);
@@ -89,41 +91,59 @@ classdef MathUtils < handle
             drawnow
             %             h = waitbar(0,'Please wait');
             try
-                if(exist(fullfile(fp,[fn1 '_2_' fn2],'TransformParameters.0.txt'),'file') < 1)
+                if(exist(fullfile(fp,[fn1 '_2_' fn2],...
+                        'TransformParameters.0.txt'),'file') < 1)
                     % Still to be registered, do it now
                     % PREPARE BOTH IMAGES
                     mkdir(fullfile(fp,[fn1 '_2_' fn2]));
                     
-                    if(exist(fullfile(fp,[fn1 '.rmsstudio_reslice.nii']),'file') < 1)
-                        hdr = load_untouch_header_only(fullfile(fp,[fn1 '.nii']));
-                        reslice_nii(fullfile(fp,[fn1 '.nii']),fullfile(fp,[fn1 '.rmsstudio_reslice.nii']),hdr.dime.pixdim(2:4));
+                    if(exist(fullfile(fp,...
+                            [fn1 '.rmsstudio_reslice.nii']),'file') < 1)
+                        hdr = load_untouch_header_only(...
+                            fullfile(fp,[fn1 '.nii']));
+                        reslice_nii(...
+                            fullfile(fp,[fn1 '.nii']),...
+                            fullfile(fp,[fn1 '.rmsstudio_reslice.nii']),...
+                            hdr.dime.pixdim(2:4));
                     end
-                    if(exist(fullfile(fp,[fn2 '.rmsstudio_reslice.nii']),'file') < 1)
-                        hdr = load_untouch_header_only(fullfile(fp,[fn2 '.nii']));
-                        reslice_nii(fullfile(fp,[fn2 '.nii']),fullfile(fp,[fn2 '.rmsstudio_reslice.nii']),hdr.dime.pixdim(2:4));
+                    if(exist(...
+                            fullfile(fp,...
+                            [fn2 '.rmsstudio_reslice.nii']),'file') < 1)
+                        hdr = load_untouch_header_only(...
+                            fullfile(fp,[fn2 '.nii']));
+                        reslice_nii(fullfile(...
+                            fp,[fn2 '.nii']),...
+                            fullfile(fp,[fn2 '.rmsstudio_reslice.nii']),...
+                            hdr.dime.pixdim(2:4));
                     end
                     
                     moving = fullfile(fp,[fn1 '.rmsstudio_reslice.nii']);
                     fixed = fullfile(fp,[fn2 '.rmsstudio_reslice.nii']);
                     
-                    hdr1 = load_untouch_header_only(fullfile(fp,[fn1 '.rmsstudio_reslice.nii']));
-                    hdr2 = load_untouch_header_only(fullfile(fp,[fn2 '.rmsstudio_reslice.nii']));
+                    hdr1 = load_untouch_header_only(...
+                        fullfile(fp,[fn1 '.rmsstudio_reslice.nii']));
+                    hdr2 = load_untouch_header_only(...
+                        fullfile(fp,[fn2 '.rmsstudio_reslice.nii']));
                     if(hdr1.dime.dim(1) > 3)
-                        f1 = load_untouch_nii(fullfile(fp,[fn1 '.rmsstudio_reslice.nii']));
+                        f1 = load_untouch_nii(...
+                            fullfile(fp,[fn1 '.rmsstudio_reslice.nii']));
                         f1.img = f1.img(:,:,:,1);
                         f1.hdr.dime.dim(1) = 3;
                         f1.hdr.dime.dim(5) = 1;
-                        save_untouch_nii(f1,fullfile(fp,[fn1 '_2_' fn2],'f1.nii'));
+                        save_untouch_nii(...
+                            f1,fullfile(fp,[fn1 '_2_' fn2],'f1.nii'));
                         fn14d = 1;
                     else
                         fn14d = 0;
                     end
                     if(hdr2.dime.dim(1) > 3)
-                        f2 = load_untouch_nii(fullfile(fp,[fn2 '.rmsstudio_reslice.nii']));
+                        f2 = load_untouch_nii(...
+                            fullfile(fp,[fn2 '.rmsstudio_reslice.nii']));
                         f2.img = f2.img(:,:,:,1);
                         f2.hdr.dime.dim(1) = 3;
                         f2.hdr.dime.dim(5) = 1;
-                        save_untouch_nii(f2,fullfile(fp,[fn1 '_2_' fn2],'f2.nii'));
+                        save_untouch_nii(...
+                            f2,fullfile(fp,[fn1 '_2_' fn2],'f2.nii'));
                         fn24d = 1;
                     else
                         fn24d = 0;
@@ -138,7 +158,7 @@ classdef MathUtils < handle
                     
                     outdir = fullfile(fp,[fn1 '_2_' fn2]);
                     if(ispc < 1)
-%                        elastix_location = strrep(elastix_location,' ','\ ');
+%                   elastix_location = strrep(elastix_location,' ','\ ');
 %                        fixed = strrep(fixed,' ','\ '); 
 %                        moving = strrep(moving,' ','\ '); 
 %                        outdir = strrep(outdir,' ','\ '); 
@@ -165,17 +185,24 @@ classdef MathUtils < handle
             delete(fullfile(fp,[fn1 '_2_' fn2],'*.nii'));
             if(exist(fullfile(fp,[fn1 '.rmsstudio.nii']),'file') > 0)
                 for ol=10:-1:-1
-                    if(exist(fullfile(fp,[fn1 '_2_' fn2],['TransformParameters.' num2str(ol) '.txt']),'file') > 0)
+                    if(exist(fullfile(fp,[fn1 '_2_' fn2],...
+                        ['TransformParameters.' num2str(ol) '.txt']),...
+                        'file') > 0)
                         break
                     end
                 end
                 if(ol > -1)
-                    transf_p = fullfile(fp,[fn1 '_2_' fn2],['TransformParameters.' num2str(ol) '.txt']);
-                    cmd = [transformix ' -in "' fullfile(fp,[fn1 '.rmsstudio.nii']) '"' ...
-                        ' -out "' fullfile(fp,[fn1 '_2_' fn2]) '" -tp "' transf_p '"'];
+                    transf_p = fullfile(fp,[fn1 '_2_' fn2],...
+                        ['TransformParameters.' num2str(ol) '.txt']);
+                    cmd = [transformix ' -in "' fullfile(...
+                        fp,[fn1 '.rmsstudio.nii']) '"' ...
+                        ' -out "' fullfile(...
+                        fp,[fn1 '_2_' fn2]) '" -tp "' transf_p '"'];
                     system(cmd);
-                    result_file = dir(fullfile(fp,[fn1 '_2_' fn2],'*.nii'));
-                    copyfile(fullfile(fp,[fn1 '_2_' fn2],result_file.name),...
+                    result_file = dir(...
+                        fullfile(fp,[fn1 '_2_' fn2],'*.nii'));
+                    copyfile(fullfile(...
+                        fp,[fn1 '_2_' fn2],result_file.name),...
                         fullfile(fp,[fn2 '.rmsstudio.nii']));
                 else
                     delete(fullfile(fp,[fn1 '_2_' fn2],'*'));
@@ -184,7 +211,8 @@ classdef MathUtils < handle
             end
             
             for vol_id=1:length(app.AvailableimagesListBox.Items)
-                if(strcmp([fn2 '.nii'],app.AvailableimagesListBox.Items{vol_id}) > 0)
+                if(strcmp([fn2 '.nii'],...
+                        app.AvailableimagesListBox.Items{vol_id}) > 0)
                     break
                 end
             end

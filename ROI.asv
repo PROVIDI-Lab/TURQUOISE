@@ -58,8 +58,8 @@ classdef ROI < handle
             ROI.StoreROIPoints(app)
             
             %Create Label
-%             ROI.UpdateSegmentationProperties(app);
-            ROI.UpdateUOBox(app);
+            ROI.UpdateSegmentationProperties(app);
+            ROI.UpdateROIBox(app);
             
             app.points{Cv} = [];
             GUI.RevertControlsStatus(app);
@@ -329,6 +329,56 @@ classdef ROI < handle
             end       
         end
         
+%         function UpdateSegmentationProperties(app)
+%             %Prepares the labels and keeps the numbers correct 
+%             %during visualization.
+%             
+%             Cv  = app.current_view;
+%             if isempty(app.segmentation{Cv})
+%                 return
+%             end
+%                        
+%             nSegmentations      = size(app.segmentation{Cv}.img,2);
+%             app.segmentation{Cv}.properties =...
+%                 cell(nSegmentations,1);
+%             
+%             %Add properties to the updated segmentation list
+%             for seg_id=1:nSegmentations
+%                 
+%                 L           = app.segmentation{Cv}.img{seg_id} == 1;
+%                 try
+%                     Name    = app.seg_names{Cv}{seg_id};
+%                 catch
+%                     %If no name can be found, number the ROIs
+%                     Name    = seg_id;
+%                 end
+%                 VS          = ...
+%                     min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+%                 Volume      = length(find(L))*VS^3;
+%                 V           = ...
+%                     app.data{app.imIdx}.img(:,:,:,app.current_4d_idx);
+%                 MeanVolSig  = mean(V(L(:)));
+%                 MaxVolSig   = max(V(L(:)));
+%                 MinVolSig   = min(V(L(:)));
+%                 StdVolSig   = std(V(L(:)));
+%                 perc25Vol   = prctile(V(L(:)), 25, 'all');
+%                 perc50Vol   = prctile(V(L(:)), 50, 'all');
+%                 perc75Vol   = prctile(V(L(:)), 75, 'all');
+%                 
+%                 app.segmentation{Cv}.properties{seg_id} = { ...
+%                     {'Name',   Name},                   ...
+%                     {'Volume', Volume},                 ...
+%                     {'Mean',   MeanVolSig},             ...
+%                     {'Max',    MaxVolSig},              ...
+%                     {'Min',    MinVolSig},              ...
+%                     {'Std',    StdVolSig},              ...
+%                     {'perc25',  perc25Vol},             ...
+%                     {'perc50',  perc50Vol},             ...
+%                     {'perc75',  perc75Vol}
+%                     };
+%             end
+%         end
+        
         %% Circular ROIs
         
         function StartDrawingCircular(app, hit)
@@ -398,8 +448,128 @@ classdef ROI < handle
             ROI.ValidateDrawingPoints(app)
             
         end
+        %% ROIBox
         
-        %%
+        function UpdateROIBox(app)
+        %Updates the box with the different user-made ROIs.
+            
+            %Clear items
+            app.ROIBox.Items    = {};
+            
+            Cv      = app.current_view;
+            %Add ROIs
+            counter     = 1;
+            for idx     = 1:length(app.userObjects)
+               obj  = app.userObjects{idx};
+               if obj.type ~= 1
+                   continue
+               end
+               
+               name     = obj.name;
+               if ~ischar(name)
+                       name =  num2str(name);
+               end
+               
+               [view, slice]   = ROI.GetROIViewAndSlice(app, seg_id);
+               views           = {'Sag', 'Cor', 'Ax'};
+               view            = views{view};
+               name            = ROI.GetROIBoxName(...
+                                    'ROI', name, slice, view);
+               
+            end
+            
+      
+                    
+                    app.ROIBox.Items{seg_id}        = name.char;
+                    app.ROIBox.ItemsData(seg_id)    = seg_id;
+                    
+                    
+            elseif isempty(app.segmentation{Cv}) &&...
+                    ~isempty(app.seg_names{Cv})
+                   
+                for seg_id = 1:size(app.seg_names{Cv}, 2)
+                    name    = app.seg_names{Cv}{seg_id};
+                    if ~ischar(name)
+                       name =  num2str(name);
+                    end
+
+                    [view, slice]   = ROI.GetROIViewAndSlice(app, seg_id);
+                    views           = {'Sag', 'Cor', 'Ax'};
+                    view            = views{view};
+                    name            = ROI.GetROIBoxName(...
+                                        'ROI', name, slice, view);
+                    app.ROIBox.Items{seg_id}        = name.char;
+                    app.ROIBox.ItemsData(seg_id)    = seg_id;
+                end
+            end
+            
+            %Add 'None'
+            idx     = size(app.ROIBox.Items, 2) + 1;
+            app.ROIBox.Items{idx}       = 'None';
+            app.ROIBox.ItemsData(idx)   = -1;
+    end
+        end
+        
+        function [view, slice] = GetROIViewAndSlice(app, obj)
+        %Finds the most occuring slice per view axis. Returns the view & 
+        %slice for which the most voxels are included in the segmentation
+        %at the given index.
+        
+            %Find index of corresponding segmentation
+            if ~isempty(obj.data)
+                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
+            else
+                x   = obj.points(:,1); 
+                y   = obj.points(:,2); 
+                z   = obj.points(:,3); 
+            end
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+            
+        end
+        
+        function name = GetROIBoxName(del, name, slice, view)
+        %Creates a name that fits in the ROIBox. 
+        %TODO: don't hardcode amount of characters
+        
+            %35 characters
+            %DEL##NAME##############slc#viw
+            %  5           18        4   3
+
+            ddel    = 5 - length(del);
+            for i = 1:ddel
+                del = del + " ";
+            end
+
+            dname   = 18 - length(name);
+            if dname <= 0
+                name = name(1:14) + "... ";
+            else
+                for i = 1:dname
+                    name = name + " ";
+                end
+            end
+
+            slice   = num2str(slice);
+            dslice  = 4 - length(slice);
+            for i = 1:dslice
+               slice = slice + " "; 
+            end
+
+            if length(view) > 3
+                view = view(1:3);
+            end
+
+            name = del + name + slice + view;
+            
+        end
         
         function RemoveSegmentation(app, index)
             %Removes the specified segmentation from the current 
@@ -431,7 +601,7 @@ classdef ROI < handle
             app.seg_names{Cv}       = {}; 
             app.roiPoints{Cv}       = {};
             app.roiPointIndex{Cv}   = {};
-            GUI.UpdateUOBox(app)
+            ROI.UpdateROIBox(app)
             
         end
         
