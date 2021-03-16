@@ -13,24 +13,23 @@ classdef Backups < handle
             obj.current_slice       = app.current_slice;
             obj.MinValue            = app.MinValue;
             obj.MaxValue            = app.MaxValue;
+            obj.userObjects         = app.userObjects;
             
-            
-            Cv  = app.current_view;
-            
-            if isfield(app.segmentation, 'img')
-                obj.segmentation        = Backups.To1DArray(            ...
-                                                app.segmentation{Cv}.img);
-                obj.seg_prop            = app.segmentation{Cv}.properties;
-                obj.seg_names           = app.seg_names{Cv};
-                obj.seg_shape           = size(app.segmentation{Cv}.img);
-                obj.roiPoints           = app.roiPoints{Cv};
-                obj.roiPointIndex       = app.roiPointIndex{Cv};
-            end
-            
-            if ~isempty(app.measure_lines)
-                obj.measurements    = app.measure_lines{Cv};
-                obj.measure_names   = app.measure_names{Cv};
-            end
+%             Cv  = app.current_view;
+%             if isfield(app.segmentation, 'img')
+%                 obj.segmentation        = Backups.To1DArray(            ...
+%                                                 app.segmentation{Cv}.img);
+%                 obj.seg_prop            = app.segmentation{Cv}.properties;
+%                 obj.seg_names           = app.seg_names{Cv};
+%                 obj.seg_shape           = size(app.segmentation{Cv}.img);
+%                 obj.roiPoints           = app.roiPoints{Cv};
+%                 obj.roiPointIndex       = app.roiPointIndex{Cv};
+%             end
+%             
+%             if ~isempty(app.measure_lines)
+%                 obj.measurements    = app.measure_lines{Cv};
+%                 obj.measure_names   = app.measure_names{Cv};
+%             end
 
             %Add to list
             app.backup_list{end+1}   = obj;

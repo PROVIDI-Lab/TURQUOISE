@@ -17,6 +17,7 @@ classdef BackupObj < handle
        measure_names        %User measurement names
        roiPoints,           %User segmentation points
        roiPointIndex,       %Segmentation index for the point
+       userObjects          %UserObjects
        
     end
     

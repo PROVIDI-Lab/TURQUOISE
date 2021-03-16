@@ -31,20 +31,22 @@ classdef Interaction < handle
             end
             
             %Update app
-            Study.SwitchImage(app, index, app.current_view)
+            Study.SwitchImage(app, index)
         end
         
-        function ROIBoxChanged(app)
+        function UOBoxChanged(app)
             %Called when the user selects one of the items in the ROIBox.
             %Finds the index of the selected value and switches the GUI to
             %the right slice & view.
             
-            index   = app.ROIBox.Value;
+            index   = app.UOBox.Value;
             
             if index <= 0
                 return
             end
-            [view, slice] = ROI.GetROIViewAndSlice(app, index);    
+%             UOidx           = app.UOBox.ItemsData(index);
+            obj             = app.userObjects{index};
+            [view, slice]   = GUI.GetUOViewAndSlice(obj);    
             
             %Switch slice and view            
             app.view_axis       = view;
@@ -93,7 +95,7 @@ classdef Interaction < handle
                        
             %Switch to the correct image
             index   = app.image_per_view(new_view_idx);
-            Study.SwitchImage(app, index, prev_view)
+            Study.SwitchImage(app, index)
             Interaction.ChangeListBoxValue(app, index)
         end
         
@@ -105,7 +107,6 @@ classdef Interaction < handle
             if isempty(app.data{app.imIdx})
                 return
             end
-            
             %Check if the screen that was pressed is different from the
             %current view.
             if( (hit.Source.Parent == app.UIAxes1                       ...
@@ -140,7 +141,6 @@ classdef Interaction < handle
                     app.drawing.mode                        = 0;
                     app.DrawPolygonButton.BackgroundColor   = ...
                                             [.96 .96 .96];
-                    
                 end
                 
             elseif(app.drawing.mode == 2)
@@ -160,13 +160,12 @@ classdef Interaction < handle
                 ROI.StartDrawingCircular(app, hit);                
             end
             
-            Graphics.UpdateImage(app)
+            Graphics.UpdateUserInteractions(app)
             
         end
         
         function MouseReleasedInImage(app, hit)
         %When editing an ROIpoint, finalize the editing
-            
             if app.drawing.mode == 2
                 %Change segmentation
                 ROI.ValidateModifiedROIPoints(app)
@@ -176,7 +175,7 @@ classdef Interaction < handle
                 return
             end
             
-            app.currentDragPoint    = -1;
+            app.currentDragPoint    = {};
             app.dragPoint           = [];
             app.currentCircle       = [];
             
@@ -200,32 +199,14 @@ classdef Interaction < handle
             if isempty(app.dragPoint)
                 return
             end
-            
-            x   = app.dragPoint(1);
-            xp  = app.dragPoint(2);
-            y   = app.dragPoint(3);
-            yp  = app.dragPoint(4);
-            x2p = hit.Source.CurrentPoint(1);
-            y2p = hit.Source.CurrentPoint(2);
-
-            %TODO get scale right
-
-            scaleX  = hit.Source.InnerPosition(3) /                     ...
-                size(app.data{app.imIdx}.img, 1);
-            scaleY = hit.Source.InnerPosition(4) /                     ...
-                size(app.data{app.imIdx}.img, 2);
-
-            x2  = x + (x2p - xp) / scaleX;
-            y2  = y + (yp - y2p) / scaleY;
-            
+            disp(hit.IntersectionPoint)
+            hitx = round(hit.IntersectionPoint(1));
+            hity = round(hit.IntersectionPoint(2));
             %Edit ROI
             if app.drawing.mode == 2
-                
-                ROI.MoveROIPoint(app, [x2, y2])
+                ROI.MoveROIPoint(app, [hitx, hity])
             %Circular ROI
             elseif app.drawing.mode == 5
-                hitx = round(hit.IntersectionPoint(1));
-                hity = round(hit.IntersectionPoint(2));
                 ROI.DrawCircularROI(app, [hitx, hity])
             end
             
@@ -495,22 +476,18 @@ classdef Interaction < handle
             %Toggles the edit function on or off.
             %TODO: add button gui stuff.
             
-            Cv  = app.current_view;
-            if isempty(app.roiPoints{Cv})
-                return
-            end
-            
             if app.drawing.mode == 2
                 app.drawing.mode = 0;
                 app.EditPolygonButton.BackgroundColor = [.96 .96 .96];
                 GUI.RemoveButtonDownFcn(app);
-                app.currentDragPoint    = -1;
+                app.currentDragPoint    = {};
                 app.dragPoint           = [];
-%                 setptr(app.UI, 'pointer');
+                Graphics.UpdateUserInteractions(app);
             else
                 app.drawing.mode = 2;
                 app.EditPolygonButton.BackgroundColor = [.96 .96 0];
                 GUI.SetButtonDownFcn(app);
+                Graphics.UpdateUserInteractions(app);
 %                 setptr(gcf, 'hand');
             end
         end
@@ -525,8 +502,6 @@ classdef Interaction < handle
             else
                 app.drawing.mode = 0;
             end
-            app.UpdateImage();
-            Graphics.UpdateSelectionContour(app); 
         end
         
         function PointsToSegmentation(app)
@@ -693,6 +668,8 @@ classdef Interaction < handle
                                 'Necrosis';...
                                 'Cyste';...
                                 'Hemorrhage';...
+                                'Circle';...
+                                'Circle small';...
                                 'Other'},...
                    'Callback',@popup_callback);
 

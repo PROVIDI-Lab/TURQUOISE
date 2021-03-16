@@ -3,15 +3,18 @@ classdef IOUtils < handle
     methods (Static)
         
         % After nifti import
-        function [nii, ratio] = RMSStandardVolumeTreatment(nii)
-            min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
-            tic
-            [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,        ...
-                               nii.hdr.dime.pixdim(2:4), ...
-                               min_vs*ones(1,3));
-            toc
+        function [nii, ratio] = RMSStandardVolumeTreatment(app, nii)
+            if app.interpolateImages
+                min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
+                tic
+                [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,  ...
+                                   nii.hdr.dime.pixdim(2:4), ...
+                                   min_vs*ones(1,3));
+                toc
+            else
+                ratio = [1,1,1];
+            end
             nii.img = permute(nii.img,[2 1 3 4]);
-            disp('Also permuted');
             nii.img = flip(nii.img,1);
             nii.img = flip(nii.img,2);
             nii.img = flip(nii.img,3);
@@ -47,13 +50,14 @@ classdef IOUtils < handle
             %If the file doesn't exist, reslice it now.
             if(exist(reslice_name,'file') < 1)
                 hdr = load_untouch_header_only(fullfile(fp,fn));
+                %TODO add try catch
                 reslice_nii(fullfile(fp,fn),                    ...
                             reslice_name,                       ...
                             hdr.dime.pixdim(2:4));
                         
                 %Resample file
                 nii     = load_nii(reslice_name);
-                [nii, ratio] = IOUtils.RMSStandardVolumeTreatment(nii);
+                [nii, ratio] = IOUtils.RMSStandardVolumeTreatment(app,nii);
                 
                 %change header
                 nii.hdr.dime.dim(2:1+ndims(nii.img)) = size(nii.img);
@@ -65,6 +69,8 @@ classdef IOUtils < handle
             end
         end   
         
+        %% Loading & Saving files
+        
         function LoadNii(app, index)
         %Loads the .rmsstudio_reslice.nii file associated with the current
         %image. Sets the nii file as the current image.
@@ -74,7 +80,7 @@ classdef IOUtils < handle
         
             fp = app.current_folder;
             fn = app.AvailableimagesListBox.Items{index};
-            reslice_name = fullfile(fp,[fn(1:end-4)             ...
+                reslice_name = fullfile(fp,[fn(1:end-4)             ...
                                         '.rmsstudio_reslice.nii']);
             
             %Load the file
@@ -82,233 +88,208 @@ classdef IOUtils < handle
             nii     = load_nii(reslice_name);
             nii.img = single(nii.img);
             
-            app.data{app.imIdx}     = nii;
+            app.data{index}         = nii;
             app.current_4d_idx      = 1;
             app.DSlider.Value       = 1;
         
         end
         
-        function saveSegmentations(niis, fn)
-        %Saves the array with the segmentation labels to a .nii file
-        %Input:
-        %   niis 	- the segmentation to be saved
-        %   fn      - name of the .nii output file
+        function saveUObjs(app, imageId, fn)
+        %Saves all the user objects for the current image
         
-            for i = 1:length(niis)
-                nii     = niis{i};
-                name    = niis.properties{i}{1}{2};
-                out_fn  = strcat(name, '_', fn);
-                try
-                    save_nii(nii, out_fn);
-                catch err
-                    uialert(uifigure,err.message,...
-                        'Unable to save segmentation');
-                end             
+%             fn      = fullfile(app.current_folder, ...
+%                 app.AvailableimagesListBox.Items{imageId},...
+%                 app.user_profile{1});
+            if ~isfolder(fn)
+                mkdir(fn);
+            end
+            
+            segProperties   = {};
+            msrProperties   = {};
+            
+            for uObj    = app.userObjects
+                uObj    = uObj{1};
+                if uObj.imageIdx ~= imageId
+                    continue
+                end
+                
+                if uObj.type == 1
+                    IOUtils.saveSegmentation(app, uObj, fn);
+                    IOUtils.saveSegmentationPoints(uObj, fn);
+                    segProperties{end+1} = uObj.prop;
+                elseif uObj.type == 2
+                    msrProperties{end+1} = uObj.prop;
+                end
+            end
+            if ~isempty(segProperties)
+                IOUtils.saveObjProperties(segProperties, ...
+                    fullfile(fn,'segmentation.csv'));
+            end
+            if ~isempty(msrProperties)
+                IOUtils.saveObjProperties(msrProperties, ...
+                    fullfile(fn,'measurement.csv'));
             end
         end
         
+        function saveSegmentation(app, obj, fn)
+        %Saves the array with the segmentation labels to a .nii file
+        %Input:
+        %   obj 	- the userObject with the segmentation to be saved
+        %   fn      - name of the .nii output file
+            
+            outFn   = fullfile(fn,...
+                        [obj.name, '-segmentation.nii']);
+            nii     = IOUtils.arr2nii(app, obj);
+            try
+                save_nii(nii, outFn);
+            catch err
+                uialert(uifigure,err.message,...
+                    'Unable to save segmentation');
+            end             
+        end
         
-        function saveSegmentationProperties(segmentation, filename)
+        function saveObjProperties(properties, fn)
         %Creates a table with all the properties stored in the segmentation
         %of the current image and writes it to an .xlsx file
         %Input:
-        %   segmentation - the segmnetation item with all the properties
+        %   properties, a cell array with the properties of the objects
         %   filename, the name of the .xlsx file
         %
-        
             %Create table of the segmentation properties
             %get names of properties
-            prop  = segmentation.properties{1};
-            nameLst = {length(prop)};
-            for propIdx = 1:length(prop)
-                nameLst{propIdx} = prop{propIdx}{1};
-            end
+            prop    = properties{1};
+            varLst  = fieldnames(prop);
 
             %store properties in cell array
-            cellArr = {length(segmentation.properties), length(prop)};
-            for idx = 1:length(segmentation.properties)
-                prop    = segmentation.properties{idx};    
+            cellArr = cell(length(properties), numel(varLst));
+            for idx = 1:length(properties)
+                prop    = properties{idx};    
 
-                for propIdx = 1:length(prop)
-                    cellArr{idx, propIdx} = prop{propIdx}{2};
+                for varIdx  = 1:numel(varLst)
+                    var     = varLst{varIdx};
+                    cellArr{idx, varIdx} = prop.(var);
                 end
             end
             %write cellarray to table
-            tab = cell2table(cellArr, 'VariableNames', nameLst);
+            tab = cell2table(cellArr, 'VariableNames', varLst);
             
             %write to disk
 %             writetable(tab,filename,'Sheet',1,'Range','A1');
-            writetable(tab, filename)
+            writetable(tab, fn)
         end
         
-        function saveSegmentationPoints(points, idx, filename)
-            %Saves the roiPoints and roiPointIndex to a json object.
+        function saveSegmentationPoints(obj, fn)
+            %Saves the roiPoints to a json object.
             
-            obj     = struct('points', points, 'index', idx);
-            txt     = jsonencode(obj);
+            outFn   = fullfile(fn,...
+                        [obj.name, '-segmentation.json']);
             
-            fid     = fopen(filename, 'w');
+            jsonObj     = struct('points', obj.points);
+            txt         = jsonencode(jsonObj);
+            
+            fid         = fopen(outFn, 'w');
             fwrite(fid, txt, 'char');
             fclose(fid);
-            
-            
         end
         
-        %Creates a table with all the properties stored in the measurements
-        %of the current image and writes it to an .xlsx file
-        function saveMeasurementProperties(app, image_id)
-            fn          = app.AvailableimagesListBox.Items{image_id};
-            names       = app.measure_names_list{image_id};
-            filename    = fullfile(app.current_folder,                  ...
-                               [fn(1:end-4)                             ...
-                                app.user_profile{1}                     ...
-                                '-measurements.csv']);
-            measurements    = app.measurement_list{image_id};
-            lengths         = app.measure_length_list{image_id};
-            
-            %Preallocate new cell array            
-            cellArr = {round(size(measurements,1)/2)};
-
-            %add measurements to cell array
-            for line_id = 1 : 2 : size(measurements,1)
-                
-                    
-                P1  = measurements(line_id, :);
-                P2  = measurements(line_id + 1, :);
-                
-                cellArr{round(line_id/2),1} = names{round(line_id/2)};
-                cellArr{round(line_id/2),2} = lengths(round(line_id/2));
-                cellArr{round(line_id/2),3} = P1;
-                cellArr{round(line_id/2),4} = P2;
-                
-            end
-            %write cellarray to table
-            tab = cell2table(cellArr,                                   ...
-                             'VariableNames',                           ...
-                             {'Measurement', 'Length', 'P1', 'P2'});
-            
-            %write to disk
-%             writetable(tab,filename,'Sheet',2,'Range','A1');
-            writetable(tab, filename);
-                
-        end
-        
-        function LoadSegmentation(app, name)
-            
-            index = app.imIdx;
-            
-            if(exist(name,'file') > 0)
-                nii     = load_nii(name);
-                nii.img = nii.img(:,:,:,1); 
-%                 % FIx app.ResampleVolume to be 4D compatible
-%                 nii     = IOUtils.RMSStandardVolumeTreatment(nii);
-
-                app.segmentation_list{index}        = nii;
-                app.seg_names_list{index}           = {};
-                IOUtils.LoadSegmentationProperties(app, name)     
-            else
-                app.segmentation_list{index}        = [];
-                app.seg_names_list{index}           = {};
-            end
-        end
-        
-        function LoadSegmentationProperties(app, name)
-            
-            index = app.imIdx;
-            
-            propfn  = [name(1:end-4) '.csv'];
-            table   = readtable(propfn);
-            
-            for line_id = 1:size(table,1)
-                
-                app.seg_names_list{index}(end+1)    = table.Name(line_id);
-                
-                
-                app.segmentation_list{index}.properties{line_id}{1} =   ...
-                    {'Name', table.Name{line_id}};
-                app.segmentation_list{index}.properties{line_id}{2} =   ...
-                    {'Volume', table.Volume(line_id)};
-                app.segmentation_list{index}.properties{line_id}{3} =   ...
-                    {'Mean', table.Mean(line_id)};
-                app.segmentation_list{index}.properties{line_id}{4} =   ...
-                    {'Max', table.Max(line_id)};
-                app.segmentation_list{index}.properties{line_id}{5} =   ...
-                    {'Min', table.Min(line_id)};
-                app.segmentation_list{index}.properties{line_id}{6} =   ...
-                    {'Std', table.Std(line_id)};
-                app.segmentation_list{index}.properties{line_id}{7} =   ...
-                    {'perc25', table.perc25(line_id)};
-                app.segmentation_list{index}.properties{line_id}{8} =   ...
-                    {'perc50', table.perc50(line_id)};
-                app.segmentation_list{index}.properties{line_id}{9} =   ...
-                    {'perc75', table.perc75(line_id)};
-            end
-        end
-        
-        function loadSegmentationPoints(app, name)
-           %Loads the points stored in the -segmentation.json file 
-           %associated with the current image.
-           
-           index = app.imIdx;
-            
-           if(exist(name,'file') > 0)
-               fid  = fopen(name, 'r');
-               txt  = fread(fid,inf);
-               txt  = char(txt');
-               fclose(fid);
-               
-               data = jsondecode(txt);
-
-               app.roiPointList{index}      = data.points;
-               app.roiPointIndexList{index} = data.index;
-            else
-               app.roiPointList{index}      = [];
-               app.roiPointIndexList{index} = [];
-            end
-           
-        end
-        
-        function LoadMeasurements(app, name)
-        %Load all the measurements from the disk
-            
-            index = app.imIdx;
-            
-            if(exist(name,'file') > 0)
-                
-                %preallocate measurement_lines
-                app.measure_lines{app.current_view}     = [];
-                
-                %Read measurement from .xlsx file
-                table = readtable(name);
-                
-                msrmnt_list = [];
-                name_list   = [];
-                length_list = [];
-                for line_id = 1:size(table,1)
-                    P11     = table.P1_1(line_id);
-                    P12     = table.P1_2(line_id);
-                    P13     = table.P1_3(line_id);
-                    P21     = table.P2_1(line_id);
-                    P22     = table.P2_2(line_id);
-                    P23     = table.P2_3(line_id);
-                    
-                    length      = table.Length(line_id);
-                    name        = table.Measurement(line_id);
-                    msrmnt_list = [msrmnt_list;                        ...
-                                   [P11, P12, P13; P21, P22, P23]];
-                    name_list   = [name_list; name];     
-                    length_list = [length_list; length];
+        function LoadUserObjects(app, idx)
+            %Loads userobjects from the disk that correspond to the image
+            %at idx.
+            folder      = app.AvailableimagesListBox.Items{idx}(1:end-4);
+            direc       = fullfile(app.current_folder,...
+                    folder);
+            %First find any segmentations
+            segFiles    = dir(fullfile(direc,'*.nii'));
+            for file = segFiles'
+                jsonFn  = strrep(file.name,'.nii', '.json');
+                if exist(fullfile(direc,jsonFn),'file')
+                    IOUtils.loadSegmentationPoints(...
+                        app, fullfile(direc,jsonFn), idx);
+                else
+                    IOUtils.LoadSegmentation(...
+                        app, fullfile(direc, file.name), idx);
                 end
+            end
+                    
+            %Next, load measurements
+            IOUtils.LoadMeasurements(...
+                app, fullfile(direc,'measurements.csv'), idx);
+        end
+        
+        
+        function LoadSegmentation(app, fn, idx)
+        %Loads a segmentation from a .nii file and creates a userObject.
+            
+            if(exist(fn,'file') == 0)
+                return
+            end
+            nii     = load_nii(fn);
+            nii.img = nii.img(:,:,:,1); 
+            
+            beginPos    = strfind(fn,filesep);
+            beginPos    = beginPos(end);
+            endPos      = strfind(fn,'-');
+            endPos      = endPos(end);
+            name        = fn(beginPos + 1 : endPos - 1);
+            
+            Objects.AddNewUserObj(app,...
+                    "type", 1, ...
+                    "data", nii.img,...
+                    "name", name,...
+                    "imageIdx", idx) 
+        end
+        
+        function loadSegmentationPoints(app, fn, idx)
+            
+            %Loads the points stored in the -segmentation.json file 
+            %associated with the current image.
+            if(exist(fn,'file') == 0)
+                return
+            end
+            
+            fid  = fopen(fn, 'r');
+            txt  = fread(fid,inf);
+            txt  = char(txt');
+            fclose(fid);
+            data = jsondecode(txt);
+            
+            %TODO: more elegantly
+            beginPos    = strfind(fn,filesep);
+            beginPos    = beginPos(end);
+            endPos      = strfind(fn,'-');
+            endPos      = endPos(end);
+            name        = fn(beginPos + 1: endPos - 1);
+
+            Objects.AddNewUserObj(app,...
+                    "type", 1, ...
+                    "data", ROI.PointsToMask(app, data.points),...
+                    "points", data.points,...
+                    "name", name,...
+                    "imageIdx", idx);
+        end
+        
+        function LoadMeasurements(app, name, idx)
+        %Load all the measurements from the disk            
+            if(exist(name,'file') == 0)
+                return
+            end
+
+            %Read measurement from .xlsx file
+            table = readtable(name);
+
+            for line_id = 1:size(table,1)
+                P11     = table.P1_1(line_id);
+                P12     = table.P1_2(line_id);
+                P13     = table.P1_3(line_id);
+                P21     = table.P2_1(line_id);
+                P22     = table.P2_2(line_id);
+                P23     = table.P2_3(line_id);
                 
-                %Add to app
-                app.measurement_list{index}     = msrmnt_list;
-                app.measure_names_list{index}   = name_list;
-                app.measure_length_list{index}  = length_list;
-                
-            else
-                app.measurement_list{index}     = [];
-                app.measure_names_list{index}   = [];
-                app.measure_length_list{index}  = [];
+                Objects.AddNewUserObj(app,...
+                    "type", 2, ...
+                    "points", [P11, P12, P13, P21, P22, P23], ...
+                    "name", table.Measurement(line_id),...
+                    "imageIdx", idx);
             end
         end
         
@@ -316,6 +297,8 @@ classdef IOUtils < handle
         %Prepares a new database
             Database.PrepareDatabase(app) 
         end
+        
+        %%
         
         function PrepareStudy(app, filepath)
         %Prepares a new study when the 'Load' button is pressed.
@@ -372,7 +355,6 @@ classdef IOUtils < handle
             for idx = 1:length(app.AvailableimagesListBox.Items)
                 IOUtils.ResliceResampleNii(app, idx)
             end          
-            
             %Initialises the study objects
             Study.InitStudy(app)
             
@@ -441,6 +423,17 @@ classdef IOUtils < handle
                 dcm2nii     = 'C:\dMRI\Matlab_Libs\dcm2nii\dcm2niix';
             end
             
+        end
+        
+        function nii = arr2nii(app, obj)
+        %Constructs a nii object from the user object containing an ROI
+            
+            nii         = app.data{obj.imageIdx};
+            nii.img     = obj.data;
+            %Undo the permutation done when reading the nii
+            nii.img = permute(nii.img,[2 1 3 4]);
+            nii.hdr.dime.dim([2,3]) = nii.hdr.dime.dim([3,2]);
+        
         end
         
     end

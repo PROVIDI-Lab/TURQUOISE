@@ -11,6 +11,14 @@ classdef GUI < handle
 %             colormap(app.UIAxes1,'gray');
 %             axis(app.UIAxes1,'off');
             
+
+            %Enable all menus
+            app.ViewMenu.Enable     = 'on';
+            app.AnalyseMenu.Enable  = 'on';
+            app.DrawMenu.Enable     = 'on';
+            app.SegmentMenu.Enable  = 'on';
+
+
             GUI.ResetViews(app);
             
             %Select and display the first image of the study, and if
@@ -19,29 +27,25 @@ classdef GUI < handle
                 
                 if size(app.AvailableimagesListBox.Items,2) > 1
                     app.current_view      = 2;
+                    %Keep track of which image is in which view
+                    app.image_per_view(app.current_view) = 2;
                     app.AvailableimagesListBox.Value =...
                         app.AvailableimagesListBox.Items{2};
                     app.imIdx = 2;
-                    %Load the image, segmentations and measurement
-                    Study.LoadFromList(app, 2)
                     %Show everything
                     GUI.DisplayNewImage(app, 2)
-                    %Keep track of which image is in which view
-                    app.image_per_view(app.current_view) = 2;
                     
                     %Switch back
                     app.current_view = 1;
                 end
-                
+                %Keep track of which image is in which view
+                app.image_per_view(app.current_view) = 1;
                 app.AvailableimagesListBox.Value =                      ...
                     app.AvailableimagesListBox.Items{1};
                 app.imIdx = 1;
-                %Load the image, segmentations and measurement
-                Study.LoadFromList(app, 1)
+                
                 %Show everything
                 GUI.DisplayNewImage(app, 1)
-                %Keep track of which image is in which view
-                app.image_per_view(app.current_view) = 1;
                 
             end
             
@@ -95,17 +99,17 @@ classdef GUI < handle
             
             
             %Find correct slice
-            Cv                      = app.current_view;
+%             Cv                      = app.current_view;
             if isempty(app.current_slice)
                 app.current_slice   = round(size(                       ...
-                                            app.data{Cv}.img,...
-                                            app.view_axis)/2);
+                                        app.data{index}.img,...
+                                        app.view_axis)/2);
                 
             elseif app.current_slice == -1 ||                           ...
                    app.current_slice >=...
-                   size(app.data{Cv}.img,app.view_axis)
+                   size(app.data{index}.img,app.view_axis)
                 app.current_slice   = round(size(                       ...
-                                            app.data{Cv}.img,...
+                                            app.data{index}.img,...
                                             app.view_axis)/2);
             end
             app.slice_per_image{app.imIdx} =...
@@ -119,7 +123,7 @@ classdef GUI < handle
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
-            ROI.UpdateROIBox(app);
+            GUI.UpdateUOBox(app);
             
             app.UpdateImage();
             pause(0.01);
@@ -218,6 +222,13 @@ classdef GUI < handle
                 [1:step:size(refvol,app.view_axis)...
                 size(refvol,app.view_axis)];
             app.SliceSlider.MinorTicks = 1:1:size(refvol,app.view_axis);
+            if isnan(app.current_slice)
+                app.current_slice = round(...
+                    size(...
+                    app.data{app.image_per_view(app.current_view)}.img, ...
+                    app.view_axis)...
+                    / 2);
+            end
             app.SliceSlider.Value = double(app.current_slice);
             
             
@@ -324,8 +335,8 @@ classdef GUI < handle
         %Updates the box with the different user-made ROIs.
             
             %Clear items
-            app.UOBox.Items    = {};
-            
+            app.UOBox.Items     = {};
+            app.UOBox.ItemsData = [];
             %Add ROIs
             counter     = 1;
             for idx     = 1:length(app.userObjects)
@@ -339,16 +350,16 @@ classdef GUI < handle
                        name =  num2str(name);
                 end
 
-                [view, slice]   = ROI.GetUOViewAndSlice(obj);
+                [view, slice]   = GUI.GetUOViewAndSlice(obj);
                 views           = {'Sag', 'Cor', 'Ax'};
                 view            = views{view};
-                types           = {'ROI', 'MSR'};
+                types           = {'ROI', 'MSR', 'ROI'};
                 type            = types{obj.type};
-                name            = ROI.GetUOBoxName(...
+                name            = GUI.GetUOBoxName(...
                                     type, name, slice, view, obj.visible);
 
                 app.UOBox.Items{counter}        = name.char;
-                app.UOBox.ItemsData(counter)    = counter;
+                app.UOBox.ItemsData(counter)    = obj.ID;
                 counter = counter + 1;           
             end   
             
@@ -426,42 +437,66 @@ classdef GUI < handle
         end
         
         
+        function UpdateUOVisibility(app, value)
+            %Called when the visibilityslider is changed. Updates the 
+            %visibility of the selected userobject. If 'None' is selected,
+            %updates the visibility of all.
+            
+            if isempty(app.UOBox.Items)
+                return
+            end            
+            value   = strcmp(value, 'On');
+            idx     = app.UOBox.Value;
+            if  isempty(idx) || idx == -1
+                for i = 1:length(app.UOBox.Items)
+                    UOidx   = app.UOBox.ItemsData(i);
+                    if UOidx == -1
+                        continue
+                    end
+                    app.userObjects{UOidx}.setVisible(value);
+                end
+            else
+                app.userObjects{idx}.setVisible(value);
+            end
+            
+            Graphics.UpdateUserObjects(app);
+                
+        end
+        
+        
         %% Enable / disable user interaction
         
         function SetButtonDownFcn(app)
-           %Sets the button down function on all the UIAxes children, 
-           %except for the last (the image), to trigger the
-           %MouseClickedInImage function.
-           
-           %UIAxes1
-           children     = get(app.UIAxes1,'Children');
-           children     = children(1:end-1);
-%            set(children,'HitTest','off')
-           set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-           
-           %UIAxes2
-           children     = get(app.UIAxes2,'Children');
-           children     = children(1:end-1);
-%            set(children,'HitTest','off')
-           set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-            
+           %Sets the button down function on all the tempDrawings objects.
+           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);
+%            %UIAxes1
+%            children     = get(app.UIAxes1,'Children');
+%            children     = children(1:end-1);
+% %            set(children,'HitTest','off')
+%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
+%            
+%            %UIAxes2
+%            children     = get(app.UIAxes2,'Children');
+%            children     = children(1:end-1);
+% %            set(children,'HitTest','off')
+%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
+%             
         end
         
         function RemoveButtonDownFcn(app)
-           %Removes the button down function on all the UIAxes children, 
-           %except for the last (the image).
-           
-           %UIAxes1
-           children     = get(app.UIAxes1,'Children');
-           children     = children(1:end-1);
-%            set(children,'HitTest','off')
-           set(children,'ButtonDownFcn','');
-           
-           %UIAxes2
-           children     = get(app.UIAxes2,'Children');
-           children     = children(1:end-1);
-%            set(children,'HitTest','off')
-           set(children,'ButtonDownFcn','');
+           %Removes the button down function on all the tempDrawings
+           set(app.tempDrawings, 'ButtonDownFcn','');
+%            %UIAxes1
+%            children     = get(app.UIAxes1,'Children');
+%            children     = children(1:end-1);
+% %            set(children,'HitTest','off')
+%            set(children,'ButtonDownFcn','');
+%            
+%            %UIAxes2
+%            children     = get(app.UIAxes2,'Children');
+%            children     = children(1:end-1);
+% %            set(children,'HitTest','off')
+%            set(children,'ButtonDownFcn','');
             
         end
         
@@ -475,6 +510,7 @@ classdef GUI < handle
                 app.EditPolygonButton.Enable            = 'on';
                 app.AlignLRButton.Enable                = 'on';
                 app.AlignRLButton.Enable                = 'on';
+                app.VisibleSlider.Enable                = 'on';
 %                 app.MagicdrawButton.Enable              = 'on';
 %                 app.SensitivitySlider.Enable            = 'on';
 %                 app.DCheckBox.Enable                    = 'on';

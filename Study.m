@@ -11,29 +11,36 @@ classdef Study < handle
             
             nImages     = length(app.AvailableimagesListBox.Items);
             
-            app.segmentation_list   = {};
-            app.seg_names_list      = {};
-            app.measurement_list    = {};    
-            app.measure_names_list  = {};
-            app.measure_length_list = {};
-            app.roiPointList        = {};
-            app.roiPointIndexList   = {};
+%             app.segmentation_list   = {};
+%             app.seg_names_list      = {};
+%             app.measurement_list    = {};    
+%             app.measure_names_list  = {};
+%             app.measure_length_list = {};
+%             app.roiPointList        = {};
+%             app.roiPointIndexList   = {};
             
             %View objects
             app.userObjects         = {};
-            app.segmentation        = {};
-            app.seg_names           = {};
-            app.measure_names       = {};
+%             app.segmentation        = {};
+%             app.seg_names           = {};
+%             app.measure_names       = {};
             app.slice_per_image     = num2cell(ones(1,nImages)*-1);
             app.points              = {[],[]};
-            app.measure_lines       = {[],[]};
+            app.view_axis           = 3;
+%             app.measure_lines       = {[],[]};
             
             %Data
-            app.data                = {};
+            app.data                = cell(nImages,1);
             
             if isempty(app.user_profile)
                 app.user_profile = {''};
             end
+            
+            %Load the first (2) image(s)
+            if(~isempty(app.AvailableimagesListBox.Items))
+                IOUtils.LoadNii(app, 2);     
+            end
+            IOUtils.LoadNii(app, 1);     
             
             %Load all user objects from disk
             for idx = 1:nImages
@@ -50,91 +57,11 @@ classdef Study < handle
         %Load the segmentation and any measurements from disk when
         %it hasn't already been loaded.
         %Input: index - index of the image in AvailableImageListBox
-       
-            fp = app.current_folder;
-            fn = app.AvailableimagesListBox.Items{index};
-            app.imIdx   = index;
-            try                  
-                %'allocate' data
-                app.data{index}     = [];
-                %Load existing segmentations
-                %TODO split into different function
-                segname = fullfile(fp, [fn(1:end-4)                     ...
-                                       app.user_profile{1}              ...
-                                       '-segmentation.nii']);
-                IOUtils.LoadSegmentation(app, segname);
-                
-                pointfn = fullfile(fp, [fn(1:end-4)                    ...
-                                         app.user_profile{1}            ...
-                                         '-segmentation.json']);
-                IOUtils.loadSegmentationPoints(app, pointfn);
-
-                %Load existing measurements
-                msr_name = fullfile(fp, [fn(1:end-4)                    ...
-                                        app.user_profile{1}             ...
-                                        '-measurements.csv']);
-                IOUtils.LoadMeasurements(app, msr_name)
-
-            catch 
-                GUI.DisplayError(app)
-            end
+            
+        
+            IOUtils.LoadUserObjects(app, index);
         end
-        
-        
-        function LoadFromList(app, index)
-            %Add all previously loaded objects from the list to the current
-            %working environment.
-            
-            Cv      = app.current_view;
-            
-            %Image
-            if isempty(app.data{index})
-                IOUtils.LoadNii(app, index);     
-            end
-            
-            %Segmentations
-            if(~(index>length(app.segmentation_list)))
-                if(~isempty(app.segmentation_list{index}) || ...
-                        ~isempty(app.roiPointList{index}))
-                    app.segmentation{Cv}    = app.segmentation_list{index};
-                    app.seg_names{Cv}       = app.seg_names_list{index};
-                    ROI.UpdateSegmentationProperties(app);
-                    
-                    if ~isempty(app.roiPointList)
-                        app.roiPoints{Cv}       = app.roiPointList{index};
-                        app.roiPointIndex{Cv}   =...
-                            app.roiPointIndexList{index};
-                    else
-                        app.roiPoints{Cv}       = [];
-                        app.roiPointIndex{Cv}   = [];
-                    end
-                else
-                    app.segmentation{Cv}    = [];
-                    app.seg_names{Cv}       = {};
-                    app.roiPoints{Cv}       = [];
-                    app.roiPointIndex{Cv}   = [];
-                end
-            end
-
-            %Measurements
-            if(~(index>length(app.measurement_list)))
-                if(~isempty(app.measurement_list{index}))
-                    app.measure_lines{Cv} =...
-                                app.measurement_list{index};
-                    app.measure_names{Cv} = app.measure_names_list{index};
-                    app.measure_length{Cv}= app.measure_length_list{index};
-                    
-                else
-                    app.measure_lines{Cv}               = [];
-                    app.measure_names{Cv}               = {};
-                    app.measure_length{Cv}              = [];
-                end
-            end
-
-%             app.bkseg           = [];
-%             Graphics.DeleteAllDrawingPoints(app);
-
-        end            
+               
         
         function SaveToDisk(app)
             %Saves the current study to the .rmsstudio folder. All the 
@@ -142,74 +69,20 @@ classdef Study < handle
             
             
             %First save the most recent changes to the list
-            Study.SaveToList(app, app.current_view)
+%             Study.SaveToList(app, app.current_view)
             
             
-            for image_id=1:length(app.segmentation_list)
-                fn      = app.AvailableimagesListBox.Items{image_id};
-                
-                %Save the segmentation & its properties
-                nii     = app.segmentation_list{image_id};
-                points  = app.roiPointList{image_id};
-                pointIdx= app.roiPointIndexList{image_id};
-                
-                if isfield(nii, 'img') &&                               ...
-                   isfield(nii, 'hdr') &&                               ...
-                   isfield(nii, 'properties')
-                    
-                    segfn   = fullfile(app.current_folder,              ...
-                                        [fn(1:end-4)                    ...
-                                         app.user_profile{1}            ...
-                                         '-segmentation.nii']);
-                    propfn  = fullfile(app.current_folder,              ...
-                                        [fn(1:end-4)                    ...
-                                         app.user_profile{1}            ...
-                                         '-segmentation.csv']);
+            for imageId=1:length(app.AvailableimagesListBox.Items)
+                fn      = app.AvailableimagesListBox.Items{imageId};
+                outfn   = fullfile(app.current_folder,              ...
+                                        fn(1:end-4),                    ...
+                                         app.user_profile{1});
                                      
-                    IOUtils.saveSegmentations(nii, segfn);
-                    IOUtils.saveSegmentationProperties(nii, propfn);
-                    
-                end
-                
-                %Save segmentation points
-                if ~isempty(points)
-                    pointfn = fullfile(app.current_folder,              ...
-                                        [fn(1:end-4)                    ...
-                                         app.user_profile{1}            ...
-                                         '-segmentation.json']);
-                    IOUtils.saveSegmentationPoints(                     ...
-                                            points, pointIdx, pointfn)
-                end
-                
-                
-                %Save measurements to .csv
-                C       = app.measurement_list{image_id};
-                if(~isempty(C))
-                    IOUtils.saveMeasurementProperties(app, image_id);
-                end
+                IOUtils.saveUObjs(app, imageId, outfn);
             end
         end
         
-        function SaveToList(app, Pv)
-            %Writes all the user objects to their respective lists so that
-            %they can be loaded when the user switches back to that image.
-            
-            idx = app.imIdx;            
-            
-            %Segmentation
-            app.segmentation_list{idx}  = app.segmentation{Pv};
-            app.seg_names_list{idx}     = app.seg_names{Pv};
-            app.roiPointList{idx}       = app.roiPoints{Pv};
-            app.roiPointIndexList{idx}  = app.roiPointIndex{Pv};
-            
-            
-            %Measurements
-            app.measurement_list{idx}   = app.measure_lines{Pv};
-            app.measure_names_list{idx} = app.measure_names{Pv};
-            app.measure_length_list{idx}= app.measure_length{Pv};
-        end
-        
-        function SwitchImage(app, index, prev_view)
+        function SwitchImage(app, index)
         % Switches workspace and display to a different image.
         % Input:
         %   app, reference to the RMSStudio app
@@ -219,7 +92,7 @@ classdef Study < handle
             drawnow            
             
             %Save all current user objects back to the list
-            Study.SaveToList(app, prev_view)
+%             Study.SaveToList(app, prev_view)
 
             app.slice_per_image{app.imIdx} = app.current_slice;
             
@@ -230,7 +103,10 @@ classdef Study < handle
             %Load the image, segmentations and measurement into the study,
             %either from disk, or from the list.
             if index ~= app.image_per_view(app.current_view)
-                Study.LoadFromList(app, index)
+%                 Study.LoadFromList(app, index)
+                if isempty(app.data{index})
+                    IOUtils.LoadNii(app, index);     
+                end
                 
                 %Keep track of which image is in which view
                 app.image_per_view(app.current_view) = index;
@@ -248,6 +124,7 @@ classdef Study < handle
         %Input: hitx - x-position
         %       hity - y-position
         %TODO: Split & Move function
+        %TODO: update for userobjects
            
             Cv  = app.current_view;
         

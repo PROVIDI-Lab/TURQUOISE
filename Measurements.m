@@ -78,28 +78,28 @@ classdef Measurements < handle
                     "points", app.points{Cv}, ...
                     "name", name{1})
             
-            if ~isempty(name) && strcmp(name, ' ') ~= 1
-                app.measure_names{Cv}{end+1} = name{1};
-            else %if the user presses cancel, remove the measurement
-                app.points{Cv} = [];
-                app.UpdateImage();
-                return
-            end
-            
-            %Add measurement to app
-            NP = app.points{Cv};
-            app.measure_lines{Cv} = [app.measure_lines{Cv};NP];
-            app.points{Cv} = [];
-            
-            %Calculate length
-            P1        = NP(1,:);
-            P2        = NP(2,:);
-            direction = P2-P1;
-            CL        = norm(direction,2);
-            L         = CL*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
-            app.measure_length{Cv}(end+1)   = L;
-            
-            GUI.DisableAllButtonsAndActions(app);
+%             if ~isempty(name) && strcmp(name, ' ') ~= 1
+%                 app.measure_names{Cv}{end+1} = name{1};
+%             else %if the user presses cancel, remove the measurement
+%                 app.points{Cv} = [];
+%                 app.UpdateImage();
+%                 return
+%             end
+%             
+%             %Add measurement to app
+%             NP = app.points{Cv};
+%             app.measure_lines{Cv} = [app.measure_lines{Cv};NP];
+%             app.points{Cv} = [];
+%             
+%             %Calculate length
+%             P1        = NP(1,:);
+%             P2        = NP(2,:);
+%             direction = P2-P1;
+%             CL        = norm(direction,2);
+%             L         = CL*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+%             app.measure_length{Cv}(end+1)   = L;
+%             
+%             GUI.DisableAllButtonsAndActions(app);
         end
         
         function RemoveMeasurement(app, idx)
