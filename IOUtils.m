@@ -79,8 +79,12 @@ classdef IOUtils < handle
         %   Index, the index of the image currently being loaded
         
             fp = app.current_folder;
-            fn = app.AvailableimagesListBox.Items{index};
-                reslice_name = fullfile(fp,[fn(1:end-4)             ...
+            try
+                fn = app.AvailableimagesListBox.Items{index};
+            catch
+                return
+            end
+            reslice_name = fullfile(fp,[fn(1:end-4)             ...
                                         '.rmsstudio_reslice.nii']);
             
             %Load the file

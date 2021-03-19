@@ -158,6 +158,15 @@ classdef Interaction < handle
             elseif app.drawing.mode == 5
                 %Here we are drawing a circular ROI
                 ROI.StartDrawingCircular(app, hit);                
+            
+            elseif hit.Button == 2
+                %Here we adjust the contrast
+                x = hit.Source.Parent.Parent.CurrentPoint(1);
+                y = hit.Source.Parent.Parent.CurrentPoint(2);
+                hitx = round(hit.IntersectionPoint(1));
+                hity = round(hit.IntersectionPoint(2));
+                app.dragPoint   = [hitx, x, hity, y];
+                app.drawing.mode = 6;
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -171,6 +180,8 @@ classdef Interaction < handle
                 ROI.ValidateModifiedROIPoints(app)
             elseif app.drawing.mode == 5
                 ROI.FinishDrawingCircular(app)
+            elseif app.drawing.mode == 6
+                app.drawing.mode = 0;
             else
                 return
             end
@@ -195,7 +206,7 @@ classdef Interaction < handle
             %windowbuttonmotionFCN has been set for the UIAxes elements.
             %Calls ROI.MoveROIPoint with the new position of the cursor 
             %relative to the top left corner with the scale of the image.
-            
+            disp('a')
             if isempty(app.dragPoint)
                 return
             end
@@ -208,6 +219,8 @@ classdef Interaction < handle
             %Circular ROI
             elseif app.drawing.mode == 5
                 ROI.DrawCircularROI(app, [hitx, hity])
+            elseif app.drawing.mode == 6
+                GUI.AdjustContrast(app, hitx, hity)
             end
             
         end
@@ -218,7 +231,9 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
             
             key     = event.Key;
-            if(~isfield(app.data{app.imIdx},'img') ||...
+            if isempty(app.data)
+                return
+            elseif(~isfield(app.data{app.imIdx},'img') ||...
                     isempty(app.data{app.imIdx}.img))
                 return
             end
@@ -230,6 +245,31 @@ classdef Interaction < handle
                 Interaction.BackspacePressed(app)
             elseif(strcmp(key, 'z'))
                 Interaction.ToggleZoom(app)
+            elseif(strcmp(key, 'control'))
+                app.ctrl    = true;
+            end
+        end
+        
+        function UIKeyRelease(app, event)
+        % Manages keypresses when UIAxes are in focus
+            
+            key     = event.Key;
+            if isempty(app.data)
+                return
+            elseif(~isfield(app.data{app.imIdx},'img') ||...
+                    isempty(app.data{app.imIdx}.img))
+                return
+            end
+            if(strcmp(key,'uparrow'))
+                GUI.SliceUp(app)
+            elseif(strcmp(key,'downarrow'))
+                GUI.SliceDown(app)
+            elseif(strcmp(key, 'backspace'))
+                Interaction.BackspacePressed(app)
+            elseif(strcmp(key, 'z'))
+                Interaction.ToggleZoom(app)
+            elseif(strcmp(key, 'control'))
+                app.ctrl    = false;
             end
         end
         
@@ -237,7 +277,7 @@ classdef Interaction < handle
         %Remove the last points in app.drawing
             
             Cv = app.current_view;
-            if ~isempty(app.points)
+            if isempty(app.points)
                 return
             end
             if isempty(app.points{Cv})

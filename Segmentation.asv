@@ -55,62 +55,55 @@ classdef Segmentation < handle
                     hitx, hity);
             elseif(app.drawing.magic_method == 3 ||...
                     app.drawing.magic_method == 4)
-                segmentation = Segmentation.ChanVese2D(app, TheImg, ...
-                    hitx, hity);
-            end       
-        end
-        
-        function segmentation = Thresh2D(app, TheImg, TheVal, hitx, hity)
-            
-            if(app.drawing.magic_method == 1)
-                    u = TheImg >                                        ...
-                        TheVal-TheVal*app.drawing.magic_sensitivity/10;
-            elseif(app.drawing.magic_method == 2)
-                u = TheImg < TheVal+TheVal*...
-                    app.drawing.magic_sensitivity/10 &...
-                    TheImg > -1;
-            end
-            [LA,NA] = bwlabeln(u);
-            for ijkid=1:NA
-                lLA = LA == ijkid;
-                if(lLA(hitx,hity) == 0)
-                    u(lLA > 0) = 0;
-                end
-            end
-            segmentation = u;
-        end
-        
-        function segmentation = ChanVese2D(app, TheImg, hitx, hity)
-            if(app.drawing.magic_method == 4)
+                if(app.drawing.magic_method == 4)
                     TheImg = imcomplement(TheImg);
-            end
-            u = zeros(size(TheImg));
-            found = -1;
-            if(~isempty(app.labels))
-                if(app.view_axis == 3)
-                    L = app.labels(:,:,app.current_slice);
-                elseif(app.view_axis == 2)
-                    L = squeeze(app.labels(:,app.current_slice,:));
-                elseif(app.view_axis == 1)
-                    L = squeeze(app.labels(app.current_slice,:,:));
                 end
-                for l_id=min(L(:)):max(L(:))
-                    V = L == l_id;
-                    V = V(hitx-1:hitx+1,hity-1:hity+1);
-                    if(sum(V(:)) > 0)
-                        found = l_id;
-                        break
+                u = zeros(size(TheImg));
+                found = -1;
+                if(~isempty(app.labels))
+                    if(app.view_axis == 3)
+                        L = app.labels(:,:,app.current_slice);
+                    elseif(app.view_axis == 2)
+                        L = squeeze(app.labels(:,app.current_slice,:));
+                    elseif(app.view_axis == 1)
+                        L = squeeze(app.labels(app.current_slice,:,:));
+                    end
+                    for l_id=min(L(:)):max(L(:))
+                        V = L == l_id;
+                        V = V(hitx-1:hitx+1,hity-1:hity+1);
+                        if(sum(V(:)) > 0)
+                            found = l_id;
+                            break
+                        end
                     end
                 end
-            end
-            if(found == -1)
-                u(hitx-1:hitx+1,hity-1:hity+1) = 1;
-            else
-                u = L==l_id;
-            end
-            segmentation = activecontour(TheImg,u,100,'Chan-Vese',      ...
+                if(found == -1)
+                    u(hitx-1:hitx+1,hity-1:hity+1) = 1;
+                else
+                    u = L==l_id;
+                end
+                u = activecontour(TheImg,u,100,'Chan-Vese',             ...
                     'ContractionBias',                                  ...
-                    app.drawing.magic_sensitivity / 10.0); 
+                    app.drawing.magic_sensitivity / 10.0);
+            end
+
+            if(app.view_axis == 3)
+                L = app.segmentation{Cv}.img(:,:,app.current_slice);
+                L(u > 0) = 1;
+                app.segmentation{Cv}.img(:,:,app.current_slice) = L;
+            elseif(app.view_axis == 2)
+                L = squeeze(app.segmentation{Cv}.img(...
+                    :,app.current_slice,:));
+                L(u > 0) = 1;
+                app.segmentation{Cv}.img(:,app.current_slice,:) = L;
+            elseif(app.view_axis == 1)
+                L = squeeze(app.segmentation{Cv}.img(...
+                    app.current_slice,:,:));
+                L(u > 0) = 1;
+                app.segmentation{Cv}.img(app.current_slice,:,:) = L;
+            end
+
+            ROI.UpdateSegmentationProperties(app)          
         end
         
         

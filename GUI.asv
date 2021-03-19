@@ -156,14 +156,15 @@ classdef GUI < handle
             
                    
             if app.ctrl
-%                 ax  = [app.UIAxes1, app.UIAxes2];
-%                 ax  = ax(app.current_view);
-%                 
-%                 zoomAmount  = sign(verticalScrollCount)*0.03;
-%                 xDiff       = ax.XLim(2) - ax.XLim(1);
-%                 xDiff       = xDiff - xDiff * zoomAmount;
-%                 ax.XLim     = [-xDiff/2, xDiff/2];
-                return
+                ax  = [app.UIAxes1, app.UIAxes2];
+                ax  = ax(app.current_view);
+                
+                zoomAmount  = sign(verticalScrollCount)*0.03;
+                xDiff       = ax.XLim(2) - ax.XLim(1);
+                xDiff       = 
+                
+                ax.XLim = [-inf, inf];
+                ax.YLim = [-inf, inf];
             end
             
             %Increase slice
@@ -286,25 +287,6 @@ classdef GUI < handle
                 double(floor(app.MaxValue/app.MaxValue*100));
         end
         
-        function AdjustContrast(app, hitx, hity)
-            
-            dX              = hitx - app.dragPoint(1);
-            dY              = hity - app.dragPoint(3);
-            app.MinValue    = max(min(100, dX),0);
-            app.MaxValue    = max(min(100, dY),0);
-            
-            app.cMinValue = app.MinValue;
-            app.cMaxValue = app.MaxValue;
-            
-            app.MinvalSlider.MajorTicks = [0 50 100];
-            app.MinvalSlider.Value      =...
-                double(floor(app.MinValue/app.MaxValue*100));
-            app.MaxvalSlider.MajorTicks = [0 50 100];
-            app.MaxvalSlider.Value      =...
-                double(floor(app.MaxValue/app.MaxValue*100));
-            
-            
-        end
         
         
         %% Update buttons

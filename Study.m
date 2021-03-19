@@ -10,6 +10,9 @@ classdef Study < handle
             %study. Called after PrepareStudy.
             
             nImages     = length(app.AvailableimagesListBox.Items);
+            if nImages == 0
+                return
+            end
             
 %             app.segmentation_list   = {};
 %             app.seg_names_list      = {};
@@ -37,9 +40,7 @@ classdef Study < handle
             end
             
             %Load the first (2) image(s)
-            if(~isempty(app.AvailableimagesListBox.Items))
-                IOUtils.LoadNii(app, 2);     
-            end
+            IOUtils.LoadNii(app, 2);     
             IOUtils.LoadNii(app, 1);     
             
             %Load all user objects from disk
