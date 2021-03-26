@@ -163,7 +163,7 @@ classdef GUI < handle
 %                 xDiff       = ax.XLim(2) - ax.XLim(1);
 %                 xDiff       = xDiff - xDiff * zoomAmount;
 %                 ax.XLim     = [-xDiff/2, xDiff/2];
-                return
+%                 return
             end
             
             %Increase slice
@@ -179,15 +179,10 @@ classdef GUI < handle
         
         function SliceUp(app)
         %Increases the slice of the current image by one
-            Cv                = app.current_view;
             app.current_slice = app.current_slice + 1;
-            if(app.current_slice < 1)
-                app.current_slice = 1;
-            end
-            if(app.current_slice >...
-                    size(app.data{Cv}.img, app.view_axis))
-                app.current_slice =...
-                    size(app.data{Cv}.img, app.view_axis);
+            imSizeViewAxis  = size(app.data{app.imIdx}.img, app.view_axis);
+            if app.current_slice > imSizeViewAxis                    
+                app.current_slice = imSizeViewAxis;
             end
             app.SliceSlider.Value = app.current_slice;
             app.UpdateImage();
@@ -195,15 +190,9 @@ classdef GUI < handle
         
         function SliceDown(app)
         %Decreases the slice of the current image by one
-            Cv                = app.current_view;
             app.current_slice = app.current_slice - 1;
             if(app.current_slice < 1)
                 app.current_slice = 1;
-            end
-            if(app.current_slice >...
-                    size(app.data{Cv}.img,app.view_axis))
-                app.current_slice =...
-                    size(app.data{Cv}.img,app.view_axis);
             end
             app.SliceSlider.Value = app.current_slice;
             app.UpdateImage();

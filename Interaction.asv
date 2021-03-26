@@ -464,7 +464,9 @@ classdef Interaction < handle
                 return
             end
             
+            Cv  = app.current_view;
             IOUtils.LoadSegmentation(app, fp, app.imIdx);  
+
             ROI.UpdateROIBox(app)
             
             %Switch to new labels
@@ -481,7 +483,10 @@ classdef Interaction < handle
                                 defPath);
             fp              = fullfile(path, file);
             
+            Cv  = app.current_view;
             IOUtils.loadSegmentationPoints(app, fp);  
+            app.roiPoints{Cv}    = app.roiPointList{Cv}{...
+                                        app.imIdx};
             app.UpdateImage();
         end
         
