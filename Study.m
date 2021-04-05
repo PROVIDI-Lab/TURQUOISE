@@ -88,9 +88,9 @@ classdef Study < handle
         % Input:
         %   app, reference to the RMSStudio app
         %   index, index of image in the available_image_box
-            GUI.DisableControlsStatus(app);
-            pause(0.01);
-            drawnow            
+%             GUI.DisableControlsStatus(app);
+%             pause(0.01);
+%             drawnow            
             
             %Save all current user objects back to the list
 %             Study.SaveToList(app, prev_view)
@@ -114,7 +114,7 @@ classdef Study < handle
             end    
             
             %Show everything
-            GUI.DisplayNewImage(app, index)
+%             GUI.DisplayNewImage(app, index)
 
         end
                

@@ -154,7 +154,13 @@ classdef GUI < handle
                 return
             end
             
-                   
+            xpos = event.Source.CurrentPoint(1);
+            if xpos < event.Source.Position(3)/2
+                fig = 1;
+            else
+                fig = 2;
+            end
+            
             if app.ctrl
 %                 ax  = [app.UIAxes1, app.UIAxes2];
 %                 ax  = ax(app.current_view);
@@ -168,34 +174,37 @@ classdef GUI < handle
             
             %Increase slice
             if(verticalScrollAmount > 0 && verticalScrollCount < 0)
-                GUI.SliceUp(app)
+                GUI.SliceUp(app, fig)
                 
             %Decrease slice
             elseif(verticalScrollAmount > 0 && verticalScrollCount > 0)
-                GUI.SliceDown(app)
+                GUI.SliceDown(app, fig)
             end            
         end
         
         
-        function SliceUp(app)
+        function SliceUp(app, fig)
         %Increases the slice of the current image by one
-            app.current_slice = app.current_slice + 1;
-            imSizeViewAxis  = size(app.data{app.imIdx}.img, app.view_axis);
-            if app.current_slice > imSizeViewAxis                    
-                app.current_slice = imSizeViewAxis;
+            app.slice_per_image{fig} = app.slice_per_image{fig} + 1;
+            imIdx           = app.image_per_view(fig);
+            imSizeViewAxis  = size(app.data{imIdx}.img, app.view_axis);
+            if app.slice_per_image{fig} > imSizeViewAxis                    
+                app.slice_per_image{fig} = imSizeViewAxis;
             end
-            app.SliceSlider.Value = app.current_slice;
-            app.UpdateImage();
+%             app.SliceSlider.Value = app.slice_per_image{fig};
+            f   = [app.UIAxes1, app.UIAxes2];
+            Graphics.UpdateImageForAxis(app, f(fig));
         end
         
-        function SliceDown(app)
+        function SliceDown(app, fig)
         %Decreases the slice of the current image by one
-            app.current_slice = app.current_slice - 1;
-            if(app.current_slice < 1)
-                app.current_slice = 1;
+            app.slice_per_image{fig} = app.slice_per_image{fig} - 1;
+            if app.slice_per_image{fig} < 1
+                app.slice_per_image{fig} = 1;
             end
-            app.SliceSlider.Value = app.current_slice;
-            app.UpdateImage();
+%             app.SliceSlider.Value = app.slice_per_image{fig};
+            f   = [app.UIAxes1, app.UIAxes2];
+            Graphics.UpdateImageForAxis(app, f(fig));
         end
         
         function SensitivitySlider(app)
@@ -455,7 +464,6 @@ classdef GUI < handle
             name = del + name + slice + view + vis;
             
         end
-        
         
         function UpdateUOVisibility(app, value)
             %Called when the visibilityslider is changed. Updates the 

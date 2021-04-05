@@ -1,0 +1,14 @@
+axis off -> scroll feedback
+no need to redraw when switching image
+scrollevent based on uifigure under mouse
+border around view in focus?
+scroll --> look at ctrlpressed
+UIcontextmenu
+	delete
+	copy to ...
+	hide/view
+	rename
+	add points
+	add exclusion
+
+	

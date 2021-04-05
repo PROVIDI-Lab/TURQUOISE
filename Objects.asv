@@ -73,20 +73,12 @@ classdef Objects < handle
         function RenameUO(app)
             %When the renamemenu in he UOBox conextmenu is called.
             idx     = app.UOBox.Value;
-            newName     = Interaction.PromptName();
-            newName     = Objects.CheckNameUnique(app, newName, ...
-                app.userObjects{idx}.type);
-            app.userObjects{idx}.name   = newName;
+            newName     = 
+            
+            
+            app.userObjects(idx)
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
         end
-        
-        function CopyUOTo(app)
-            %Prompt for image
-            %align images
-            %create new UO on new image
-        end
-        
-        
     end
 end

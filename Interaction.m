@@ -103,7 +103,9 @@ classdef Interaction < handle
             %Handles clicks in the image area. Calls functions depending on
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
-            
+            if isempty(app.data)
+                return
+            end
             if isempty(app.data{app.imIdx})
                 return
             end
@@ -465,12 +467,12 @@ classdef Interaction < handle
             end
             
             IOUtils.LoadSegmentation(app, fp, app.imIdx);  
-            ROI.UpdateROIBox(app)
+            GUI.UpdateUOBox(app)
             
             %Switch to new labels
-            items   = app.ROIBox.Items;
-            app.ROIBox.Value    = length(items) - 1;
-            Interaction.ROIBoxChanged(app);
+            items   = app.UOBox.Items;
+            app.UOBox.Value    = length(items) - 1;
+            Interaction.UOBoxChanged(app);
         end
         
         function LoadROIPoints(app)
@@ -682,6 +684,8 @@ classdef Interaction < handle
             app.UpdateImage();
             Graphics.UpdateSelectionContour(app);
         end
+        
+        %% Prompts
         
         function choice = PromptName()
             %Called when the user finishes drawing an ROI or measurement.

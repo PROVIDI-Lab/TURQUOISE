@@ -154,41 +154,42 @@ classdef GUI < handle
                 return
             end
             
-                   
+            xpos = event.Source.CurrentPoint(1);
+            if xpos < event.Source.Position(3)/2
+                fig = 1;
+            else
+                fig = 2;
+            end
+            
             if app.ctrl
-                ax  = [app.UIAxes1, app.UIAxes2];
-                ax  = ax(app.current_view);
-                
-                zoomAmount  = sign(verticalScrollCount)*0.03;
-                xDiff       = ax.XLim(2) - ax.XLim(1);
-                xDiff       = 
-                
-                ax.XLim = [-inf, inf];
-                ax.YLim = [-inf, inf];
+%                 ax  = [app.UIAxes1, app.UIAxes2];
+%                 ax  = ax(app.current_view);
+%                 
+%                 zoomAmount  = sign(verticalScrollCount)*0.03;
+%                 xDiff       = ax.XLim(2) - ax.XLim(1);
+%                 xDiff       = xDiff - xDiff * zoomAmount;
+%                 ax.XLim     = [-xDiff/2, xDiff/2];
+%                 return
             end
             
             %Increase slice
             if(verticalScrollAmount > 0 && verticalScrollCount < 0)
-                GUI.SliceUp(app)
+                GUI.SliceUp(app, fig)
                 
             %Decrease slice
             elseif(verticalScrollAmount > 0 && verticalScrollCount > 0)
-                GUI.SliceDown(app)
+                GUI.SliceDown(app, fig)
             end            
         end
         
         
-        function SliceUp(app)
+        function SliceUp(app, fig)
         %Increases the slice of the current image by one
-            Cv                = app.current_view;
-            app.current_slice = app.current_slice + 1;
-            if(app.current_slice < 1)
-                app.current_slice = 1;
-            end
-            if(app.current_slice >...
-                    size(app.data{Cv}.img, app.view_axis))
-                app.current_slice =...
-                    size(app.data{Cv}.img, app.view_axis);
+            app.slice_per_image(fig) = app.slice_per_image(fig) + 1;
+            imIdx           = app.image_per_view(fig);
+            imSizeViewAxis  = size(app.data{app.imIdx}.img, app.view_axis);
+            if app.current_slice > imSizeViewAxis                    
+                app.current_slice = imSizeViewAxis;
             end
             app.SliceSlider.Value = app.current_slice;
             app.UpdateImage();
@@ -196,15 +197,9 @@ classdef GUI < handle
         
         function SliceDown(app)
         %Decreases the slice of the current image by one
-            Cv                = app.current_view;
             app.current_slice = app.current_slice - 1;
             if(app.current_slice < 1)
                 app.current_slice = 1;
-            end
-            if(app.current_slice >...
-                    size(app.data{Cv}.img,app.view_axis))
-                app.current_slice =...
-                    size(app.data{Cv}.img,app.view_axis);
             end
             app.SliceSlider.Value = app.current_slice;
             app.UpdateImage();
@@ -287,6 +282,25 @@ classdef GUI < handle
                 double(floor(app.MaxValue/app.MaxValue*100));
         end
         
+        function AdjustContrast(app, hitx, hity)
+            
+            dX              = hitx - app.dragPoint(1);
+            dY              = hity - app.dragPoint(3);
+            app.MinValue    = max(min(100, dX),0);
+            app.MaxValue    = max(min(100, dY),0);
+            
+            app.cMinValue = app.MinValue;
+            app.cMaxValue = app.MaxValue;
+            
+            app.MinvalSlider.MajorTicks = [0 50 100];
+            app.MinvalSlider.Value      =...
+                double(floor(app.MinValue/app.MaxValue*100));
+            app.MaxvalSlider.MajorTicks = [0 50 100];
+            app.MaxvalSlider.Value      =...
+                double(floor(app.MaxValue/app.MaxValue*100));
+            
+            
+        end
         
         
         %% Update buttons
@@ -448,7 +462,6 @@ classdef GUI < handle
             name = del + name + slice + view + vis;
             
         end
-        
         
         function UpdateUOVisibility(app, value)
             %Called when the visibilityslider is changed. Updates the 
