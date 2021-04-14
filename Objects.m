@@ -76,15 +76,41 @@ classdef Objects < handle
             newName     = Interaction.PromptName();
             newName     = Objects.CheckNameUnique(app, newName, ...
                 app.userObjects{idx}.type);
-            app.userObjects{idx}.name   = newName;
+            app.userObjects{idx}.name   = newName{1};
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
         end
         
         function CopyUOTo(app)
-            %Prompt for image
-            %align images
-            %create new UO on new image
+            %When the copytoMenu in the UOBox contextmenu is called.
+            idx         = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            
+            obj         = app.userObjects{idx};
+            if obj.type == 2
+                return %Don't copy measurements
+            end
+            currentIdx  = app.userObjects{idx}.imageIdx;
+            targetIdx   = Interaction.PromptTarget(app);
+            
+            newMask     = Align.AlignMask(app.data{targetIdx},...
+                            app.data{currentIdx},...
+                            obj.data);                
+            
+            newMask( newMask >= 0.5) = 1;
+            newMask( newMask < 0.5) = 0;
+                        
+            Objects.AddNewUserObj(app,...
+                    "type", obj.type, ...
+                    "data", newMask,...
+                    "points", [], ... %TODO, copy points
+                    "name", obj.name,...
+                    "imageIdx", targetIdx)
+                
+            GUI.UpdateUOBox(app)
+            Graphics.UpdateUserObjects(app)
         end
         
         

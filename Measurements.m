@@ -82,7 +82,7 @@ classdef Measurements < handle
 %                 app.measure_names{Cv}{end+1} = name{1};
 %             else %if the user presses cancel, remove the measurement
 %                 app.points{Cv} = [];
-%                 app.UpdateImage();
+%                 Graphics.UpdateImage();
 %                 return
 %             end
 %             
@@ -210,7 +210,7 @@ classdef Measurements < handle
             app.measure_names{end+1} = names{1};
             app.measure_names{end+1} = names{2};
             
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app);
             GUI.RevertControlsStatus(app);
         end

@@ -435,7 +435,7 @@ classdef ROI < handle
         %Remove all ROIs from the current image
             
             app.userObjects = {};
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             
         end
         

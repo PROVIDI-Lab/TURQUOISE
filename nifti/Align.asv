@@ -29,25 +29,28 @@ classdef Align < handle
            coords       = coords * t;         
         end
         
-        function coords = GetMaskWorldCoordinates(mask, t)
-            [xp,yp,zp] = ind2sub(size(mask), find(mask));
-            coords       = [xp, yp, zp, ones(size(xp))];
-            coords       = coords * t;         
+        function coords = GetMaskWorldCOordinates(mask, t)
+            [x,y,z] = ind2sub(size(mask), find(mask));
         end
         
-        function image = SampleAtCoords(coords, fixed, arr)
+        function image = CoordsToImage(coords, moving, fixed, arr)
            %Interpolates a fixed nii image at the coordinates of the moving
            %one. 
            
            %First, reshape the coordinates to the image dimensions
-%            Xq   = reshape(coords(:,1),size(fixed.img));
-%            Yq   = reshape(coords(:,2),size(fixed.img));
-%            Zq   = reshape(coords(:,3),size(fixed.img));
-            Xq = coords(:,1);
-            Yq = coords(:,2);
-            Zq = coords(:,3);
+           Xq   = reshape(coords(:,1),size(fixed.img));
+           Yq   = reshape(coords(:,2),size(fixed.img));
+           Zq   = reshape(coords(:,3),size(fixed.img));
            
-            image        = interp3(arr, Xq, Yq, Zq);                      
+           %Get grid coordinates
+%            [sx, sy, sz] = size(moving.img);
+%            [X, Y, Z]    = meshgrid(1:sx, 1:sy, 1:sz);
+           
+           %Interpolate at query coordinates
+%            image        = interp3(X,Y,Z, arr, Xq, Yq, Zq);
+            image        = interp3(arr, Xq, Yq, Zq);
+            image(isnan(image))     = 0;
+                      
         end
         
         function moving = AlignNiis(fixed, moving)
@@ -62,30 +65,24 @@ classdef Align < handle
             
             %Use inverse of transformation matrix to go from XYZ to IJK
             qCoords         = fixedCoords / tMoving;
-            alignedImage    = Align.SampleAtCoords(...
-                                qCoords, fixed, moving.img);
-            alignedImage(isnan(alignedImage))   = 0;
+            alignedImage    = Align.CoordsToImage(...
+                                qCoords, moving, fixed, moving.img);
+            
             moving.img      = alignedImage;            
         end
         
-        function newMask    = AlignMask(fixed, moving, mask)
+        function mask     = AlignMask(fixed, moving, mask)
             %Interpolates the moving mask to fit on top of the fixed image.
-            %Optimised to only sample mask coordinates.
             tFixed  = Align.GetTransformMatrix(fixed);
             tMoving = Align.GetTransformMatrix(moving);
             
-            fixedCoords     = Align.GetMaskWorldCoordinates(...
-                                mask, tFixed);
+            fixedCoords     = Align.GetWorldCoordinates(...
+                                fixed.img, tFixed);
             
             %Use inverse of transformation matrix to go from XYZ to IJK
             qCoords         = fixedCoords / tMoving;
-            sampled         = Align.SampleAtCoords(...
-                                qCoords, fixed, mask);
-            newMask         = zeros(size(fixed.img));
-            idx             = sub2ind(...
-                size(newMask), qCoords(:,1), qCoords(:,2), qCoords(:,3));
-            newMask(idx)    = sampled;
-            newMask(isnan(newMask)) = 0;
+            mask            = Align.CoordsToImage(...
+                                qCoords, moving, fixed, mask);
         end
     end
 end

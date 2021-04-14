@@ -9,75 +9,71 @@ classdef Graphics < handle
         
         function UpdateImage(app)
         %Updates the image for the current view
-            axes    = [app.UIAxes1, app.UIAxes2];
-            ax      = axes(app.current_view);
-            Graphics.UpdateImageForAxis(app, ax)
+            Graphics.UpdateImageForAxis(app, app.current_view)
         end
         
         function UpdateUserObjects(app)
         %Updates the image for the current view
-        
             %Don't draw anything if the image isn't drawn yet.
+            %TODO: find a better way to determine if any image is drawn
             if isempty(app.current_slice)
                 return
             end
-            axes    = [app.UIAxes1, app.UIAxes2];
-            ax      = axes(app.current_view);
-            Graphics.UpdateUserObjectsForAxis(app, ax)
+        
+            Graphics.UpdateUserObjectsForAxis(app, app.current_view)
         end
         
         function UpdateUserInteractions(app)
         %Updates the user interactions for the current view
-            axes    = [app.UIAxes1, app.UIAxes2];
-            ax      = axes(app.current_view);
-            Graphics.UpdateUserInteractionsForAxis(app, ax)
+            Graphics.UpdateUserInteractionsForAxis(app, app.current_view)
         end
         
-        function UpdateImageForAxis(app,the_axis)
+        function UpdateImageForAxis(app, axID)
         %Called when everything is redrawn
-            Graphics.DrawImageInAxis(app,the_axis);
+            Graphics.DrawImageInAxis(app, axID);
             %Draw user-objects
-            Graphics.DrawUserObjects(app, the_axis);
-            Graphics.UpdateUserInteractionsForAxis(app, the_axis);
-            Graphics.UpdateUIAxesLabel(app);
+            Graphics.DrawUserObjects(app, axID);
+            Graphics.UpdateUserInteractionsForAxis(app, axID);
+            Graphics.UpdateUIAxesLabel(app, axID);
         end
         
-        function UpdateUserObjectsForAxis(app, the_axis)
+        function UpdateUserObjectsForAxis(app, axID)
         %Called when the image isn't updated, but the UOs are. Doesn't 
         %redraw everything. Should be a lot quicker this way.
-            Graphics.DrawChangedUserObjects(app, the_axis);
-            Graphics.DrawPointsInAxis(app, the_axis);
+            Graphics.DrawChangedUserObjects(app, axID);
+            Graphics.DrawPointsInAxis(app, axID);
         end
         
-        function UpdateUserInteractionsForAxis(app, the_axis)
+        function UpdateUserInteractionsForAxis(app, axID)
         %Called when the user interacts with the image (draws points, 
         %circle, etc.). Only the necessary functions are called in order
         %to have the updates be very quick.
             Graphics.DeleteAllTempDrawings(app);
             if app.drawing.mode == 1
-                Graphics.DrawPointsInAxis(app,the_axis);
+                Graphics.DrawPointsInAxis(app,axID);
             elseif app.drawing.mode == 2
-                Graphics.DrawROIPointsInAxis(app, the_axis);
+                Graphics.DrawROIPointsInAxis(app, axID);
             elseif app.drawing.mode == 5
-                Graphics.DrawCircleInAxis(app, the_axis)
+                Graphics.DrawCircleInAxis(app, axID)
             end
         end
         
-        function DrawUserObjects(app, the_axis)
+        function DrawUserObjects(app, axID)
         %Redraw all visible UserObjects.
+        
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
-                if obj.imageIdx ~= app.image_per_view(app.current_view)...
+                if obj.imageIdx ~= app.image_per_view(axID)...
                         || ~obj.visible
                     continue
                 end
 
                 switch obj.type 
                    case {1, 3}
-                       Graphics.DrawROIInAxis(app, the_axis, obj)
+                       Graphics.DrawROIInAxis(app, axID, obj)
                    case 2
                        Graphics.DrawMeasurementInAxis(...
-                           app, the_axis, obj)
+                           app, axID, obj)
                    otherwise
                        continue
                end
@@ -87,16 +83,12 @@ classdef Graphics < handle
         end        
         
         
-        function DrawChangedUserObjects(app, the_axis)
+        function DrawChangedUserObjects(app, axID)
         %Draws any UserObj in app.userObjects that is both changed and 
         %visible.
-%             if 
-%                 return
-%             end
-        
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
-                if obj.imageIdx ~= app.image_per_view(app.current_view)...
+                if obj.imageIdx ~= app.image_per_view(axID)...
                         || ~obj.changed ...
                         || ~obj.visible
                     continue
@@ -104,10 +96,10 @@ classdef Graphics < handle
                 
                 switch obj.type
                    case {1, 3}
-                       Graphics.DrawROIInAxis(app, the_axis, obj)
+                       Graphics.DrawROIInAxis(app, axID, obj)
                    case 2
                        Graphics.DrawMeasurementInAxis(...
-                           app, the_axis, obj)
+                           app, axID, obj)
                    otherwise
                        continue
                end
@@ -119,48 +111,57 @@ classdef Graphics < handle
         
         %% Draw the image
         
-        function DrawImageInAxis(app,the_axis)  
+        function DrawImageInAxis(app,axID)  
         % This draws the image slice
             if(isprop(app,'data'))
-                SL = app.data{app.imIdx};
+                
+                the_axis    = app.GetAxis(axID);
+                imID        = app.image_per_view(axID);
+                slice       = app.slice_per_image{imID};
+                %TODO: don't use app.current_4d_idx
+                SL = app.data{imID};
                 if(app.view_axis == 3)
-                    SL = SL.img(:,:,app.current_slice,app.current_4d_idx);
+                    SL = SL.img(:,:,slice, app.current_4d_idx);
                 elseif(app.view_axis == 2)
-                    SL = SL.img(:,app.current_slice,:,app.current_4d_idx);
+                    SL = SL.img(:,slice, :,app.current_4d_idx);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
                 elseif(app.view_axis == 1)
-                    SL = SL.img(app.current_slice,:,:,app.current_4d_idx);
+                    SL = SL.img(slice, :,:,app.current_4d_idx);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
                 end
-
+                
                 h = imagesc(the_axis,SL);
-                if (isempty(app.cMinValue) || isempty(app.cMaxValue))
-                    app.cMinValue = 0;
-                    app.cMaxValue = 10;
-                elseif(any(~isfinite([app.cMinValue app.cMaxValue])) ||...
-                        app.cMinValue == app.cMaxValue)
-                    app.cMinValue = 0;
-                    app.cMaxValue = 10;
+                if isempty(app.cScalePerImage{imID})
+                    app.cScalePerImage{imID} = [0 10];
+%                 elseif(any(~isfinite([app.cMinValue app.cMaxValue])) ||...
+%                         app.cMinValue == app.cMaxValue)
+%                     app.cMinValue = 0;
+%                     app.cMaxValue = 10;
                 end
-                set(the_axis,'CLim',[app.cMinValue app.cMaxValue]);
-                set(h,'ButtonDownFcn',@app.MouseClickedInImage);
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+                set(h,'ButtonDownFcn', @app.MouseClickedInImage);
             end          
         end
         
         
         %% Individual User Object draw methods
-        function DrawROIInAxis(app,the_axis, obj)          
+        function DrawROIInAxis(app, axID, obj)          
         %This draws the countour of a visible segmentation stored in obj.
-            
-            L   = obj.data;
+        %TODO: split function
+        
+            the_axis    = app.GetAxis(axID);
+            imID        = app.image_per_view(axID);
+            slice       = app.slice_per_image{imID};
+            L           = obj.data;
+            %TODO: view_axis per image
             if(app.view_axis == 3)
-                SL = L(:,:,app.current_slice);
+                SL = L(:,:,slice);
             elseif(app.view_axis == 2)
-                SL = squeeze(L(:,app.current_slice,:));
+                SL = squeeze(L(:,slice,:));
             elseif(app.view_axis == 1)
-                SL = squeeze(L(app.current_slice,:,:));
+                SL = squeeze(L(slice,:,:));
             end
                     
             SL = permute(SL,[2 1]);
@@ -193,8 +194,7 @@ classdef Graphics < handle
                         obj.prop.volume = 0;
                         obj.prop.mean   = 0;
                     end
-                    VS       = min(app.data{...
-                                app.imIdx}.hdr.dime.pixdim(2:4));
+                    VS       = min(app.data{imID}.hdr.dime.pixdim(2:4));
                     Area     = length(find(SL))*VS^2;
                     Name     = obj.name;
                     Volume   = obj.prop.volume;
@@ -230,11 +230,13 @@ classdef Graphics < handle
             end
         end
         
-        function DrawMeasurementInAxis(app,the_axis, obj) 
+        function DrawMeasurementInAxis(app, axID, obj) 
         % This draws a measurement.
-                
+            the_axis    = app.GetAxis(axID);
             hold(the_axis,'on');
-
+            imID        = app.image_per_view(axID);
+            slice       = app.slice_per_image{imID};
+            
             P1    = obj.points(1,:);
             P2    = obj.points(2,:);
             direction = P2-P1;
@@ -245,7 +247,7 @@ classdef Graphics < handle
 
             %Plot lines that are visible in current view
             ax = app.view_axis;
-            if P1(ax) == P2(ax) && P1(ax) == app.current_slice
+            if P1(ax) == P2(ax) && P1(ax) == slice
                 P1(ax) = [];
                 P2(ax) = [];
 
@@ -282,11 +284,13 @@ classdef Graphics < handle
         %% Drawing the interactions of the user (points, circles etc)
         %These should update very quickly.
         
-        function DrawPointsInAxis(app,the_axis)
+        function DrawPointsInAxis(app, axID)
             %Draws all the points stored in app.drawing.points and 
             %app. roiPoints on the screen. 
             %Input:
             %   the_axis - UIAxes objects of the view currently in focus
+            
+            the_axis = app.GetAxis(axID);
             
             Cv  = app.current_view;
             if ~isempty(app.tempDrawings)
@@ -310,8 +314,10 @@ classdef Graphics < handle
             end
         end
         
-        function DrawROIPointsInAxis(app, the_axis)
+        function DrawROIPointsInAxis(app, axID)
         %Plot app.roiPoints
+            the_axis    = app.GetAxis(axID);
+        
             for i = 1:length(app.userObjects)
                 obj     = app.userObjects{i};
                 if obj.imageIdx ~= app.image_per_view(app.current_view)...
@@ -337,9 +343,9 @@ classdef Graphics < handle
             end
         end
         
-        function DrawCircleInAxis(app, the_axis)
+        function DrawCircleInAxis(app, axID)
         %Plots a circle when the user is drawing a circular ROI.
-            
+            the_axis    = app.GetAxis(axID);
             if ~isempty(app.tempDrawings)
                 Graphics.DeleteAllTempDrawings(app);
             end
@@ -363,17 +369,21 @@ classdef Graphics < handle
 
 %% Other
 
-        function UpdateUIAxesLabel(app)
+        function UpdateUIAxesLabel(app, axID)
             %Updates the label on the UIAxes containing the name and slice
             %number of the current image.
             
-            sliceString = strcat(num2str(app.current_slice), " / ",     ...
-                 num2str(size(app.data{app.imIdx}.img, app.view_axis)));
+            %TODO: find view_axis per image
+            slice   = app.slice_per_image{app.image_per_view(axID)};
+            sliceString = strcat(num2str(slice), " / ",     ...
+                 num2str(...
+                 size(app.data{app.image_per_view(axID)}.img,...
+                    app.view_axis)));
             nameString  = app.AvailableimagesListBox.Items{             ...
-                            app.imIdx};
+                            app.image_per_view(axID)};
             string      = sprintf('%s\n%s',sliceString, nameString);
             
-            if app.current_view == 1
+            if axID == 1
                 app.UIAxes1Label.Text = string;
             else
                 app.UIAxes2Label.Text = string;

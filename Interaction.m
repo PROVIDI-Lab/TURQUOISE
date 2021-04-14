@@ -50,10 +50,10 @@ classdef Interaction < handle
             
             %Switch slice and view            
             app.view_axis       = view;
-            app.current_slice   = slice;
+            app.slice_per_image{app.imIdx} = slice;
             
-            app.UpdateSliceSlider();
-            app.UpdateImage();
+            GUI.UpdateSliceSlider(app);
+            Graphics.UpdateImage(app);
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
@@ -97,6 +97,7 @@ classdef Interaction < handle
             index   = app.image_per_view(new_view_idx);
             Study.SwitchImage(app, index)
             Interaction.ChangeListBoxValue(app, index)
+            GUI.UpdateUOBox(app)
         end
         
         function MouseClickedInImage(app,hit)
@@ -192,7 +193,7 @@ classdef Interaction < handle
             app.dragPoint           = [];
             app.currentCircle       = [];
             
-            app.UpdateImage()
+            Graphics.UpdateImage(app)
             set(hit.Source,...
                     'WindowButtonMotionFcn',...
                     '')
@@ -233,6 +234,7 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
             
             key     = event.Key;
+            disp(strcat(key, " pressed")) 
             if isempty(app.data)
                 return
             elseif(~isfield(app.data{app.imIdx},'img') ||...
@@ -256,6 +258,7 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
             
             key     = event.Key;
+            disp(strcat(key, " released")) 
             if isempty(app.data)
                 return
             elseif(~isfield(app.data{app.imIdx},'img') ||...
@@ -287,7 +290,7 @@ classdef Interaction < handle
             end
             
             app.points{Cv}(end, :) = [];
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             
         end
         
@@ -348,8 +351,8 @@ classdef Interaction < handle
                 app.current_slice =...
                     round(size(app.data{app.imIdx}.img,3)/2);
             end
-            app.UpdateSliceSlider();
-            app.UpdateImage();
+            GUI.UpdateSliceSlider(app);
+            Graphics.UpdateImage(app);
             app.AxialButton.BackgroundColor     = [.96 .96 0];
             app.SagittalButton.BackgroundColor  = [.96 .96 .96];
             app.CoronalButton.BackgroundColor   = [.96 .96 .96];
@@ -362,8 +365,8 @@ classdef Interaction < handle
                 app.current_slice =...
                     round(size(app.data{app.imIdx}.img,2)/2);
             end
-            app.UpdateSliceSlider();
-            app.UpdateImage();
+            GUI.UpdateSliceSlider(app);
+            Graphics.UpdateImage(app);
             app.AxialButton.BackgroundColor     = [.96 .96 .96];
             app.SagittalButton.BackgroundColor  = [.96 .96 0];
             app.CoronalButton.BackgroundColor   = [.96 .96 .96];
@@ -376,8 +379,8 @@ classdef Interaction < handle
                 app.current_slice =...
                     round(size(app.data{app.imIdx}.img,1)/2);
             end
-            app.UpdateSliceSlider();
-            app.UpdateImage();
+            GUI.UpdateSliceSlider(app);
+            Graphics.UpdateImage(app);
             app.AxialButton.BackgroundColor     = [.96 .96 .96];
             app.SagittalButton.BackgroundColor  = [.96 .96 .96];
             app.CoronalButton.BackgroundColor   = [.96 .96 0];
@@ -415,7 +418,7 @@ classdef Interaction < handle
             else
                 app.should_show_selection = false;
             end
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app);
         end
         
@@ -431,7 +434,7 @@ classdef Interaction < handle
             %Remove ROIs
             ROI.RemoveAllROIs(app);
             
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
         end
         
         function Save(app)
@@ -484,7 +487,7 @@ classdef Interaction < handle
             fp              = fullfile(path, file);
             
             IOUtils.loadSegmentationPoints(app, fp);  
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
         end
         
         function DrawPolygon(app)
@@ -502,9 +505,9 @@ classdef Interaction < handle
                 app.drawing.mode = 0;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 .96];
                 ROI.ValidateDrawingPoints(app);
-                app.UpdateImage();
+                Graphics.UpdateImage(app);
             end
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app); 
         end
         
@@ -547,7 +550,7 @@ classdef Interaction < handle
             
             GUI.DisableAllButtonsAndActions(app)
             ROI.PointsToSegmentation(app)     
-            app.UpdateImage()
+            Graphics.UpdateImage(app)
             GUI.RevertControlsStatus(app)
         end
         
@@ -582,7 +585,7 @@ classdef Interaction < handle
             else
                 app.drawing.mode = 0;
             end
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app); 
         end
         
@@ -664,24 +667,30 @@ classdef Interaction < handle
             Backups.RestoreBackup(app)
         end
         
-        function UpdateSlice(app, value)
+        function UpdateSlice(app, value, axID)
         %Sets the current_slice to the new value, then updates the GUI
         %Input:
         %   value - new value for current_slice
-            app.current_slice = round(value);
-            imgSize             = size(app.data{app.imIdx}.img);
+            slice = round(value);
+            imgSize             = size(app.data{...
+                                    app.image_per_view(axID)}.img);
             %Limit the value between 1 and max
-            if(app.current_slice < 1)
-                app.current_slice = 1;
+            if(slice < 1)
+                slice = 1;
             end
-            if(app.current_slice > imgSize(app.view_axis))
-                app.current_slice = imgSize(app.view_axis);
+            %TODO: view_axis per image
+            if(slice > imgSize(app.view_axis)) 
+                slice = imgSize(app.view_axis);
             end
+            
+            app.slice_per_image{axID}   = slice;
             
             %Update the GUI
             
-            app.UpdateSliceSlider();
-            app.UpdateImage();
+            if axID == app.current_view
+                GUI.UpdateSliceSlider(app)
+            end
+            Graphics.UpdateImageForAxis(app, axID);
             Graphics.UpdateSelectionContour(app);
         end
         
@@ -849,11 +858,55 @@ classdef Interaction < handle
             end
         end
         
+        
+        function choice = PromptTarget(app)
+            %Called when the user copies a UserObject. The user is prompted
+            %to which image the object should be copied. 
+                        
+            d = dialog('Position',[300 300 250 150],'Name','Select One');
+            txt = uicontrol('Parent',d,...
+                   'Style','text',...
+                   'Position',[20 80 210 40],...
+                   'String','Copy to which image');
+
+            popup = uicontrol(...
+                   'Parent',    d,...
+                   'Style',     'popup',...
+                   'Position',  [75 70 100 25],...
+                   'String',    app.AvailableimagesListBox.Items,...
+                   'Callback',  @popup_callback);
+
+            btn = uicontrol('Parent',d,...
+                   'Position',[89 20 70 25],...
+                   'String','Select',...
+                   'Callback',@select);
+            
+            %Default
+            choice = {};
+               
+            % Wait for d to close before running to completion
+            uiwait(d);
+
+                function popup_callback(popup,event)
+                   choice = popup.Value;
+                end
+               
+                function select(btn, event)
+                   popupItem  = btn.Parent.Children(2);
+                   choice  = popupItem.Value;
+                   delete(gcf);
+                end
+        end
+        
+        
+        
+        %% Other
+        
         function ShuffleColors(app)
         %Shuffles the colors of the measurements & segmentations
             IX = randperm(size(app.colors_list,1));
             app.colors_list = app.colors_list(IX,:);
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app);
         end
         

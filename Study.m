@@ -114,7 +114,7 @@ classdef Study < handle
             end    
             
             %Show everything
-%             GUI.DisplayNewImage(app, index)
+            GUI.DisplayNewImage(app, index)
 
         end
                

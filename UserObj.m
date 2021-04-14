@@ -20,9 +20,9 @@ classdef UserObj < matlab.mixin.SetGet
             if obj.type == 1 || obj.type == 3
                 L           = obj.data == 1;
                 VS          = ...
-                    min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+                    min(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
                 V           = ...
-                    app.data{app.imIdx}.img(:,:,:,app.current_4d_idx);
+                    app.data{obj.imageIdx}.img(:,:,:,app.current_4d_idx);
                 
                 obj.prop            = struct();
                 obj.prop.name       = obj.name;
@@ -41,7 +41,7 @@ classdef UserObj < matlab.mixin.SetGet
                 obj.prop.name       = obj.name;
                 obj.prop.points     = obj.points;
                 obj.prop.length     =...
-                    CL*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+                    CL*min(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
                 
             end
             

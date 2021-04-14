@@ -95,7 +95,7 @@ classdef Backups < handle
            %Remove from list
            app.backup_list(end)     = [];
            
-           app.UpdateImage();
+           Graphics.UpdateImage(app);
            
                                                  
         end

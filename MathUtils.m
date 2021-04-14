@@ -225,6 +225,20 @@ classdef MathUtils < handle
             
         end
         
+        function amount = GetScrollAmount(app)
+            %%Returns a scrollamount based on how intensely was scrolled
+            if length(app.lastEvents) >= 5
+               app.lastEvents(1)    = [];
+            end
+            app.lastEvents       = [app.lastEvents, now];
+            delta                = app.lastEvents(end) - app.lastEvents(1);
+            
+            %Determined very heuristically 
+            amount  = round(6.008345e-8*delta^-1.495745);
+            amount  = max(amount,1);
+            
+        end
+        
     end
     
 end

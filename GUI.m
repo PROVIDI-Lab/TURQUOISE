@@ -125,7 +125,7 @@ classdef GUI < handle
             GUI.UpdateMinMaxSlider(app);
             GUI.UpdateUOBox(app);
             
-            app.UpdateImage();
+            Graphics.UpdateImage(app);
             pause(0.01);
             drawnow
             
@@ -142,71 +142,152 @@ classdef GUI < handle
             app.StatusLampLabel.Text = 'Error';
         end
         
-        %% Sliders && UI elements
+        %% Scrolling & zooming the axes
         
         function Scroll(app, event)
         %Manages the scrollwheelEvent 
             
-            verticalScrollAmount    = event.VerticalScrollAmount;
             verticalScrollCount     = event.VerticalScrollCount;
-            Cv                      = app.current_view;
-            if(~isfield(app.data{Cv},'img') || isempty(app.data{Cv}.img))
+            verticalScrollAmount    = MathUtils.GetScrollAmount(app);
+            %TODO: Check if images are loaded.
+%             Cv                      = app.current_view;
+%             if(~isfield(app.data{Cv},'img') || isempty(app.data{Cv}.img))
+%                 return
+%             end
+            
+            axID    = GUI.FindAxisUnderCursor(app, event);
+            if axID == -1
                 return
             end
             
-            xpos = event.Source.CurrentPoint(1);
-            if xpos < event.Source.Position(3)/2
-                fig = 1;
-            else
-                fig = 2;
-            end
-            
-            if app.ctrl
-%                 ax  = [app.UIAxes1, app.UIAxes2];
-%                 ax  = ax(app.current_view);
-%                 
-%                 zoomAmount  = sign(verticalScrollCount)*0.03;
-%                 xDiff       = ax.XLim(2) - ax.XLim(1);
-%                 xDiff       = xDiff - xDiff * zoomAmount;
-%                 ax.XLim     = [-xDiff/2, xDiff/2];
-%                 return
+            if app.ctrl %Zoom instead of scrolling
+                scrollCount     = sign(verticalScrollCount)*...
+                                    verticalScrollAmount;
+                GUI.ZoomAxis(app, axID, scrollCount, event);                
+                return
             end
             
             %Increase slice
-            if(verticalScrollAmount > 0 && verticalScrollCount < 0)
-                GUI.SliceUp(app, fig)
+            if verticalScrollCount < 0
+                slice   = app.slice_per_image{axID} + verticalScrollAmount;
+                Interaction.UpdateSlice(app, slice, axID);
                 
             %Decrease slice
-            elseif(verticalScrollAmount > 0 && verticalScrollCount > 0)
-                GUI.SliceDown(app, fig)
-            end            
+            elseif verticalScrollCount > 0
+                slice   = app.slice_per_image{axID} - verticalScrollAmount;
+                Interaction.UpdateSlice(app, slice, axID);
+            end          
+            
         end
         
+        function axID = FindAxisUnderCursor(app, event)
+           %Returns the axisID of the axis currently under the cursor.
+           
+           xpos = event.Source.CurrentPoint(1);
+           ypos = event.Source.CurrentPoint(2);
+           %Go over all axes
+           %UIAxes 1
+           pos  = app.UIAxes1.Position;
+           xMin     = pos(1);
+           xMax     = pos(1) + pos(3);
+           yMin     = pos(2);
+           yMax     = pos(2) + pos(4);
+           if xMin < xpos && xpos < xMax && yMin < ypos && ypos < yMax
+               axID = 1;
+               return
+           end
+           
+           %UIAxes 2
+           pos  = app.UIAxes2.Position;
+           xMin     = pos(1);
+           xMax     = pos(1) + pos(3);
+           yMin     = pos(2);
+           yMax     = pos(2) + pos(4);
+           if xMin < xpos && xpos < xMax && yMin < ypos && ypos < yMax
+               axID = 2;
+               return
+           end
+            
+           axID = -1;
+           return
+        end
         
-        function SliceUp(app, fig)
-        %Increases the slice of the current image by one
-            app.slice_per_image{fig} = app.slice_per_image{fig} + 1;
-            imIdx           = app.image_per_view(fig);
-            imSizeViewAxis  = size(app.data{imIdx}.img, app.view_axis);
-            if app.slice_per_image{fig} > imSizeViewAxis                    
-                app.slice_per_image{fig} = imSizeViewAxis;
+        function ZoomAxis(app, axID, scrollCount, event)
+            
+            the_axis        = app.GetAxis(axID);
+            zoomAmount      = scrollCount * 0.003;
+            imID            = app.image_per_view(axID);
+            
+            %Zoom in x direction            
+            xDiff           = the_axis.XLim(2) - the_axis.XLim(1);
+                if xDiff == Inf
+                    xDiff   = size(app.data{imID}.img, 1);
+                end
+            
+            xMinAxis        = the_axis.Position(1);
+            xPos            = event.Source.CurrentPoint(1) - xMinAxis;
+            xPos            = xPos / the_axis.Position(3) * xDiff;
+            xDiff           = xDiff * (1 - zoomAmount); %Add minimum change?
+            xMin            = xPos - xDiff / 2;
+            xMin            = round(max(0, xMin));
+            xMax            = xPos + xDiff / 2;
+            xMax            = round(...
+                                min(size(app.data{imID}.img, 1), xMax));
+            if xMax <= xMin
+                xMax = xMin + 1;
             end
-%             app.SliceSlider.Value = app.slice_per_image{fig};
-            f   = [app.UIAxes1, app.UIAxes2];
-            Graphics.UpdateImageForAxis(app, f(fig));
-        end
-        
-        function SliceDown(app, fig)
-        %Decreases the slice of the current image by one
-            app.slice_per_image{fig} = app.slice_per_image{fig} - 1;
-            if app.slice_per_image{fig} < 1
-                app.slice_per_image{fig} = 1;
+            try
+                the_axis.XLim   = [xMin, xMax];
+            catch
+                disp([xMin, xMax])
             end
-%             app.SliceSlider.Value = app.slice_per_image{fig};
-            f   = [app.UIAxes1, app.UIAxes2];
-            Graphics.UpdateImageForAxis(app, f(fig));
+            %Zoom in y direction            
+            yDiff           = the_axis.YLim(2) - the_axis.YLim(1);
+                if yDiff == Inf
+                    yDiff   = size(app.data{imID}.img, 1);
+                end
+            
+            yMinAxis        = the_axis.Position(1);
+            yPos            = event.Source.CurrentPoint(2) - yMinAxis;
+            yPos            = yPos / the_axis.Position(4) * yDiff;
+            yDiff           = yDiff * (1 - zoomAmount);
+            yMin            = yPos - yDiff / 2;
+            yMin            = round(max(0, yMin));
+            yMax            = yPos + yDiff / 2;
+            yMax            = round(...
+                                min(size(app.data{imID}.img, 1), yMax));
+            if yMax <= yMin
+                yMax = yMin + 1;
+            end
+            the_axis.YLim   = [yMin, yMax];
+            
+            disp([xMin, xMax, yMin, yMax])
+            
         end
         
+        
+%         function SliceUp(app, axID)
+%         %Increases the slice of the current image by one
+%             app.slice_per_image{axID} = app.slice_per_image{axID} + 1;
+%             imIdx           = app.image_per_view(axID);
+%             imSizeViewAxis  = size(app.data{imIdx}.img, app.view_axis);
+%             if app.slice_per_image{axID} > imSizeViewAxis                    
+%                 app.slice_per_image{axID} = imSizeViewAxis;
+%             end
+%             Graphics.UpdateImageForAxis(app, axID);
+%         end
+%         
+%         function SliceDown(app, axID)
+%         %Decreases the slice of the current image by one
+%             app.slice_per_image{axID} = app.slice_per_image{axID} - 1;
+%             if app.slice_per_image{axID} < 1
+%                 app.slice_per_image{axID} = 1;
+%             end
+%             Graphics.UpdateImageForAxis(app, axID);
+%         end
+        
+    %% Sliders && UI elements
+
         function SensitivitySlider(app)
         %Sets the sensitivityslider value to the program
             value = app.SensitivitySlider.Value;
@@ -222,7 +303,8 @@ classdef GUI < handle
             end
             
             %Get data dimensions
-            refvol = app.data{app.imIdx}.img;
+            refvol  = app.data{app.imIdx}.img;
+            slice   = app.slice_per_image{app.imIdx};
             
             %Update SliceSlider
             app.SliceSlider.Limits = [1 size(refvol,app.view_axis)];
@@ -232,17 +314,20 @@ classdef GUI < handle
                 [1:step:size(refvol,app.view_axis)...
                 size(refvol,app.view_axis)];
             app.SliceSlider.MinorTicks = 1:1:size(refvol,app.view_axis);
-            if isnan(app.current_slice)
-                app.current_slice = round(...
+            if isnan(slice)
+                slice = round(...
                     size(...
                     app.data{app.image_per_view(app.current_view)}.img, ...
                     app.view_axis)...
                     / 2);
+                app.slice_per_image{app.imIdx} = slice;
             end
-            app.SliceSlider.Value = double(app.current_slice);
+            app.SliceSlider.Value = double(slice);
             
             
             %Update dimensionSlider
+            %TODO: store per image. Also, don't do it here? Make a new
+            %function
             app.DSlider.MajorTicks = 1:1:size(refvol,4);
             if(size(refvol,4) > 20)
                 app.DSlider.MajorTicks = 1:10:size(refvol,4);
@@ -268,8 +353,9 @@ classdef GUI < handle
                 app.MinValue = 0;
             end
             app.MaxValue = max(V(:));
-            app.cMinValue = app.MinValue;
-            app.cMaxValue = app.MaxValue;
+            app.cScalePerImage{app.imIdx} = [app.MinValue, app.MaxValue];
+%             app.cMinValue = app.MinValue;
+%             app.cMaxValue = app.MaxValue;
             if(app.MinValue == app.MaxValue)
                 app.MinValue = 0;
                 app.MaxValue = 100;
