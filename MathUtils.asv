@@ -236,19 +236,30 @@ classdef MathUtils < handle
             %Determined very heuristically 
             amount  = round(6.008345e-8*delta^-1.495745);
             amount  = max(amount,1);
-            amount  = min(amount,7);
             
         end
         
-        function [rMin, rMax] = GetNewRange(rDelta, r, r0, r1)
+        function [rMin, rMax] = GetNewRange(rDelta, r, r0, r1, rLow, rHigh)
             %Calculates the min and max values of a range with width rDelta
             %such that r is in the same position relative to the new
-            %min and max as it was to r0 and r1.             
+            %min and max as it was to r0 and r1. 
             
-            
-            ratio   = (r1-r) / (r1-r0);
-            rMin    = r - (rDelta * (1 - ratio));
-            rMax    = (rDelta * ratio) + r;
+            %The formula is:
+            %r0' = ((r*r1 / (r-r0)) - f*(r1-r0)) / (1 + 1/(r-r0))
+
+            rMin     = rMiddle - (rDelta / 2);
+            rMax     = rMiddle + (rDelta / 2);
+
+            if rMin < rLow
+               rMin     = rLow;
+               rMax     = min(rLow + rDelta, rHigh);
+            elseif rMax > rHigh
+               rMax     = rHigh;
+               rMin     = max(rHigh - rDelta, rLow);
+            end
+
+            rMin     = round(rMin);
+            rMax     = round(rMax);  
             if rMax <= rMin
                rMax = rMin + 1;
             end

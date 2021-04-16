@@ -2,11 +2,11 @@ classdef BackupObj < handle
     
     properties (Access = public)
        current_image_idx,   %Image that was in focus
-       image_per_view,      %Stores the images per view
+       imagePerAxis,        %Stores the images per view
+       viewPerImage,
+       slicePerImage,
        current_4d_idx,      %4D index
-       view_axis,           %Coronal, Sagittal, Axial (=1,2,3,)
-       current_view,        %View that was in focus
-       current_slice,       %Slice that was beeing looked at
+       current_view,        %Current uiAxes in focus
        MinValue,            %Minimum slider value
        MaxValue,            %Maximum slider value
        segmentation,        %User segmentations (sparse array)

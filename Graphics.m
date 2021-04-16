@@ -15,8 +15,7 @@ classdef Graphics < handle
         function UpdateUserObjects(app)
         %Updates the image for the current view
             %Don't draw anything if the image isn't drawn yet.
-            %TODO: find a better way to determine if any image is drawn
-            if isempty(app.current_slice)
+            if app.slicePerImage(app.imagePerAxis(app.current_view)) == -1
                 return
             end
         
@@ -63,7 +62,7 @@ classdef Graphics < handle
         
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
-                if obj.imageIdx ~= app.image_per_view(axID)...
+                if obj.imageIdx ~= app.imagePerAxis(axID)...
                         || ~obj.visible
                     continue
                 end
@@ -88,7 +87,7 @@ classdef Graphics < handle
         %visible.
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
-                if obj.imageIdx ~= app.image_per_view(axID)...
+                if obj.imageIdx ~= app.imagePerAxis(axID)...
                         || ~obj.changed ...
                         || ~obj.visible
                     continue
@@ -116,17 +115,18 @@ classdef Graphics < handle
             if(isprop(app,'data'))
                 
                 the_axis    = app.GetAxis(axID);
-                imID        = app.image_per_view(axID);
-                slice       = app.slice_per_image{imID};
+                imID        = app.imagePerAxis(axID);
+                slice       = app.slicePerImage(imID);
+                view        = app.viewPerImage(imID);
                 %TODO: don't use app.current_4d_idx
                 SL = app.data{imID};
-                if(app.view_axis == 3)
+                if(view == 3)
                     SL = SL.img(:,:,slice, app.current_4d_idx);
-                elseif(app.view_axis == 2)
+                elseif(view == 2)
                     SL = SL.img(:,slice, :,app.current_4d_idx);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
-                elseif(app.view_axis == 1)
+                elseif(view == 1)
                     SL = SL.img(slice, :,:,app.current_4d_idx);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
@@ -152,25 +152,25 @@ classdef Graphics < handle
         %TODO: split function
         
             the_axis    = app.GetAxis(axID);
-            imID        = app.image_per_view(axID);
-            slice       = app.slice_per_image{imID};
-            L           = obj.data;
-            %TODO: view_axis per image
-            if(app.view_axis == 3)
-                SL = L(:,:,slice);
-            elseif(app.view_axis == 2)
-                SL = squeeze(L(:,slice,:));
-            elseif(app.view_axis == 1)
-                SL = squeeze(L(slice,:,:));
+            imID        = app.imagePerAxis(axID);
+            slice       = app.slicePerImage(imID);
+            img         = obj.data;
+            view        = app.viewPerImage(imID);
+            if(view == 3)
+                imSlice = img(:,:,slice);
+            elseif(view == 2)
+                imSlice = squeeze(img(:,slice,:));
+            elseif(view == 1)
+                imSlice = squeeze(img(slice,:,:));
             end
                     
-            SL = permute(SL,[2 1]);
-            if(~isempty(find(SL,1)))
+            imSlice = permute(imSlice,[2 1]);
+            if(~isempty(find(imSlice,1)))
                 hold(the_axis,'on');
                 %First draw the contours
                 if(app.should_show_selection == true)
                     [~,c]   = contour(the_axis,             ...
-                    SL,                                     ...
+                    imSlice,                                     ...
                     'r',                                    ...
                     'HitTest',                              ...
                     'on',                                   ...
@@ -178,7 +178,7 @@ classdef Graphics < handle
                     @app.MouseClickedInImage);
                 else
                     [~,c]   = contour(the_axis,             ...
-                    SL,                                     ...
+                    imSlice,                                     ...
                     'LineWidth',                            ...
                     2,                                      ...
                     'Color',                                ...
@@ -195,7 +195,7 @@ classdef Graphics < handle
                         obj.prop.mean   = 0;
                     end
                     VS       = min(app.data{imID}.hdr.dime.pixdim(2:4));
-                    Area     = length(find(SL))*VS^2;
+                    Area     = length(find(imSlice))*VS^2;
                     Name     = obj.name;
                     Volume   = obj.prop.volume;
                     MeanSig  = obj.prop.mean;
@@ -209,7 +209,7 @@ classdef Graphics < handle
                                        MeanSig);
 
                     [~,~,MX,MY] =                         ...
-                            MathUtils.WeightedCenterOfROI(SL);
+                            MathUtils.WeightedCenterOfROI(imSlice);
 
                     %Add label to image
                     t = text(the_axis,                      ...
@@ -234,19 +234,19 @@ classdef Graphics < handle
         % This draws a measurement.
             the_axis    = app.GetAxis(axID);
             hold(the_axis,'on');
-            imID        = app.image_per_view(axID);
-            slice       = app.slice_per_image{imID};
+            imID        = app.imagePerAxis(axID);
+            slice       = app.slicePerImage(imID);
             
-            P1    = obj.points(1,:);
-            P2    = obj.points(2,:);
-            direction = P2-P1;
-            L     = obj.prop.length;
-            name  = obj.name;
+            P1          = obj.points(1,:);
+            P2          = obj.points(2,:);
+            direction   = P2-P1;
+            L           = obj.prop.length;
+            name        = obj.name;
 
             labelText   = strcat(name,'\nLength: %.2fmm');
 
             %Plot lines that are visible in current view
-            ax = app.view_axis;
+            ax = app.viewPerImage(imID);
             if P1(ax) == P2(ax) && P1(ax) == slice
                 P1(ax) = [];
                 P2(ax) = [];
@@ -302,11 +302,15 @@ classdef Graphics < handle
                 tmp = app.points{Cv};
                 
                 %only plot points on current slice
-                idx = tmp(:,app.view_axis) ~= app.current_slice;
-                tmp(idx,:)  = [];
-                tmp(:,app.view_axis)    = [];
-                x                       = tmp(:,1);
-                y                       = tmp(:,2);
+                imID    = app.imagePerAxis(axID);
+                view    = app.viewPerImage(imID);
+                slice   = app.slicePerImage(imID);
+                
+                idx             = tmp(:, view) ~= slice;
+                tmp(idx,:)      = [];
+                tmp(:, view)    = [];
+                x               = tmp(:,1);
+                y               = tmp(:,2);
                 hold(the_axis,'on');
                 h = plot(the_axis, x, y, '.-g');
                 hold(the_axis,'off');
@@ -317,10 +321,11 @@ classdef Graphics < handle
         function DrawROIPointsInAxis(app, axID)
         %Plot app.roiPoints
             the_axis    = app.GetAxis(axID);
+            view        = app.viewPerImage(app.imagePerAxis(axID));
         
             for i = 1:length(app.userObjects)
                 obj     = app.userObjects{i};
-                if obj.imageIdx ~= app.image_per_view(app.current_view)...
+                if obj.imageIdx ~= app.imagePerAxis(app.current_view)...
                         || ~obj.visible...
                         || (obj.type ~= 1 && obj.type ~= 3)...
                         || isempty(obj.points)
@@ -329,11 +334,11 @@ classdef Graphics < handle
             
                 tmp     = obj.points;
                 %Only display points in the current slice
-                idx     = tmp(:, app.view_axis) == app.current_slice;
+                idx     = tmp(:, view) == app.current_slice;
                 tmp     = tmp(idx,:);
 
                 %Get x and y coordinate (of current view)
-                tmp(:,app.view_axis)    = [];
+                tmp(:, view)            = [];
                 x2                      = tmp(:,1);
                 y2                      = tmp(:,2);
                 hold(the_axis,'on');
@@ -373,14 +378,12 @@ classdef Graphics < handle
             %Updates the label on the UIAxes containing the name and slice
             %number of the current image.
             
-            %TODO: find view_axis per image
-            slice   = app.slice_per_image{app.image_per_view(axID)};
-            sliceString = strcat(num2str(slice), " / ",     ...
-                 num2str(...
-                 size(app.data{app.image_per_view(axID)}.img,...
-                    app.view_axis)));
-            nameString  = app.AvailableimagesListBox.Items{             ...
-                            app.image_per_view(axID)};
+            imID        = app.imagePerAxis(axID);
+            slice       = app.slicePerImage(imID);
+            view        = app.viewPerImage(imID);
+            maxSize     = size(app.data{imID}.img, view);
+            sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
+            nameString  = app.AvailableimagesListBox.Items{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);
             
             if axID == 1

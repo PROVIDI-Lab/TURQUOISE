@@ -35,7 +35,7 @@ classdef Align < handle
             coords       = coords * t;         
         end
         
-        function image = SampleAtCoords(coords, fixed, arr)
+        function image = SampleAtCoords(coords, arr)
            %Interpolates a fixed nii image at the coordinates of the moving
            %one. 
            
@@ -63,7 +63,7 @@ classdef Align < handle
             %Use inverse of transformation matrix to go from XYZ to IJK
             qCoords         = fixedCoords / tMoving;
             alignedImage    = Align.SampleAtCoords(...
-                                qCoords, fixed, moving.img);
+                                qCoords,  moving.img);
             alignedImage(isnan(alignedImage))   = 0;
             moving.img      = alignedImage;            
         end
@@ -80,7 +80,7 @@ classdef Align < handle
             %Use inverse of transformation matrix to go from XYZ to IJK
             qCoords         = fixedCoords / tMoving;
             sampled         = Align.SampleAtCoords(...
-                                qCoords, fixed, mask);
+                                qCoords, mask);
             newMask         = zeros(size(fixed.img));
             idx             = sub2ind(...
                 size(newMask), qCoords(:,1), qCoords(:,2), qCoords(:,3));

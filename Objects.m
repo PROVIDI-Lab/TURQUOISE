@@ -17,7 +17,7 @@ classdef Objects < handle
             %Fill in unspecified details
             if isempty(obj.imageIdx)
                 obj.imageIdx     = ...
-                    app.image_per_view(app.current_view);
+                    app.imagePerAxis(app.current_view);
             end
             if isempty(obj.name)
                 obj.name        = ...
@@ -41,8 +41,8 @@ classdef Objects < handle
         function name = CheckNameUnique(app, name, type)
             %Compares 
             counter     = 0;
-            for obj = app.userObjects
-                obj = obj{1};
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
                 if obj.imageIdx ~= app.imIdx || obj.type ~= type
                     continue
                 end
@@ -64,9 +64,13 @@ classdef Objects < handle
         function DeleteUO(app)
             %When the deletemenu in he UOBox conextmenu is called.
             idx     = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            
             app.userObjects(idx) = [];
             GUI.UpdateUOBox(app)
-            Graphics.UpdateUserObjects(app)
+            Graphics.UpdateImage(app)
         end
         
         

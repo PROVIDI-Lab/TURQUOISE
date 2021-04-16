@@ -30,19 +30,22 @@ classdef Segmentation < handle
         %..    
             
             %TODO: fix x&y
-            
             Cv      = app.current_view;
-            if(app.view_axis == 3)
+            imID    = app.imagePerAxis(Cv);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
+            
+            if(view == 3)
                 TheImg =                                                ...
-                    app.data{app.imIdx}.img(...
-                    :,:,app.current_slice,app.current_4d_idx);
-            elseif(app.view_axis == 2)
+                    app.data{imID}.img(...
+                    :, :, slice, app.current_4d_idx);
+            elseif(view == 2)
                 TheImg =                                                ...
-                    squeeze(app.data{app.imIdx}.img(...
-                    :,app.current_slice,:,app.current_4d_idx));
-            elseif(app.view_axis == 1)
-                TheImg = squeeze(app.data{app.imIdx}.img(...
-                    app.current_slice,:,:,app.current_4d_idx));
+                    squeeze(app.data{imID}.img(...
+                    :, slice, :, app.current_4d_idx));
+            elseif(view == 1)
+                TheImg = squeeze(app.data{imID}.img(...
+                    slice, :, :, app.current_4d_idx));
             end
             TheImg = single(TheImg);
             TheImg = TheImg / max(TheImg(:)) * 255;
@@ -84,15 +87,20 @@ classdef Segmentation < handle
             if(app.drawing.magic_method == 4)
                     TheImg = imcomplement(TheImg);
             end
+            
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
+            
             u = zeros(size(TheImg));
             found = -1;
             if(~isempty(app.labels))
-                if(app.view_axis == 3)
-                    L = app.labels(:,:,app.current_slice);
-                elseif(app.view_axis == 2)
-                    L = squeeze(app.labels(:,app.current_slice,:));
-                elseif(app.view_axis == 1)
-                    L = squeeze(app.labels(app.current_slice,:,:));
+                if(view == 3)
+                    L = app.labels(:,:,slice);
+                elseif(view == 2)
+                    L = squeeze(app.labels(:,slice,:));
+                elseif(view == 1)
+                    L = squeeze(app.labels(slice,:,:));
                 end
                 for l_id=min(L(:)):max(L(:))
                     V = L == l_id;
@@ -117,19 +125,21 @@ classdef Segmentation < handle
         function segmentation = Seg3D(app, hitx, hity)
         %...
         
-            Cv      = app.current_view;
-            TheImg  = ...
-                single(app.data{app.imIdx}.img(:,:,:,app.current_4d_idx));
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
+            
+            TheImg  = single(app.data{imID}.img(:,:,:,app.current_4d_idx));
             TheImg  = TheImg / max(TheImg(:)) * 255;
             
             method = app.drawing.magic_method;
              if method == 1 || method == 2
-                if(app.view_axis == 3)
-                    TheVal = TheImg(hity,hitx,app.current_slice);
-                elseif(app.view_axis == 2)
-                    TheVal = TheImg(hity,app.current_slice,hitx);
-                elseif(app.view_axis == 1)
-                    TheVal = TheImg(app.current_slice,hity,hitx);
+                if(view == 3)
+                    TheVal = TheImg(hity,hitx,slice);
+                elseif(view == 2)
+                    TheVal = TheImg(hity,slice,hitx);
+                elseif(view == 1)
+                    TheVal = TheImg(slice,hity,hitx);
                 end
                 
                 segmentation = Segmentation.Thresh3D(app, TheVal, TheImg,...
@@ -144,6 +154,10 @@ classdef Segmentation < handle
         
         function segmentation = Thresh3D(app, TheVal, TheImg, hitx, hity)
             
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
+            
             if app.drawing.magic_method == 1
                 u = TheImg > ...
                             TheVal-TheVal*app.drawing.magic_sensitivity/10;
@@ -155,14 +169,14 @@ classdef Segmentation < handle
             [LA,NA] = bwlabeln(u);
             for ijkid=1:NA
                 lLA = LA == ijkid;
-                if(app.view_axis == 3 &&                            ...
-                        lLA(hity,hitx,app.current_slice) == 0)
+                if(view == 3 &&                            ...
+                        lLA(hity,hitx,slice) == 0)
                     u(lLA > 0) = 0;
-                elseif(app.view_axis == 2 &&                        ...
-                        lLA(hity,app.current_slice,hitx) == 0)
+                elseif(view == 2 &&                        ...
+                        lLA(hity,slice,hitx) == 0)
                     u(lLA > 0) = 0;
-                elseif(app.view_axis == 1 &&                        ...
-                        lLA(app.current_slice,hity,hitx) == 0)
+                elseif(view == 1 &&                        ...
+                        lLA(slice,hity,hitx) == 0)
                     u(lLA > 0) = 0;
                 end
             end     
@@ -173,15 +187,20 @@ classdef Segmentation < handle
             if(app.drawing.magic_method == 4)
                     TheImg = imcomplement(TheImg);
             end
+            
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
+            
             u = zeros(size(TheImg));
             found = -1;
             if(~isempty(app.labels))
-                if(app.view_axis == 3)
-                    L = app.labels(:,:,app.current_slice);
-                elseif(app.view_axis == 2)
-                    L = squeeze(app.labels(:,app.current_slice,:));
-                elseif(app.view_axis == 1)
-                    L = squeeze(app.labels(app.current_slice,:,:));
+                if(view == 3)
+                    L = app.labels(:,:,slice);
+                elseif(view == 2)
+                    L = squeeze(app.labels(:,slice,:));
+                elseif(view == 1)
+                    L = squeeze(app.labels(slice,:,:));
                 end
                 for l_id=min(L(:)):max(L(:))
                     V = L == l_id;
@@ -193,14 +212,14 @@ classdef Segmentation < handle
                 end
             end
             if(found == -1)
-                if(app.view_axis == 3)
+                if(view == 3)
                     u(hity-1:hity+1,hitx-1:hitx+1,                  ...
-                        app.current_slice) = 1;
-                elseif(app.view_axis == 2)
-                    u(hity-1:hity+1,app.current_slice,              ...
+                        slice) = 1;
+                elseif(view == 2)
+                    u(hity-1:hity+1,slice,              ...
                         hitx-1:hitx+1) = 1;
-                elseif(app.view_axis == 1)
-                    u(app.current_slice,hity-1:hity+1,              ...
+                elseif(view == 1)
+                    u(slice,hity-1:hity+1,              ...
                         hitx-1:hitx+1) = 1;
                 end
             else

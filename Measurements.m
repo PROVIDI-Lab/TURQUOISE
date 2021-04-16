@@ -6,7 +6,7 @@ classdef Measurements < handle
         
         function MouseMeasurementLines(app,hit,hitx,hity)
         %Description:
-        %
+        %Finishes drawing a measurement.
 
         %Parameters:
         %app - the rmsstudio app
@@ -14,40 +14,18 @@ classdef Measurements < handle
         %hitx - x-coordinate of click
         %hity - y-coordinate of click       
             
-            %Change coordinates depending on view
-            %Can be removed??
-            if(app.view_axis == 3)
-            elseif(app.view_axis == 2)
-%                 tmp = hitx;
-%                 hitx = hity;
-%                 hity = tmp;
-            elseif(app.view_axis == 1)
-%                 tmp = hitx;
-%                 hitx = hity;
-%                 hity = tmp;
-            end
-            
-            Cv  = app.current_view;
-%             %Setup for first point
-%             if(~isfield(app,'points')                   ||       ...
-%                     ~isfield(app.data{app.imIdx},'img')        ||...
-%                     isempty(app.data{app.imIdx}.img)           ||...
-%                     ~isfield(app,'measure_lines'))
-%                 app.points{Cv}                      = [];
-%                 app.measure_lines{Cv}               = [];
-%             end
-            
+            Cv      = app.current_view;
+            imID    = app.imagePerAxis(Cv);
+            slice   = app.slicePerImage(imID);
+            view    = app.viewPerImage(imID);
             %Add points to list
             if(hit.Button == 1) 
-                if(app.view_axis == 3)
-                    app.points{Cv} = [app.points{Cv};   ...
-                                            hitx hity app.current_slice];
-                elseif(app.view_axis == 2)
-                    app.points{Cv} = [app.points{Cv};   ...
-                                            hitx app.current_slice hity];
-                elseif(app.view_axis == 1)
-                    app.points{Cv} = [app.points{Cv};   ...
-                                            app.current_slice hitx hity];
+                if(view == 3)
+                    app.points{Cv} = [app.points{Cv};   hitx hity slice];
+                elseif(view == 2)
+                    app.points{Cv} = [app.points{Cv};   hitx slice hity];
+                elseif(view == 1)
+                    app.points{Cv} = [app.points{Cv};   slice hitx hity];
                 end
                 
             else
@@ -123,18 +101,22 @@ classdef Measurements < handle
                 return
             end
             
-            %TODO: Split
+            %TODO: Split into multiple functions
             GUI.DisableControlsStatus(app);
             drawnow
             
-            if(app.view_axis == 3)
-                L = app.segmentation{Cv}.img(:,:,app.current_slice);
-            elseif(app.view_axis == 2)
+            imID    = app.imagePerAxis(Cv);
+            slice   = app.slicePerImage(imID);
+            view    = app.viewPerImage(imID);
+            
+            if(view == 3)
+                L = app.segmentation{Cv}.img(:,:,slice);
+            elseif(view == 2)
                 L = squeeze(...
-                    app.segmentation{Cv}.img(:,app.current_slice,:));
-            elseif(app.view_axis == 1)
+                    app.segmentation{Cv}.img(:,slice,:));
+            elseif(view == 1)
                 L = squeeze(...
-                    app.segmentation{Cv}.img(app.current_slice,:,:));
+                    app.segmentation{Cv}.img(slice,:,:));
             end
             
             %Find latest segmentation
@@ -160,11 +142,11 @@ classdef Measurements < handle
             V(1:2,2) = ellipse.horz_line(1,:);
             V(3:4,2) = ellipse.ver_line(1,:);
             V(:,3) = app.current_slice;
-            if(app.view_axis == 3)
+            if(view == 3)
                 V = V(:,[2 1 3]);
-            elseif(app.view_axis == 2)
+            elseif(view == 2)
                 V = V(:,[2 3 1]);
-            elseif(app.view_axis == 1)
+            elseif(view == 1)
                 V = V(:,[3 2 1]);
             end
 

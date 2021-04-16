@@ -28,9 +28,8 @@ classdef Study < handle
 %             app.seg_names           = {};
 %             app.measure_names       = {};
             app.slicePerImage       = ones(1,nImages)*-1;
-            app.viewPerImage        = ones(1,nImages)*3;
             app.points              = {[],[]};
-%             app.view_axis           = 3;
+            app.view_axis           = 3;
 %             app.measure_lines       = {[],[]};
             
             %Data
@@ -89,28 +88,26 @@ classdef Study < handle
         % Input:
         %   app, reference to the RMSStudio app
         %   index, index of image in the available_image_box
-            
-            if app.imIdx == index
-                return
-            end
+
             %Switch to new image
             app.imIdx = index;
             
-            if app.slicePerImage(index) == -1 %Image not loaded before
-                IOUtils.LoadNii(app, index)
-                app.imagePerAxis(app.current_view) = index;
-                GUI.DisplayNewImage(app, index)
-                return
-            end
-            
-            
             %Load the image, segmentations and measurement into the study,
             %either from disk, or from the list.
-            if isempty(app.data{index})
-                IOUtils.LoadNii(app, index)     
-            end
-            app.imagePerAxis(app.current_view) = index;
-            GUI.SwitchImage(app, index)
+            if index ~= app.imagePerAxis(app.current_view)
+%                 Study.LoadFromList(app, index)
+                if isempty(app.data{index})
+                    IOUtils.LoadNii(app, index);     
+                end
+                
+                %Keep track of which image is in which view
+                app.imagePerAxis(app.current_view) = index;
+            end    
+            
+            %TODO: decide between displaynew and switch
+            %Show everything
+            GUI.DisplayNewImage(app, index)
+
         end
                
         
@@ -122,17 +119,15 @@ classdef Study < handle
         %TODO: Split & Move function
         %TODO: update for userobjects
            
-            imID    = app.imagePerAxis(app.current_view);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage(imID);
-            
+            Cv  = app.current_view;
+        
             %Find the selection position for multiple views
-            if(view == 3)
-            elseif(view == 2)
+            if(app.view_axis == 3)
+            elseif(app.view_axis == 2)
                 tmp = hitx;
                 hitx = hity;
                 hity = tmp;
-            elseif(view == 1)
+            elseif(app.view_axis == 1)
                 tmp = hitx;
                 hitx = hity;
                 hity = tmp;
@@ -150,7 +145,7 @@ classdef Study < handle
                         
             %Find the segmentation values & measurement lines 
             %at the given position
-            if(view == 3)
+            if(app.view_axis == 3)
                 hitxrange = intersect(...
                         1:size(app.data{app.imIdx}.img,2),...
                         hitx-selector:hitx+selector);
@@ -159,7 +154,7 @@ classdef Study < handle
                     hity-selector:hity+selector);
                 if isfield(app.segmentation{Cv},'img')
                     nn = app.segmentation{Cv}.img(...
-                                hityrange,hitxrange,slice);
+                                hityrange,hitxrange,app.current_slice);
                 end
                 if ~isempty(app.measure_lines{Cv})
                     lines   = app.measure_lines{Cv}(:,[1,2]);
@@ -181,7 +176,7 @@ classdef Study < handle
 %                         lines(:,2) <= hityrange(end));
                 end
                 
-            elseif(view == 2)
+            elseif(app.view_axis == 2)
                 hitxrange = intersect(...
                     1:size(app.data{app.imIdx}.img,3),...
                     hitx-selector:hitx+selector);
@@ -190,7 +185,7 @@ classdef Study < handle
                     hity-selector:hity+selector);
                 if isfield(app.segmentation{Cv},'img')
                     nn = app.segmentation{Cv}.img(...
-                            hityrange,slice,hitxrange);
+                            hityrange,app.current_slice,hitxrange);
                 end
                 if ~isempty(app.measure_lines{Cv})
                     lines   = app.measure_lines{Cv}(:,[1,3]);
@@ -206,7 +201,7 @@ classdef Study < handle
                     end
                 end
                 
-            elseif(view == 1)
+            elseif(app.view_axis == 1)
                 hitxrange = intersect(...
                     1:size(app.data{app.imIdx}.img,3),...
                     hitx-selector:hitx+selector);
@@ -216,7 +211,7 @@ classdef Study < handle
                 
                 if isfield(app.segmentation{Cv},'img')
                     nn = app.segmentation{Cv}.img(...
-                        slice,hityrange,hitxrange);
+                        app.current_slice,hityrange,hitxrange);
                 end
                 if ~isempty(app.measure_lines{Cv})
                     lines   = app.measure_lines{Cv}(:,[2,3]);

@@ -49,8 +49,8 @@ classdef Interaction < handle
             [view, slice]   = GUI.GetUOViewAndSlice(obj);    
             
             %Switch slice and view            
-            app.view_axis       = view;
-            app.slice_per_image{app.imIdx} = slice;
+            app.viewPerImage(app.imIdx)     = view;
+            app.slicePerImage(app.imIdx)    = slice;
             
             GUI.UpdateSliceSlider(app);
             Graphics.UpdateImage(app);
@@ -94,7 +94,7 @@ classdef Interaction < handle
             eval(['app.' caller_name '.BackgroundColor = [.96 .96 .0];']);
                        
             %Switch to the correct image
-            index   = app.image_per_view(new_view_idx);
+            index   = app.imagePerAxis(new_view_idx);
             Study.SwitchImage(app, index)
             Interaction.ChangeListBoxValue(app, index)
             GUI.UpdateUOBox(app)
@@ -234,12 +234,11 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
             
             key     = event.Key;
-            disp(strcat(key, " pressed")) 
             if isempty(app.data)
                 return
-            elseif(~isfield(app.data{app.imIdx},'img') ||...
-                    isempty(app.data{app.imIdx}.img))
-                return
+%             elseif(~isfield(app.data{app.imIdx},'img') ||...
+%                     isempty(app.data{app.imIdx}.img))
+%                 return
             end
             if(strcmp(key,'uparrow'))
                 GUI.SliceUp(app)
@@ -258,12 +257,11 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
             
             key     = event.Key;
-            disp(strcat(key, " released")) 
             if isempty(app.data)
                 return
-            elseif(~isfield(app.data{app.imIdx},'img') ||...
-                    isempty(app.data{app.imIdx}.img))
-                return
+%             elseif(~isfield(app.data{app.imIdx},'img') ||...
+%                     isempty(app.data{app.imIdx}.img))
+%                 return
             end
             if(strcmp(key,'uparrow'))
                 GUI.SliceUp(app)
@@ -344,46 +342,17 @@ classdef Interaction < handle
         
         %% UI buttons
         
-        function Axial(app)
-        %Switches view to axial
-            app.view_axis = 3;
-            if(app.current_slice > size(app.data{app.imIdx}.img,3))
-                app.current_slice =...
-                    round(size(app.data{app.imIdx}.img,3)/2);
-            end
+        function ChangeViewAxis(app, viewAxis)
+        %Switches viewAxis of the current UIAxis to the specified one
+        %coronal = 1, sagittal = 2, axial = 3
+            app.viewPerImage(app.imIdx) = viewAxis;
+%             if(app.current_slice > size(app.data{app.imIdx}.img,3))
+%                 app.current_slice =...
+%                     round(size(app.data{app.imIdx}.img,3)/2);
+%             end
             GUI.UpdateSliceSlider(app);
             Graphics.UpdateImage(app);
-            app.AxialButton.BackgroundColor     = [.96 .96 0];
-            app.SagittalButton.BackgroundColor  = [.96 .96 .96];
-            app.CoronalButton.BackgroundColor   = [.96 .96 .96];
-        end
-        
-        function Sagittal(app)
-        %Switches view to sagittal
-            app.view_axis   = 2;
-            if(app.current_slice > size(app.data{app.imIdx}.img,2))
-                app.current_slice =...
-                    round(size(app.data{app.imIdx}.img,2)/2);
-            end
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
-            app.AxialButton.BackgroundColor     = [.96 .96 .96];
-            app.SagittalButton.BackgroundColor  = [.96 .96 0];
-            app.CoronalButton.BackgroundColor   = [.96 .96 .96];
-        end
-        
-        function Coronal(app)
-        %Switches view to coronal
-            app.view_axis   = 1;
-            if(app.current_slice > size(app.data{app.imIdx}.img,1))
-                app.current_slice =...
-                    round(size(app.data{app.imIdx}.img,1)/2);
-            end
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
-            app.AxialButton.BackgroundColor     = [.96 .96 .96];
-            app.SagittalButton.BackgroundColor  = [.96 .96 .96];
-            app.CoronalButton.BackgroundColor   = [.96 .96 0];
+            GUI.UpdateAxisButtons(app);
         end
         
         function ResetStudy(app)
@@ -672,21 +641,20 @@ classdef Interaction < handle
         %Input:
         %   value - new value for current_slice
             slice = round(value);
-            imgSize             = size(app.data{...
-                                    app.image_per_view(axID)}.img);
+            imID    = app.imagePerAxis(axID);
+            imgSize = size(app.data{imID}.img);
             %Limit the value between 1 and max
             if(slice < 1)
                 slice = 1;
             end
             %TODO: view_axis per image
-            if(slice > imgSize(app.view_axis)) 
-                slice = imgSize(app.view_axis);
+            if(slice > imgSize(app.viewPerImage(imID))) 
+                slice = imgSize(app.viewPerImage(imID));
             end
             
-            app.slice_per_image{axID}   = slice;
+            app.slicePerImage(imID)   = slice;
             
             %Update the GUI
-            
             if axID == app.current_view
                 GUI.UpdateSliceSlider(app)
             end

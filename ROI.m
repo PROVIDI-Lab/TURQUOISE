@@ -11,23 +11,18 @@ classdef ROI < handle
             % mouse is pressed somewhere in the image. It adds the point to
             % app.drawing. 
             
-            Cv  = app.current_view;
-            %If app.drawing doesn't exist yet, initialise it.
-%             if(~isfield(app.data{app.imIdx},'img') || ...
-%                     isempty(app.data{app.imIdx}.img))
-%                 app.points{Cv} = [];
-%             end
+            Cv      = app.current_view;
+            imID    = app.imagePerAxis(Cv);
+            slice   = app.slicePerImage(imID);
+            view    = app.viewPerImage(imID);
 
             %add new point
-            if(app.view_axis == 3)
-                app.points{Cv} = [app.points{Cv};...
-                                        hitx hity app.current_slice];
-            elseif(app.view_axis == 2)
-                app.points{Cv} = [app.points{Cv};...
-                                        hitx app.current_slice hity];
-            elseif(app.view_axis == 1)
-                app.points{Cv} = [app.points{Cv};...
-                                        app.current_slice hitx hity];
+            if(view == 3)
+                app.points{Cv} = [app.points{Cv}; hitx hity slice];
+            elseif(view == 2)
+                app.points{Cv} = [app.points{Cv}; hitx slice hity];
+            elseif(view == 1)
+                app.points{Cv} = [app.points{Cv}; slice hitx hity];
             end
         end
         
@@ -141,19 +136,24 @@ classdef ROI < handle
         
         function MoveROIPoint(app, newPos)
            %Modifies an ROI point to be in a new position. Called when the 
-           %user drags one of the points. 
-           x    = round(newPos(1));
-           y    = round(newPos(2));
-           z    = app.current_slice;
-           if app.view_axis == 1
+           %user drags one of the points.
+           
+            imID    = app.imagePerAxis(Cv);
+            view    = app.viewPerImage(imID);
+           
+            x    = round(newPos(1));
+            y    = round(newPos(2));
+            z    = app.slicePerImage(imID);
+            
+            if view == 1
                pos  = [z,x,y];
-           elseif app.view_axis == 2
+            elseif view == 2
                pos  = [x,z,y];
-           else
+            else
                pos  = [x,y,z];               
-           end
-           %If the obj is a circular ROI, edit accordingly
-           if app.userObjects{app.currentDragPoint{1}}.type == 3
+            end
+            %If the obj is a circular ROI, edit accordingly
+            if app.userObjects{app.currentDragPoint{1}}.type == 3
                %TODO fix different views 
                points  = app.userObjects{...
                         app.currentDragPoint{1}}.points(:,1:2);
@@ -162,12 +162,12 @@ classdef ROI < handle
                     dy  = y - points(1,2);
                     x2  = points(2,1) + dx;
                     y2  = points(2,2) + dy;
-                    
-%                     app.userObjects{app.currentDragPoint{1}}.points = ...
-%                         round([x,y,z; x2,y2,z]);
+
+            %                     app.userObjects{app.currentDragPoint{1}}.points = ...
+            %                         round([x,y,z; x2,y2,z]);
                     app.currentCircle = round([x,y,x2,y2]);
                 else %Edge is dragged, increase size
-                    
+
                     app.currentCircle  = round(...
                         [points(1,1), points(1,2), x, y]);
                 end
@@ -178,12 +178,12 @@ classdef ROI < handle
                     Graphics.DrawCircleInAxis(app, app.UIAxes2);
                 end
                 return
-           else %Normal ROI
+            else %Normal ROI
                 app.userObjects{app.currentDragPoint{1}}.points(...
                     app.currentDragPoint{2},:)     = round(pos);
-           end
-           
-           Graphics.UpdateUserInteractions(app);
+            end
+
+            Graphics.UpdateUserInteractions(app);
         end
         
         
@@ -220,28 +220,32 @@ classdef ROI < handle
         
         function mask = PointsToMask(app, points)
         %Creates an array the size of the current image where everything in
-        %the points is filled in. 
+        %the points is filled in.
+        
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+        
             %preallocate the mask
             points  = round(points);
             mask    = false(size(...
-                app.data{app.imIdx}.img(:,:,:,app.current_4d_idx)));
+                app.data{imID}.img(:,:,:,app.current_4d_idx)));
             
             %The mask is made slice by slice.
-            idx = unique(points(:,app.view_axis));
+            idx = unique(points(:,view));
             for ii = idx'
-                tmpPoints   = points(points(:,app.view_axis) == ii,:);
+                tmpPoints   = points( points(:, view) == ii,:);
                 mask = ROI.ConstructVertices(mask, tmpPoints);
             end
 
             %finalise segmentation, fill all holes
-            for iz  = 1:size(mask, app.view_axis)
+            for iz  = 1:size(mask, view)
                 %iz=app.current_slice:app.current_slice
                 %1:size(app.segmentation.img,3)
-                if(app.view_axis == 3)
+                if(view == 3)
                     mask(:,:,iz) = imfill(mask(:,:,iz), 'holes');
-                elseif(app.view_axis == 2)
+                elseif(view == 2)
                     mask(:,iz,:) = imfill(squeeze(mask(:,iz,:)), 'holes');
-                elseif(app.view_axis == 1)
+                elseif(view == 1)
                     mask(iz,:,:) = imfill(squeeze(mask(iz,:,:)), 'holes');
                 end
             end       
@@ -366,7 +370,10 @@ classdef ROI < handle
         function [points, markers] = GetCirclePointsMarkers(app)
         %Constructs the points at the edge of a circular ROI as well as
         %the markers that define it from app.currentCircle.
-        
+            
+            imID    = app.imagePerAxis(Cv);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage(imID);
             %Find position of circle
             tmp                 = num2cell(app.currentCircle);
             [x0, y0, x1, y1]    = deal(tmp{:});
@@ -380,25 +387,21 @@ classdef ROI < handle
             angles  = linspace(0, 2*pi, nPoints);
             x       = round(rad * cos(angles) + x0);
             y       = round(rad * sin(angles) + y0);
-            z       = ones(1, nPoints) * app.current_slice;
+            z       = ones(1, nPoints) * slice;
             
-            if app.view_axis        == 3
+            if view        == 3
                 points  = [x;y;z]';
-            elseif app.view_axis    == 2
+            elseif view    == 2
                 points  = [x;z;y]';
-            elseif app.view_axis    == 1
+            elseif view    == 1
                 points  = [z;x;y]';
             end
             
             %Create markers that define the circle (one in the middle,
             %one at the edge)
             insert  = @(a, x, n)cat(2,  x(1:n-1), a, x(n:end)); 
-            mark0   = insert(app.current_slice,...
-                            [x0, y0],...
-                            app.view_axis);
-            mark1   = insert(app.current_slice,...
-                            [x1, y1],...
-                            app.view_axis);
+            mark0   = insert(slice, [x0, y0], view);
+            mark1   = insert(slice, [x1, y1], view);
             markers = [mark0; mark1];
             
             
