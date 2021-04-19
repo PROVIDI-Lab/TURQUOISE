@@ -18,11 +18,12 @@ classdef UserObj < matlab.mixin.SetGet
         function obj = makeProperties(obj, app)
             
             if obj.type == 1 || obj.type == 3
+                axis4D      = app.d4PerImage(obj.imageIdx);
                 L           = obj.data == 1;
                 VS          = ...
                     min(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
                 V           = ...
-                    app.data{obj.imageIdx}.img(:,:,:,app.current_4d_idx);
+                    app.data{obj.imageIdx}.img(:,:,:, axis4D);
                 
                 obj.prop            = struct();
                 obj.prop.name       = obj.name;

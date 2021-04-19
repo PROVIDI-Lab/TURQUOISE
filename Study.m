@@ -14,26 +14,12 @@ classdef Study < handle
                 return
             end
             
-%             app.segmentation_list   = {};
-%             app.seg_names_list      = {};
-%             app.measurement_list    = {};    
-%             app.measure_names_list  = {};
-%             app.measure_length_list = {};
-%             app.roiPointList        = {};
-%             app.roiPointIndexList   = {};
-            
-            %View objects
+            %Initiatalize study variables
             app.userObjects         = {};
-%             app.segmentation        = {};
-%             app.seg_names           = {};
-%             app.measure_names       = {};
             app.slicePerImage       = ones(1,nImages)*-1;
             app.viewPerImage        = ones(1,nImages)*3;
+            app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
-%             app.view_axis           = 3;
-%             app.measure_lines       = {[],[]};
-            
-            %Data
             app.data                = cell(nImages,1);
             
             if isempty(app.user_profile)

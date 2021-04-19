@@ -224,11 +224,12 @@ classdef ROI < handle
         
             imID    = app.imagePerAxis(app.current_view);
             view    = app.viewPerImage(imID);
+            axis4D  = app.d4PerImage(imID);
         
             %preallocate the mask
             points  = round(points);
             mask    = false(size(...
-                app.data{imID}.img(:,:,:,app.current_4d_idx)));
+                app.data{imID}.img(:,:,:, axis4D)));
             
             %The mask is made slice by slice.
             idx = unique(points(:,view));
@@ -296,7 +297,8 @@ classdef ROI < handle
         function points = ValidatePoints(app, points)
         %Makes sure that all points are valid.
             sz  = size(...
-                app.data{app.imIdx}.img(:,:,:,app.current_4d_idx));
+                app.data{app.imIdx}.img(:,:,:,...
+                app.d4PerImage(app.imIdx)));
             points(:,1)     = min(points(:,1), sz(1));
             points(:,2)     = min(points(:,2), sz(2));
             points(:,3)     = min(points(:,3), sz(3));

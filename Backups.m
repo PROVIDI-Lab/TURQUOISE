@@ -9,7 +9,7 @@ classdef Backups < handle
             obj.imagePerAxis        = app.imagePerAxis;
             obj.slicePerImage       = app.slicePerImage;
             obj.viewPerImage        = app.viewPerImage;
-            obj.current_4d_idx      = app.current_4d_idx;
+            obj.d4PerIamge          = app.d4PerImage;
             obj.viewPerImage        = app.viewPerImage;
             obj.current_view        = app.current_view;
             obj.slicePerImage       = app.slicePerImage;
@@ -68,11 +68,9 @@ classdef Backups < handle
                                               obj.current_image_idx)
             end
 
-            app.current_4d_idx       = obj.current_4d_idx;
-            %            app.view_axis            = obj.view_axis;
-            %            app.current_slice        = obj.current_slice;
-            app.MinValue             = obj.MinValue;
-            app.MaxValue             = obj.MaxValue;
+            app.d4PerImage          = obj.d4PerImage;
+            app.MinValue            = obj.MinValue;
+            app.MaxValue            = obj.MaxValue;
 
             Cv   = app.current_view;
             if ~isequaln(obj.segmentation, app.segmentation{Cv})

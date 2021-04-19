@@ -5,7 +5,7 @@ classdef BackupObj < handle
        imagePerAxis,        %Stores the images per view
        viewPerImage,
        slicePerImage,
-       current_4d_idx,      %4D index
+       d4PerImage,          %4D index
        current_view,        %Current uiAxes in focus
        MinValue,            %Minimum slider value
        MaxValue,            %Maximum slider value

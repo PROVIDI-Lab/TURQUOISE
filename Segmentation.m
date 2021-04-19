@@ -35,17 +35,18 @@ classdef Segmentation < handle
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             
+            
             if(view == 3)
                 TheImg =                                                ...
                     app.data{imID}.img(...
-                    :, :, slice, app.current_4d_idx);
+                    :, :, slice, axis4D);
             elseif(view == 2)
                 TheImg =                                                ...
                     squeeze(app.data{imID}.img(...
-                    :, slice, :, app.current_4d_idx));
+                    :, slice, :, axis4D));
             elseif(view == 1)
                 TheImg = squeeze(app.data{imID}.img(...
-                    slice, :, :, app.current_4d_idx));
+                    slice, :, :, axis4D));
             end
             TheImg = single(TheImg);
             TheImg = TheImg / max(TheImg(:)) * 255;
@@ -128,8 +129,9 @@ classdef Segmentation < handle
             imID    = app.imagePerAxis(app.current_view);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
+            axis4D  = app.d4PerImage(imID);
             
-            TheImg  = single(app.data{imID}.img(:,:,:,app.current_4d_idx));
+            TheImg  = single(app.data{imID}.img(:,:,:, axis4D));
             TheImg  = TheImg / max(TheImg(:)) * 255;
             
             method = app.drawing.magic_method;

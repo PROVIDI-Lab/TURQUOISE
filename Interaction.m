@@ -662,6 +662,22 @@ classdef Interaction < handle
             Graphics.UpdateSelectionContour(app);
         end
         
+        
+        function Update4D(app, value)
+            %Updates the 4D axis for the current image
+            max4D   = size(app.data{app.imIdx}.img, 4);
+            min4D   = 1;
+            if value > max4D
+                value   = max4D;
+            elseif value < min4D
+                value   = min4D;
+            end 
+            
+            app.d4PerImage(app.imIdx)   = value;
+            GUI.Update4DSlider(app);
+            Graphics.UpdateImage(app);
+            Graphics.UpdateSelectionContour(app);   
+        end
         %% Prompts
         
         function choice = PromptName()

@@ -36,7 +36,8 @@ classdef Plotting < handle
         function LabelsStatsPlot(app)
             % Show statistics of each label
             Cv      = app.current_view;
-            im      = app.data{app.imIdx}.img(:,:,:,app.current_4d_idx);
+            axis4D  = app.d4PerImage(app.imIdx);
+            im      = app.data{app.imIdx}.img(:,:,:, axis4D);
             min_val = inf;
             max_val = -inf;
             f       = figure;

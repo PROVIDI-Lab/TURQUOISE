@@ -96,29 +96,8 @@ classdef GUI < handle
 %             app.view_axis               = 3;
             GUI.UpdateAxisButtons(app);
             app.zoomToggle              = false;
-            app.current_4d_idx          = 1;
             app.slicePerImage(index)    = round(size(...
                                             app.data{index}.img,3)/2);
-%             %Find correct slice
-% %             Cv                      = app.current_view;
-% %             slice       = app.slicePerImage{index};
-% %             if isempty(slice)
-% %                 slice   = round(size(app.data{index}.img, app.view_axis)/2);
-%             if isempty(app.current_slice)
-%                 app.current_slice   = round(size(                       ...
-%                                         app.data{index}.img,...
-%                                         app.view_axis)/2);
-%                 
-%             elseif app.current_slice == -1 ||                           ...
-%                    app.current_slice >=...
-%                    size(app.data{index}.img,app.view_axis)
-%                 app.current_slice   = round(size(                       ...
-%                                             app.data{index}.img,...
-%                                             app.view_axis)/2);
-%             end
-%             app.slicePerImage(app.imIdx) =...
-%                     app.current_slice;
-            
             %Set axis limits
             ax      = app.GetAxis(app.current_view);
             imSize  = size(app.data{index}.img);
@@ -139,15 +118,9 @@ classdef GUI < handle
         %Input:
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
-            
-%             if isempty(app.viewPerImage(index))
-%                 app.view_axis   = 3;
-%             else
-%                 app.view_axis   = app.viewPerImage(index);
-%             end
+
             GUI.UpdateAxisButtons(app)
             app.zoomToggle      = false;
-            app.current_4d_idx  = 1;
                         
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -295,10 +268,10 @@ classdef GUI < handle
             end
             app.SliceSlider.Value = double(slice);
             
-            
-            %Update dimensionSlider
-            %TODO: store per image. Also, don't do it here? Make a new
-            %function
+        end
+        
+        function Update4DSlider(app)
+            %Updates the slider that sets the 4d axis
             app.DSlider.MajorTicks = 1:1:size(refvol,4);
             if(size(refvol,4) > 20)
                 app.DSlider.MajorTicks = 1:10:size(refvol,4);
@@ -308,9 +281,8 @@ classdef GUI < handle
             else
                 app.DSlider.Limits = [1 2];
             end
-            app.DSlider.Value = double(app.current_4d_idx); 
+            app.DSlider.Value = double(app.d4PerImage(app.imIdx)); 
         end
-        
         
         function UpdateMinMaxSlider(app)
         %Updates the min and max sliders

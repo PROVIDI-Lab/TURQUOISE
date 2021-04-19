@@ -93,7 +93,7 @@ classdef IOUtils < handle
             nii.img = single(nii.img);
             
             app.data{index}         = nii;
-            app.current_4d_idx      = 1;
+            app.d4PerImage(index)   = 1;
             app.DSlider.Value       = 1;
         
         end

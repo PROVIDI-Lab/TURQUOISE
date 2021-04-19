@@ -118,16 +118,16 @@ classdef Graphics < handle
                 imID        = app.imagePerAxis(axID);
                 slice       = app.slicePerImage(imID);
                 view        = app.viewPerImage(imID);
-                %TODO: don't use app.current_4d_idx
+                d4          = app.d4PerImage(imID);
                 SL = app.data{imID};
                 if(view == 3)
-                    SL = SL.img(:,:,slice, app.current_4d_idx);
+                    SL = SL.img(:,:,slice, d4);
                 elseif(view == 2)
-                    SL = SL.img(:,slice, :,app.current_4d_idx);
+                    SL = SL.img(:,slice, :, d4);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
                 elseif(view == 1)
-                    SL = SL.img(slice, :,:,app.current_4d_idx);
+                    SL = SL.img(slice, :,:, d4);
                     SL = squeeze(SL);
                     SL = permute(SL,[2 1]);
                 end
