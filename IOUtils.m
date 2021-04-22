@@ -312,7 +312,7 @@ classdef IOUtils < handle
         %empty, it converts any dicom images to nii standard.
                     
             if ~exist('filepath','var')
-                fp = uigetdir('Select a subject folder');
+                fp = uigetdir('C:','Select a subject folder');
                 if(isnumeric(fp) && fp == 0)
                     app.UIFigure.Visible = 'on';
                     return
@@ -390,6 +390,9 @@ classdef IOUtils < handle
             
             if(exist(previously_processed,'dir') < 1) 
                 dcm2nii = IOUtils.checkDcm2Nii();
+                if isempty(dcm2nii)
+                    return
+                end
                 mkdir(previously_processed);
                 cmd = [dcm2nii ' -f %p_%s -o "'                     ...
                         previously_processed '" "'  fp '"'];
@@ -417,14 +420,16 @@ classdef IOUtils < handle
                     dcm2nii = dcm2nii(1);
                 end
 
-                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');
+                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');                
+                
             else
-%                 warning("Matlab can't find dcm2nii on its path.")
-%                 return
-
-            %For dev. only
-                addpath('C:\dMRI\Matlab_Libs\dcm2nii')
-                dcm2nii     = 'C:\dMRI\Matlab_Libs\dcm2nii\dcm2niix';
+                dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
+                if ~isnumeric(fp) || fp ~= 0
+                    dcm2nii = '';
+                    return
+                end
+                addpath(dcm2niiDir)
+                dcm2nii     = fullfile(dcm2niiDir, 'dcm2niix');
             end
             
         end
