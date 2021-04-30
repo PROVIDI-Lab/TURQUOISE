@@ -394,7 +394,7 @@ classdef IOUtils < handle
                     return
                 end
                 mkdir(previously_processed);
-                cmd = [dcm2nii ' -f %d_%s -o "'                     ...
+                cmd = [dcm2nii ' -f %p_%s -o "'                     ...
                         previously_processed '" "'  fp '"'];
                 system(cmd);
                 
@@ -403,7 +403,7 @@ classdef IOUtils < handle
                 %dicom images.
                 %only elements in folder are '.' & '..'
                 dcm2nii = IOUtils.checkDcm2Nii();
-                cmd = [dcm2nii ' -f %d_%s -o "'                     ...
+                cmd = [dcm2nii ' -f %p_%s -o "'                     ...
                         previously_processed '" "'  fp '"'];
                 system(cmd);
             end
@@ -424,7 +424,7 @@ classdef IOUtils < handle
                 
             else
                 dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
-                if dcm2niiDir == 0
+                if dcm2niiDir == 0m
                     dcm2nii = '';
                     return
                 end
