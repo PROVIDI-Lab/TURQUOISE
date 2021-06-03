@@ -93,6 +93,9 @@ classdef GUI < handle
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
             
+            if isempty(app.data{index})
+                return
+            end
 %             app.view_axis               = 3;
             GUI.UpdateAxisButtons(app);
             app.zoomToggle              = false;
@@ -148,10 +151,10 @@ classdef GUI < handle
                                         verticalScrollCount;
                                     
             axID    = GUI.FindAxisUnderCursor(app, event);
-            imID    = app.imagePerAxis(axID);
             if axID == -1
                 return
             end
+            imID    = app.imagePerAxis(axID);
             
             if app.ctrl %Zoom instead of scrolling
                 scrollCount     = verticalScrollAmount;

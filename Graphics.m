@@ -140,7 +140,11 @@ classdef Graphics < handle
 %                     app.cMinValue = 0;
 %                     app.cMaxValue = 10;
                 end
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
+                try
+                    set(the_axis, 'CLim', app.cScalePerImage{imID});
+                catch
+                    set(the_axis, 'CLim', [0,10]);
+                end
                 set(h,'ButtonDownFcn', @app.MouseClickedInImage);
             end          
         end
