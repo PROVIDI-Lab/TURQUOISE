@@ -93,6 +93,9 @@ classdef GUI < handle
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
             
+            if isempty(app.data{index})
+                return
+            end
 %             app.view_axis               = 3;
             GUI.UpdateAxisButtons(app);
             app.zoomToggle              = false;

@@ -36,27 +36,42 @@ classdef IOUtils < handle
         end 
         
         function ResliceResampleNii(app, index)
-        %Loads the .rmsstudio_reslice.nii file associated with the current
+        %Loads the rmsstudio_reslice.nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
         %app, the RMSStudio app
         %Index, the index of the image currently being loaded
-            
+        
             fp = app.current_folder;
             fn = app.AvailableimagesListBox.Items{index};
+            
+            %Don't reslice already resliced files
+            if contains(fn, ".rmsstudio_reslice.nii")
+                return
+            end
+            
             reslice_name = fullfile(fp,[fn(1:end-4)             ...
                                         '.rmsstudio_reslice.nii']);
         
             %If the file doesn't exist, reslice it now.
             if(exist(reslice_name,'file') < 1)
                 hdr = load_untouch_header_only(fullfile(fp,fn));
-                %TODO add try catch
-                reslice_nii(fullfile(fp,fn),                    ...
-                            reslice_name,                       ...
-                            hdr.dime.pixdim(2:4));
-                        
+                try
+                    reslice_nii(fullfile(fp,fn),                    ...
+                                reslice_name,                       ...
+                                hdr.dime.pixdim(2:4));
+                catch
+                    return
+                end
+                if exist(reslice_name, 'file')
+                    nii     = load_nii(reslice_name);
+                else
+%                     nii     = load_nii(fullfile(fp,fn));
+                    return
+                end
+                
+                
                 %Resample file
-                nii     = load_nii(reslice_name);
                 [nii, ratio] = IOUtils.RMSStandardVolumeTreatment(app,nii);
                 
                 %change header
@@ -72,7 +87,7 @@ classdef IOUtils < handle
         %% Loading & Saving files
         
         function LoadNii(app, index)
-        %Loads the .rmsstudio_reslice.nii file associated with the current
+        %Loads the rmsstudio_reslice.nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
         %   app, the RMSStudio app
@@ -84,9 +99,15 @@ classdef IOUtils < handle
             catch
                 return
             end
-            reslice_name = fullfile(fp,[fn(1:end-4)             ...
-                                        '.rmsstudio_reslice.nii']);
-            
+            if ~contains(fn, '.rmsstudio_reslice.nii')
+                reslice_name = fullfile(fp,[fn(1:end-4)             ...
+                                            '.rmsstudio_reslice.nii']);
+                if exist(reslice_name, 'file') == 0
+                    return
+                end
+            else
+                reslice_name    = fullfile(fp,fn);
+            end
             %Load the file
 %             reslice_name    = convertCharsToStrings(reslice_name);
             nii     = load_nii(reslice_name);
@@ -307,8 +328,8 @@ classdef IOUtils < handle
         function PrepareStudy(app, filepath)
         %Prepares a new study when the 'Load' button is pressed.
         %First checks if the Study has already been processed (contains a
-        %.rmsstudio folder). If so, loads all items from that folder. If no
-        %previously processed folder exists, or if the .rmsstudio folder is
+        %rmsstudio folder). If so, loads all items from that folder. If no
+        %previously processed folder exists, or if the rmsstudio folder is
         %empty, it converts any dicom images to nii standard.
                     
             if ~exist('filepath','var')
@@ -332,7 +353,7 @@ classdef IOUtils < handle
             %Convert files to nii (if needed), find original filenames and
             %set the 'current_folder' object.
             try
-                previously_processed = fullfile(fp,'.rmsstudio');
+                previously_processed = fullfile(fp,'rmsstudio');
                 IOUtils.convertToNii(fp, previously_processed);
                 
                 %Find all original files (nothing created by rmsstudio 
@@ -365,16 +386,16 @@ classdef IOUtils < handle
         end
         
         function getFilenames(app, previously_processed)
-            files = dir(fullfile(previously_processed,'*.nii'));
-                good_files = true(size(files));
-                for file_id=1:length(good_files)
-                    if(contains(files(file_id).name,'rmsstudio') || ...
-                       contains(files(file_id).name,'localizer') || ...
-                       contains(files(file_id).name,'segmentation'))
-                        good_files(file_id) = false;
-                    end
-                end
-                files = files(good_files);
+            files = dir(fullfile(previously_processed,'*rmsstudio_reslice.nii'));
+%                 good_files = true(size(files));
+%                 for file_id=1:length(good_files)
+%                     if(contains(files(file_id).name,'rmsstudio') || ...
+%                        contains(files(file_id).name,'localizer') || ...
+%                        contains(files(file_id).name,'segmentation'))
+%                         good_files(file_id) = false;
+%                     end
+%                 end
+%                 files = files(good_files);
                 
                 %Add files to selection box in UI
                 app.AvailableimagesListBox.Items = {};
@@ -385,7 +406,7 @@ classdef IOUtils < handle
         end
         
         function convertToNii(fp, previously_processed)
-            %If no previous conversions exist, Create a .rmsstudio 
+            %If no previous conversions exist, Create a rmsstudio 
             %directory with .nii versions of all the files using dcm2nii.
             
             if(exist(previously_processed,'dir') < 1) 
@@ -394,7 +415,7 @@ classdef IOUtils < handle
                     return
                 end
                 mkdir(previously_processed);
-                cmd = [dcm2nii ' -f %p_%s -o "'                     ...
+                cmd = [dcm2nii ' -f %d_%s -o "'                     ...
                         previously_processed '" "'  fp '"'];
                 system(cmd);
                 
@@ -403,7 +424,7 @@ classdef IOUtils < handle
                 %dicom images.
                 %only elements in folder are '.' & '..'
                 dcm2nii = IOUtils.checkDcm2Nii();
-                cmd = [dcm2nii ' -f %p_%s -o "'                     ...
+                cmd = [dcm2nii ' -f %d_%s -o "'                     ...
                         previously_processed '" "'  fp '"'];
                 system(cmd);
             end
@@ -424,7 +445,7 @@ classdef IOUtils < handle
                 
             else
                 dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
-                if ~isnumeric(fp) || fp ~= 0
+                if dcm2niiDir == 0
                     dcm2nii = '';
                     return
                 end

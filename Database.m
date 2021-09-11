@@ -16,11 +16,9 @@ classdef Database < handle
            %Create a list of subfolders with the studies
            Database.FindStudies(app, fp)
            
-           %TODO: reslice all studies
-           
-           %Open first study
-           IOUtils.PrepareStudy(app, app.dataset{1})
-           
+           for i = 1:length(app.dataset)
+               IOUtils.PrepareStudy(app, app.dataset{i})
+           end
         end
         
         function FindStudies(app, fp)

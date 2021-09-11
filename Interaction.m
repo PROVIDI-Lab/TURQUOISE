@@ -408,7 +408,7 @@ classdef Interaction < handle
             Measurements.RemoveAllMeasurements(app);
             %Remove ROIs
             ROI.RemoveAllROIs(app);
-            
+            GUI.UpdateUOBox(app);
             Graphics.UpdateImage(app);
         end
         
@@ -423,14 +423,7 @@ classdef Interaction < handle
             if isempty(app.AvailableimagesListBox.Items)
                 return
             end
-        
-            GUI.DisableControlsStatus(app);
-            pause(0.01);
-            drawnow
             Study.SaveToDisk(app)
-            pause(0.01);
-            drawnow;
-            GUI.RevertControlsStatus(app);
         end
         
         function LoadNewLabels(app)
