@@ -30,10 +30,14 @@ classdef Study < handle
             IOUtils.LoadNii(app, 2);     
             IOUtils.LoadNii(app, 1);     
             
-            %Load all user objects from disk
-            for idx = 1:nImages
-                Study.LoadFromDisk(app, idx)
-            end
+            %Load the user objects for the first 2 images
+            Study.LoadFromDisk(app, 1)
+            Study.LoadFromDisk(app, 2)
+            
+%             %Load all user objects from disk
+%             for idx = 1:nImages
+%                 Study.LoadFromDisk(app, idx)
+%             end
             
             %Initialize the window
             GUI.InitGUI(app)
@@ -46,7 +50,6 @@ classdef Study < handle
         %it hasn't already been loaded.
         %Input: index - index of the image in AvailableImageListBox
             
-        
             IOUtils.LoadUserObjects(app, index);
         end
                
@@ -84,6 +87,7 @@ classdef Study < handle
             
             if app.slicePerImage(index) == -1 %Image not loaded before
                 IOUtils.LoadNii(app, index)
+                IOUtils.LoadUserObjects(app, index)
                 app.imagePerAxis(app.current_view) = index;
                 GUI.DisplayNewImage(app, index)
                 return
@@ -93,7 +97,8 @@ classdef Study < handle
             %Load the image, segmentations and measurement into the study,
             %either from disk, or from the list.
             if isempty(app.data{index})
-                IOUtils.LoadNii(app, index)     
+                IOUtils.LoadNii(app, index)    
+                IOUtils.LoadUserObjects(app, index)
             end
             app.imagePerAxis(app.current_view) = index;
             GUI.SwitchImage(app, index)
