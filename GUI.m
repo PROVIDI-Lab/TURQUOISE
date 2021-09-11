@@ -148,10 +148,10 @@ classdef GUI < handle
                                         verticalScrollCount;
                                     
             axID    = GUI.FindAxisUnderCursor(app, event);
-            imID    = app.imagePerAxis(axID);
             if axID == -1
                 return
             end
+            imID    = app.imagePerAxis(axID);
             
             if app.ctrl %Zoom instead of scrolling
                 scrollCount     = verticalScrollAmount;

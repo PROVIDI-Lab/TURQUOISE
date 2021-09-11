@@ -4,6 +4,7 @@ classdef Objects < handle
         function AddNewUserObj(app, varargin)
             obj         = UserObj();
             
+            %very hacky way to assign properties.
             for idx     = 1:2:nargin-1
                 if ~isprop(obj, varargin{idx})
                     continue
@@ -117,6 +118,13 @@ classdef Objects < handle
             Graphics.UpdateUserObjects(app)
         end
         
+        function ToggleVisibleUO(app)
+            %Toggles the visible status of the object
+            
+            idx     = app.UOBox.Value;
+            visible = app.app.userObjects(idx).visible;
+            app.userObjects(idx).setVisible(~visible)
+        end
         
     end
 end

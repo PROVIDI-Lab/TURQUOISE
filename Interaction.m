@@ -57,6 +57,12 @@ classdef Interaction < handle
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
+            %Update visible slider
+            if obj.visible
+                app.VisibleSlider.Value = 'On';
+            else
+                app.VisibleSlider.Value = 'Off';
+            end
             
         end
         
