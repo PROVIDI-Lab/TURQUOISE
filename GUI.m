@@ -162,7 +162,11 @@ classdef GUI < handle
                 return
             end
             
-            slice   = app.slicePerImage(imID) - verticalScrollAmount;
+            try 
+                slice   = app.slicePerImage(imID) - verticalScrollAmount;
+            catch
+                return
+            end
             Interaction.UpdateSlice(app, slice, axID);
             
         end
@@ -236,6 +240,17 @@ classdef GUI < handle
                                 
             the_axis.YLim   = [yMin, yMax];
         end
+        
+        function ResetAxisZoom(app)
+            
+            ax      = app.GetAxis(app.current_view);
+            imIdx   = app.imagePerAxis(app.current_view);
+            imSize  = size(app.data{imIdx}.img);
+            ax.XLim = [0, imSize(1)];
+            ax.YLim = [0, imSize(2)];
+            
+        end
+        
         
     %% Sliders && UI elements
 

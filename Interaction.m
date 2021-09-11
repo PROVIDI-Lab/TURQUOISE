@@ -248,6 +248,8 @@ classdef Interaction < handle
                 Interaction.BackspacePressed(app)
             elseif(strcmp(key, 'z'))
                 Interaction.ToggleZoom(app)
+            elseif(strcmp(key, 'h'))
+                GUI.ResetAxisZoom(app)
             elseif(strcmp(key, 'control'))
                 app.ctrl    = true;
             end
@@ -305,6 +307,8 @@ classdef Interaction < handle
                 app.zoomToggle = true;
             end            
         end
+        
+        %%
         
         % TODO: split
         function MouseDeleteObjectAtCoordinates(app,hitx,hity)

@@ -234,7 +234,9 @@ classdef MathUtils < handle
             delta                = app.lastEvents(end) - app.lastEvents(1);
             
             %Determined very heuristically 
-            amount  = round(6.008345e-8*delta^-1.495745);
+            amount  = round(8.008345e-8*delta^-1.355745);
+%             disp(delta)
+%             disp(amount)
             amount  = max(amount,1);
             amount  = min(amount,7);
             
