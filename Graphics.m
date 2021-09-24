@@ -47,6 +47,7 @@ classdef Graphics < handle
         %Called when the user interacts with the image (draws points, 
         %circle, etc.). Only the necessary functions are called in order
         %to have the updates be very quick.
+        
             Graphics.DeleteAllTempDrawings(app);
             if app.drawing.mode == 1
                 Graphics.DrawPointsInAxis(app,axID);
@@ -325,11 +326,13 @@ classdef Graphics < handle
         function DrawROIPointsInAxis(app, axID)
         %Plot app.roiPoints
             the_axis    = app.GetAxis(axID);
-            view        = app.viewPerImage(app.imagePerAxis(axID));
+            imID        = app.imagePerAxis(axID);
+            view        = app.viewPerImage(imID);
+            slice       = app.slicePerImage(imID);
         
             for i = 1:length(app.userObjects)
                 obj     = app.userObjects{i};
-                if obj.imageIdx ~= app.imagePerAxis(app.current_view)...
+                if obj.imageIdx ~= imID...
                         || ~obj.visible...
                         || (obj.type ~= 1 && obj.type ~= 3)...
                         || isempty(obj.points)
@@ -338,7 +341,7 @@ classdef Graphics < handle
             
                 tmp     = obj.points;
                 %Only display points in the current slice
-                idx     = tmp(:, view) == app.current_slice;
+                idx     = tmp(:, view) == slice;
                 tmp     = tmp(idx,:);
 
                 %Get x and y coordinate (of current view)

@@ -170,12 +170,7 @@ classdef Interaction < handle
             
             elseif hit.Button == 2
                 %Here we adjust the contrast
-                x = hit.Source.Parent.Parent.CurrentPoint(1);
-                y = hit.Source.Parent.Parent.CurrentPoint(2);
-                hitx = round(hit.IntersectionPoint(1));
-                hity = round(hit.IntersectionPoint(2));
-                app.dragPoint   = [hitx, x, hity, y];
-                app.drawing.mode = 6;
+                GUI.StartChangingContrast(app, hit)
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -215,7 +210,6 @@ classdef Interaction < handle
             %windowbuttonmotionFCN has been set for the UIAxes elements.
             %Calls ROI.MoveROIPoint with the new position of the cursor 
             %relative to the top left corner with the scale of the image.
-            disp('a')
             if isempty(app.dragPoint)
                 return
             end
@@ -458,7 +452,7 @@ classdef Interaction < handle
                                 defPath);
             fp              = fullfile(path, file);
             
-            IOUtils.loadSegmentationPoints(app, fp);  
+            IOUtils.loadSegmentationPoints(app, fp, app.imIdx);  
             Graphics.UpdateImage(app);
         end
         
@@ -485,7 +479,6 @@ classdef Interaction < handle
         
         function EditPolygon(app)
             %Toggles the edit function on or off.
-            %TODO: add button gui stuff.
             
             if app.drawing.mode == 2
                 app.drawing.mode = 0;

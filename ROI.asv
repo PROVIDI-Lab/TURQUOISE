@@ -74,12 +74,11 @@ classdef ROI < handle
         
         function StartDragging(app, hit)
         %Stores the location from which an ROIpoint is being dragged.
-%             x = hit.Source.Parent.Parent.Parent.CurrentPoint(1);
-%             y = hit.Source.Parent.Parent.Parent.CurrentPoint(2);
-            %TODO: do I even use x & y anywhere?
+            x = hit.Source.Parent.Parent.Parent.CurrentPoint(1);
+            y = hit.Source.Parent.Parent.Parent.CurrentPoint(2);
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
-            app.dragPoint   = [hitx, 0, hity, 0];
+            app.dragPoint   = [hitx, x, hity, y];
             ROI.FindPoint(app);
             
             %Only continue if a point has been found
@@ -87,11 +86,11 @@ classdef ROI < handle
                 return
             end
 
-            set(hit.Source.Parent.Parent.Parent,                               ...
+            set(hit.Source.Parent.Parent,                               ...
                 'WindowButtonMotionFcn',                                ...
                 @app.MouseDraggedInImage);
 
-            set(hit.Source.Parent.Parent.Parent,                               ...
+            set(hit.Source.Parent.Parent,                               ...
                 'WindowButtonUpFcn',                                    ...
                 @app.MouseReleasedInImage);
                 
@@ -139,7 +138,7 @@ classdef ROI < handle
            %Modifies an ROI point to be in a new position. Called when the 
            %user drags one of the points.
            
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(Cv);
             view    = app.viewPerImage(imID);
            
             x    = round(newPos(1));
