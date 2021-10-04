@@ -6,6 +6,7 @@ classdef UserObj < matlab.mixin.SetGet
        graphics,                %Graphics of the object
        changed      = true,     %Stores whether to redraw
        visible      = true,     %Stores whether to display
+       boxVisible   = true,     %Stores whether to display infobox
        data,                    %Seg, other
        points,                  %ROIPoints, drawing points
        name,                    %Name of the object
@@ -56,6 +57,21 @@ classdef UserObj < matlab.mixin.SetGet
             for i = 1:length(obj.graphics)
                obj.graphics{i}.Visible  = visible; 
                obj.visible              = visible;
+            end
+            
+        end
+        
+        function setBoxVisible(obj, boxVisible)
+            if isempty(obj.graphics)
+                return
+            end
+            
+            for i = 1:length(obj.graphics)
+                %if text..
+                if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
+                   obj.graphics{i}.Visible  = boxVisible; 
+                   obj.boxVisible           = boxVisible;
+                end
             end
             
         end

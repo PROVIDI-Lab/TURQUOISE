@@ -89,9 +89,12 @@ classdef Interaction < handle
         %        calling this function from unknown sources (not
         %        pre-defined).
         
+            if isempty(app.AvailableimagesListBox.Items)
+                return
+            end
+        
             GUI.DisableAllButtonsAndActions(app);
             GUI.RevertControlsStatus(app);
-            prev_view           = app.current_view;
             app.current_view    = new_view_idx;
                       
             app.View1Button.BackgroundColor = [.96 .96 .96];
@@ -213,7 +216,6 @@ classdef Interaction < handle
             if isempty(app.dragPoint)
                 return
             end
-            disp(hit.IntersectionPoint)
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
@@ -246,8 +248,8 @@ classdef Interaction < handle
                 GUI.SliceDown(app)
             elseif(strcmp(key, 'backspace'))
                 Interaction.BackspacePressed(app)
-            elseif(strcmp(key, 'z'))
-                Interaction.ToggleZoom(app)
+%             elseif(strcmp(key, 'z'))
+%                 Interaction.ToggleZoom(app)
             elseif(strcmp(key, 'h'))
                 GUI.ResetAxisZoom(app)
             elseif(strcmp(key, 'control'))

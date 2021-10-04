@@ -132,7 +132,7 @@ classdef IOUtils < handle
             %Load the file
 %             reslice_name    = convertCharsToStrings(reslice_name);
             nii     = load_nii(reslice_name);
-            nii     = IOUtils.PermuteFlip(nii);
+%             nii     = IOUtils.PermuteFlip(nii);
             nii.img = single(nii.img);
             
             app.data{index}         = nii;
@@ -376,8 +376,13 @@ classdef IOUtils < handle
             
             %Convert files to nii (if needed), find original filenames and
             %set the 'current_folder' object.
+            %TODO streamline
             try
-                previously_processed = fullfile(fp,'rmsstudio');
+                if contains(fp, 'rmsstudio')
+                    previously_processed = fp;
+                else
+                    previously_processed = fullfile(fp,'rmsstudio');
+                end
                 IOUtils.convertToNii(fp, previously_processed);
                 
                 %Find all original files (nothing created by rmsstudio 

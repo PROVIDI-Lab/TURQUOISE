@@ -59,6 +59,9 @@ classdef ROI < handle
             %Does mostly the same as ValidateDrawingPoints, just with the
             %most recent roiPoints and not drawing.points.
             
+            if isempty(app.currentDragPoint)
+                return
+            end
             
             Backups.CreateBackup(app);
             %Circular ROI

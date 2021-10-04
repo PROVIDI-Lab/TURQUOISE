@@ -104,8 +104,8 @@ classdef GUI < handle
             %Set axis limits
             ax      = app.GetAxis(app.current_view);
             imSize  = size(app.data{index}.img);
-            ax.XLim = [0, imSize(1)];
-            ax.YLim = [0, imSize(2)];
+            ax.XLim = [0, imSize(2)];
+            ax.YLim = [0, imSize(1)];
                         
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -124,6 +124,12 @@ classdef GUI < handle
 
             GUI.UpdateAxisButtons(app)
             app.zoomToggle      = false;
+            
+            %Set axis limits
+            ax      = app.GetAxis(app.current_view);
+            imSize  = size(app.data{index}.img);
+            ax.XLim = [0, imSize(2)];
+            ax.YLim = [0, imSize(1)];
                         
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -144,6 +150,10 @@ classdef GUI < handle
         
         function Scroll(app, event)
         %Manages the scrollwheelEvent 
+        
+            if isempty(app.data) || isempty(app.AvailableimagesListBox.Items)
+                return
+            end
             
             verticalScrollCount     = event.VerticalScrollCount;
             verticalScrollAmount    = MathUtils.GetScrollAmount(app);
@@ -246,8 +256,8 @@ classdef GUI < handle
             ax      = app.GetAxis(app.current_view);
             imIdx   = app.imagePerAxis(app.current_view);
             imSize  = size(app.data{imIdx}.img);
-            ax.XLim = [0, imSize(1)];
-            ax.YLim = [0, imSize(2)];
+            ax.XLim = [0, imSize(2)];
+            ax.YLim = [0, imSize(1)];
             
         end
         
@@ -653,7 +663,7 @@ classdef GUI < handle
         
         % This prevents user interaction
         function DisableControlsStatus(app,only_action_buttons)
-            app.FileMenu.Enable                     = 'off';
+%             app.FileMenu.Enable                     = 'off';
             app.ViewMenu.Enable                     = 'off';
             app.AnalyseMenu.Enable                  = 'off';
             app.DrawMenu.Enable                     = 'off';

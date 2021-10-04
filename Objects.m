@@ -69,7 +69,7 @@ classdef Objects < handle
                 return
             end
             
-            app.userObjects(idx) = [];
+            app.userObjects{idx} = [];
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
         end
@@ -122,8 +122,16 @@ classdef Objects < handle
             %Toggles the visible status of the object
             
             idx     = app.UOBox.Value;
-            visible = app.app.userObjects(idx).visible;
-            app.userObjects(idx).setVisible(~visible)
+            visible = app.userObjects{idx}.visible;
+            app.userObjects{idx}.setVisible(~visible)
+        end
+        
+        function ToggleVisibleUOInfoBox(app)
+            %Toggles the visible status of the infobox of the object
+            
+            idx     = app.UOBox.Value;
+            boxVisible = app.userObjects{idx}.boxVisible;
+            app.userObjects{idx}.setBoxVisible(~boxVisible) 
         end
         
     end

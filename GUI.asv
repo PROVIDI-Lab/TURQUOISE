@@ -144,6 +144,8 @@ classdef GUI < handle
         
         function Scroll(app, event)
         %Manages the scrollwheelEvent 
+        
+            if isempty(app.data)
             
             verticalScrollCount     = event.VerticalScrollCount;
             verticalScrollAmount    = MathUtils.GetScrollAmount(app);
@@ -333,17 +335,21 @@ classdef GUI < handle
         
         
         function StartChangingContrast(app, hit)
-           
-            %                 x = hit.Source.Parent.Parent.CurrentPoint(1);
+           %Records the point where the cursor was pressed to change 
+%               x = hit.Source.Parent.Parent.CurrentPoint(1);
 %               y = hit.Source.Parent.Parent.CurrentPoint(2);
                 hitx = round(hit.IntersectionPoint(1));
                 hity = round(hit.IntersectionPoint(2));
                 app.dragPoint   = [hitx, 0, hity, 0];
                 app.drawing.mode = 6;
                 
-                
-                
-            
+                set(hit.Source.Parent.Parent.Parent,                                  ...
+                    'WindowButtonMotionFcn',                            ...
+                    @app.MouseDraggedInImage);
+
+                set(hit.Source.Parent.Parent.Parent,                                  ...
+                    'WindowButtonUpFcn',                                ...
+                    @app.MouseReleasedInImage);
         end
         
         function AdjustContrast(app, hitx, hity)
