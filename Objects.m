@@ -40,7 +40,9 @@ classdef Objects < handle
         end
         
         function name = CheckNameUnique(app, name, type)
-            %Compares 
+            %Compares names between new object and existing objects.
+            %In the case of identical names, adds a number to the end.           
+            
             counter     = 0;
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
@@ -69,7 +71,7 @@ classdef Objects < handle
                 return
             end
             
-            app.userObjects{idx} = [];
+            app.userObjects(idx) = [];
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
         end
