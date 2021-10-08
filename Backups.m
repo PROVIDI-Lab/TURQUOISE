@@ -3,7 +3,10 @@ classdef Backups < handle
         
         function CreateBackup(app)
             %Creates a backupObj that stores the current state of the app.
+            %Also flags the unsavedProgress to true.
             obj = BackupObj();
+            
+            app.unsavedProgress     = true;
             
             obj.current_image_idx   = app.imIdx;
             obj.imagePerAxis        = app.imagePerAxis;

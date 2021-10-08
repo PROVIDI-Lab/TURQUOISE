@@ -248,6 +248,8 @@ classdef Interaction < handle
                 GUI.SliceDown(app)
             elseif(strcmp(key, 'backspace'))
                 Interaction.BackspacePressed(app)
+            elseif(strcmp(key, 'escape'))
+                GUI.RevertControlsStatus(app)
 %             elseif(strcmp(key, 'z'))
 %                 Interaction.ToggleZoom(app)
             elseif(strcmp(key, 'h'))
@@ -412,6 +414,21 @@ classdef Interaction < handle
             Graphics.UpdateImage(app);
         end
         
+        function LoadStudy(app)
+           %Checks whether unsaved work exists. If so, prompts the user to
+           %save. 
+           
+           if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+           end
+           IOUtils.PrepareStudy(app);
+            
+        end
+        
+        
         function Save(app)
         %Called when the user presses the 'save_edited' button. Writes the
         %segmentation to the disk as well as any measurements and ROI
@@ -424,7 +441,21 @@ classdef Interaction < handle
                 return
             end
             Study.SaveToDisk(app)
+            app.unsavedProgress = false;
         end
+        
+        function Exit(app)
+            if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+            end
+                       
+            closereq
+        end
+           
+            
         
         function LoadNewLabels(app)
             %Loads a new segmentation for the current image.
@@ -880,6 +911,23 @@ classdef Interaction < handle
                 end
         end
         
+        
+        function proceed = PromptSave(app)
+            
+            selection = questdlg('You have unsaved work. Save?',...
+              'Save?',...
+              'Yes','No','Cancel','Cancel'); 
+          proceed = false;
+          switch selection
+              case 'Yes'
+                 Interaction.Save(app)
+                 proceed = true;
+              case 'No'
+                 proceed = true;
+              case 'Cancel'
+                 proceed = false;
+           end            
+        end
         
         
         %% Other

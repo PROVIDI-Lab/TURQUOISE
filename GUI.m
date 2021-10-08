@@ -294,12 +294,18 @@ classdef GUI < handle
                 slice = round( viewSize / 2);
                 app.slicePerImage(app.imIdx) = slice;
             end
-            app.SliceSlider.Value = double(slice);
             
+            try
+                app.SliceSlider.Value = double(slice);
+            catch
+                return
+            end            
         end
         
         function Update4DSlider(app)
             %Updates the slider that sets the 4d axis
+            refvol  = app.data{app.imIdx}.img;
+            
             app.DSlider.MajorTicks = 1:1:size(refvol,4);
             if(size(refvol,4) > 20)
                 app.DSlider.MajorTicks = 1:10:size(refvol,4);
