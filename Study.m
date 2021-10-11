@@ -58,15 +58,10 @@ classdef Study < handle
             %Saves the current study to the .rmsstudio folder. All the 
             %User-made objects are written to either .nii or .csv files.
             
-            
-            %First save the most recent changes to the list
-%             Study.SaveToList(app, app.current_view)
-            
-            
             for imageId=1:length(app.AvailableimagesListBox.Items)
                 fn      = app.AvailableimagesListBox.Items{imageId};
                 outfn   = fullfile(app.current_folder,              ...
-                                        fn(1:end-4),                    ...
+                                        fn,                         ...
                                          app.user_profile{1});
                                      
                 IOUtils.saveUObjs(app, imageId, outfn);

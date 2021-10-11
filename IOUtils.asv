@@ -56,25 +56,25 @@ classdef IOUtils < handle
 % %             min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
 %         end 
         
-        function ResliceResampleNii(current_file, reslice_file)
+        function ResliceResampleNii(app, reslice_path)
         %Loads the rmsstudio_reslice.nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
         %app, the RMSStudio app
-        %reslice_name, the path of the file to be resliced
+        %reslice_name, the path of the file to be resliced\\
         
             %If the file doesn't exist, reslice it now.
-            if(exist(reslice_file,'file') < 1)
-                hdr = load_untouch_header_only(current_file);
+            if(exist(reslice_path,'file') < 1)
+                hdr = load_untouch_header_only(reslice_path);
                 try
-                    reslice_nii(current_file,                       ...
-                                reslice_file,                       ...
+                    reslice_nii(fullfile(fp,fn),                    ...
+                                reslice_path,                       ...
                                 hdr.dime.pixdim(2:4));
                 catch
                     return
                 end
-                if exist(reslice_file, 'file')
-                    nii     = load_nii(reslice_file);
+                if exist(reslice_path, 'file')
+                    nii     = load_nii(reslice_path);
                 else
 %                     nii     = load_nii(fullfile(fp,fn));
                     return
@@ -89,7 +89,7 @@ classdef IOUtils < handle
                                             ./ ratio;
                 
                 %Save back to disk
-                save_nii(nii, reslice_file);
+                save_nii(nii, reslice_path);
             end
         end   
         
@@ -109,7 +109,8 @@ classdef IOUtils < handle
                 return
             end
             if ~contains(fn, '.rmsstudio_reslice.nii')
-                reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
+                reslice_name = fullfile(fp,[fn(1:end-4)             ...
+                                            '.rmsstudio_reslice.nii']);
                 if exist(reslice_name, 'file') == 0
                     return
                 end
@@ -398,8 +399,7 @@ classdef IOUtils < handle
                 else
                     reslice_path = fullfile(app.current_folder,...
                         strrep(text,'.nii','.rmsstudio_reslice.nii'));
-                    current_path = fullfile(app.current_folder, text);
-                    IOUtils.ResliceResampleNii(current_path, reslice_path)
+                    IOUtils.ResliceResampleNii(app, reslice_path)
                     app.AvailableimagesListBox.Items{file_id} = ...
                         erase(text, '.nii');
                 end
