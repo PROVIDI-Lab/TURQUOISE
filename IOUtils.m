@@ -230,7 +230,7 @@ classdef IOUtils < handle
         function LoadUserObjects(app, idx)
             %Loads userobjects from the disk that correspond to the image
             %at idx.
-            folder      = app.AvailableimagesListBox.Items{idx}(1:end-4);
+            folder      = app.AvailableimagesListBox.Items{idx};
             direc       = fullfile(app.current_folder,...
                     folder);
             %First find any segmentations
@@ -344,7 +344,13 @@ classdef IOUtils < handle
         %empty, it converts any dicom images to nii standard.
                     
             if ~exist('filepath','var')
-                fp = uigetdir('C:','Select a subject folder');
+                
+                if ~isempty(app.filepath)
+                    targetDir = fullfile(app.filepath, '..', '..');
+                    fp = uigetdir(targetDir,'Select a subject folder');
+                else
+                    fp = uigetdir('C:','Select a subject folder');
+                end
                 if(isnumeric(fp) && fp == 0)
                     app.UIFigure.Visible = 'on';
                     return
@@ -390,18 +396,27 @@ classdef IOUtils < handle
                 '*.nii'));
             
             app.AvailableimagesListBox.Items = {};
+            
+            counter = 1;
             for file_id=1:length(files)
-                text        = files(file_id).name;    
+                text        = files(file_id).name; 
                 if contains(text, '.rmsstudio_reslice.nii')
-                    app.AvailableimagesListBox.Items{file_id} = ...
+                    app.AvailableimagesListBox.Items{counter} = ...
                         erase(text, '.rmsstudio_reslice.nii');
+                    counter = counter + 1;
                 else
+                    %if no _reslice version exists, reslice
                     reslice_path = fullfile(app.current_folder,...
                         strrep(text,'.nii','.rmsstudio_reslice.nii'));
+                    if exist(reslice_path,'file')
+                        continue
+                    end
+                    
                     current_path = fullfile(app.current_folder, text);
                     IOUtils.ResliceResampleNii(current_path, reslice_path)
-                    app.AvailableimagesListBox.Items{file_id} = ...
+                    app.AvailableimagesListBox.Items{counter} = ...
                         erase(text, '.nii');
+                    counter = counter + 1;
                 end
             end       
         end

@@ -82,6 +82,10 @@ classdef Measurements < handle
         
         function RemoveMeasurement(app, idx)
         %removes the measurement(s) at the indexes
+        
+            %TODO: work with objects instead of measure_lines;
+            return
+            
             Cv  = app.current_view;
             app.measure_lines{Cv}(2*idx,:)      = [];
             app.measure_lines{Cv}(2*idx-1,:)    = [];
@@ -90,10 +94,12 @@ classdef Measurements < handle
         end
         
         
-        function PerformAutomaticEllipseMeasurement(app)
-            %Automatically fits an ellipse on the most recently drawn
-            %segmentation and adds the major and minor axis to the
-            %measurement list. 
+        function PerformAutomaticEllipseMeasurement(app, id)
+            %Automatically fits an ellipse on the segmentation with the
+            %corresponding id. Adds the minor and major axis as
+            %userObjects.
+            %TODO: rework for userobjects
+            return
             
             Cv  = app.current_view;
             %Don't do anything if no segmentations exist.
@@ -101,37 +107,24 @@ classdef Measurements < handle
                 return
             end
             
-            %TODO: Split into multiple functions
-            GUI.DisableControlsStatus(app);
-            drawnow
-            
-            imID    = app.imagePerAxis(Cv);
-            slice   = app.slicePerImage(imID);
-            view    = app.viewPerImage(imID);
+            obj             = app.userObjects{id};
+            [view, slice]   = GetUOViewAndSlice(obj)
             
             if(view == 3)
-                L = app.segmentation{Cv}.img(:,:,slice);
+                L = obj.data(:,:,slice);
             elseif(view == 2)
                 L = squeeze(...
-                    app.segmentation{Cv}.img(:,slice,:));
+                    obj.data(:,slice,:));
             elseif(view == 1)
                 L = squeeze(...
-                    app.segmentation{Cv}.img(slice,:,:));
+                    obj.data(slice,:,:));
             end
             
-            %Find latest segmentation
-            seg_id  = max(L(:));
-            SL      = L == seg_id;
-                            
-            if(seg_id == 0 || sum(SL(:)) == 0)
-                return
-            end
-
             %Fit ellipse
 %             [Mx,My] = MathUtils.WeightedCenterOfROI(SL);
-            SLc = imerode(SL,strel('disk',3));
-            IX = find(SL-SLc > 0);
-            [Xv,Yv] = ind2sub(size(SL),IX);
+            Lc = imerode(L,strel('disk',3));
+            IX = find(L-Lc > 0);
+            [Xv,Yv] = ind2sub(size(L),IX);
 
             ellipse = fit_ellipse(Xv,Yv,app.UIAxes1);
 
@@ -200,6 +193,11 @@ classdef Measurements < handle
         
         function RemoveAllMeasurements(app)
             %Removes all current measurements
+            
+            %TODO: rework for measurements
+            
+            return
+            
             Cv  = app.current_view;            
             %Don't do anything if no measurements exist
             if ~isempty(app.measure_lines)

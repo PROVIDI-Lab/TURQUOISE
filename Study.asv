@@ -34,8 +34,8 @@ classdef Study < handle
             IOUtils.LoadUserObjects(app, 1);
             IOUtils.LoadUserObjects(app, 2);
             
-            %Find if any files have user objects associated with them
-            Study.FindUOsOnDisk(app)
+            %Find if any files have segmentation
+            Study.
             
 %             %Load all user objects from disk
 %             for idx = 1:nImages
@@ -44,24 +44,6 @@ classdef Study < handle
             
             %Initialize the window
             GUI.InitGUI(app)
-            
-        end
-        
-        function FindUOsOnDisk(app)
-            
-            nImages     = length(app.AvailableimagesListBox.Items);
-            for idx = 1:nImages
-                folder      = app.AvailableimagesListBox.Items{idx};
-                direc       = fullfile(app.current_folder,...
-                        folder);
-                files       = dir(fullfile(direc)); 
-                if length(files) <= 2
-                    continue
-                end
-                
-                %More files found -> UOs probably exist
-                GUI.ToggleUOPresence(app, idx)                
-            end
             
         end
         
@@ -81,11 +63,6 @@ classdef Study < handle
             
             for imageId=1:length(app.AvailableimagesListBox.Items)
                 fn      = app.AvailableimagesListBox.Items{imageId};
-                
-                if strcmp(fn(1:2), '* ')
-                    fn = fn(3:end);
-                end
-                
                 outfn   = fullfile(app.current_folder,              ...
                                         fn,                         ...
                                          app.user_profile{1});

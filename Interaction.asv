@@ -121,11 +121,10 @@ classdef Interaction < handle
             end
             %Check if the screen that was pressed is different from the
             %current view.
-            if (hit.Source.Parent == app.UIAxes1                       ...
+            if( (hit.Source.Parent == app.UIAxes1                       ...
                     && app.current_view == 2)       ||                  ...
                 (hit.Source.Parent == app.UIAxes2                       ...
-                    && app.current_view == 1)       &&                  ...
-                    hit.Button == 1
+                    && app.current_view == 1)   )
             
                     %Switch focus to the screen that was pressed
                     Backups.CreateBackup(app);
@@ -176,12 +175,7 @@ classdef Interaction < handle
                 %Here we adjust the contrast
                 GUI.StartChangingContrast(app, hit)
                 
-            elseif hit.Button == 3
-                %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOClicked(app, hit);
-                if id > 0
-                   GUI.UOContextMenu(app, id, hit) 
-                end
+                
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -246,25 +240,24 @@ classdef Interaction < handle
             key     = event.Key;
             if isempty(app.data)
                 return
+%             elseif(~isfield(app.data{app.imIdx},'img') ||...
+%                     isempty(app.data{app.imIdx}.img))
+%                 return
             end
-            
-            switch key
-                case 'uparrow'
-                    GUI.SliceUp(app)
-                case 'downarrow'
-                    GUI.SliceDown(app)
-                case 'backspace'
-                    Interaction.BackspacePressed(app)
-                case 'escape'
-                    GUI.RevertControlsStatus(app)
-                case 'h'
-                    GUI.ResetAxisZoom(app)
-                case 'control'
-                    app.ctrl    = true;
-                case 'f12'
-                    Interaction.Debug(app)
-                otherwise
-                    return
+            if(strcmp(key,'uparrow'))
+                GUI.SliceUp(app)
+            elseif(strcmp(key,'downarrow'))
+                GUI.SliceDown(app)
+            elseif(strcmp(key, 'backspace'))
+                Interaction.BackspacePressed(app)
+            elseif(strcmp(key, 'escape'))
+                GUI.RevertControlsStatus(app)
+%             elseif(strcmp(key, 'z'))
+%                 Interaction.ToggleZoom(app)
+            elseif(strcmp(key, 'h'))
+                GUI.ResetAxisZoom(app)
+            elseif(strcmp(key, 'control'))
+                app.ctrl    = true;
             end
         end
         
@@ -274,13 +267,20 @@ classdef Interaction < handle
             key     = event.Key;
             if isempty(app.data)
                 return
+%             elseif(~isfield(app.data{app.imIdx},'img') ||...
+%                     isempty(app.data{app.imIdx}.img))
+%                 return
             end
-            
-            switch key
-                case 'control'
-                    app.ctrl    = false;
-                otherwise
-                    return
+            if(strcmp(key,'uparrow'))
+                GUI.SliceUp(app)
+            elseif(strcmp(key,'downarrow'))
+                GUI.SliceDown(app)
+            elseif(strcmp(key, 'backspace'))
+                Interaction.BackspacePressed(app)
+            elseif(strcmp(key, 'z'))
+                Interaction.ToggleZoom(app)
+            elseif(strcmp(key, 'control'))
+                app.ctrl    = false;
             end
         end
         
@@ -940,12 +940,6 @@ classdef Interaction < handle
             app.colors_list = app.colors_list(IX,:);
             Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app);
-        end
-        
-        function Debug(app)
-            %Used for quick access to the app state
-            disp('Debugging, press the double arrows to return to normal')
-            a = 12;
         end
         
     end

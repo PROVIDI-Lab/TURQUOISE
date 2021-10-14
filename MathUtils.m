@@ -225,22 +225,21 @@ classdef MathUtils < handle
             
         end
         
-        function amount = GetScrollAmount(app)
-            %%Returns a scrollamount based on how intensely was scrolled
-            if length(app.lastEvents) >= 5
-               app.lastEvents(1)    = [];
-            end
-            app.lastEvents       = [app.lastEvents, now];
-            delta                = app.lastEvents(end) - app.lastEvents(1);
-            
-            %Determined very heuristically 
-            amount  = round(8.008345e-8*delta^-1.355745);
-%             disp(delta)
-%             disp(amount)
-            amount  = max(amount,1);
-            amount  = min(amount,7);
-            
-        end
+%         function amount = GetScrollAmount(app)
+%             %%Returns a scrollamount based on how intensely was scrolled
+%             if length(app.lastEvents) >= 5
+%                app.lastEvents(1)    = [];
+%             end
+%             app.lastEvents       = [app.lastEvents, now];
+%             delta                = app.lastEvents(end) - app.lastEvents(1);
+%             %Determined very heuristically 
+%             amount  = round(6.008345e-8*delta^-1.155745);
+%             disp([num2str(delta) ' - ' num2str(amount)])
+% %             disp(amount)
+%             amount  = max(amount,1);
+%             amount  = min(amount,7);
+%             
+%         end
         
         function [rMin, rMax] = GetNewRange(rDelta, r, r0, r1)
             %Calculates the min and max values of a range with width rDelta

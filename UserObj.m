@@ -49,14 +49,18 @@ classdef UserObj < matlab.mixin.SetGet
             
         end
         
-        function setVisible(obj, visible)
+        function setVisible(obj, visible, app)
             if isempty(obj.graphics)
                 return
             end
             
             for i = 1:length(obj.graphics)
-               obj.graphics{i}.Visible  = visible; 
-               obj.visible              = visible;
+                obj.visible              = visible;
+                if ~isvalid(obj.graphics{i})
+                    Graphics.DrawUserObjects(app, app.current_view)
+                else
+                    obj.graphics{i}.Visible  = visible; 
+                end
             end
             
         end

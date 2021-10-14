@@ -235,6 +235,7 @@ classdef ROI < handle
             points  = round(points);
             mask    = false(size(...
                 app.data{imID}.img(:,:,:, axis4D)));
+            mask    = permute(mask, [2,1,3]);
             
             %The mask is made slice by slice.
             idx = unique(points(:,view));
@@ -304,8 +305,8 @@ classdef ROI < handle
             sz  = size(...
                 app.data{app.imIdx}.img(:,:,:,...
                 app.d4PerImage(app.imIdx)));
-            points(:,1)     = min(points(:,1), sz(1));
-            points(:,2)     = min(points(:,2), sz(2));
+            points(:,1)     = min(points(:,1), sz(2));
+            points(:,2)     = min(points(:,2), sz(1));
             points(:,3)     = min(points(:,3), sz(3));
             points          = max(points,1);
         end

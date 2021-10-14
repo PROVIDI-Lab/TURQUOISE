@@ -374,17 +374,18 @@ classdef GUI < handle
             %determine the new min and max display values.
             %X influences the min value & Y influences the max value            
             
-            dX              = (hitx - app.dragPoint(1));
-            dY              = (hity - app.dragPoint(3));
+            dX              = (hitx - app.dragPoint(1))/4;
+            dY              = (hity - app.dragPoint(3))/4;
             if isnan(dX)
                 dX = 0;
             end
             if isnan(dY)
                 dY = 0;
             end
-            minVal          = app.MinvalSlider.Value + dX;
+            cVals           = app.cScalePerImage{app.imIdx};
+            minVal          = cVals(1) + dX;
             minVal          = max(min(100, minVal),1);
-            maxVal          = app.MaxvalSlider.Value - dY;
+            maxVal          = cVals(2) - dY;
             maxVal          = max(min(100, maxVal),1);
             
             %Set the new slider positions
@@ -398,14 +399,11 @@ classdef GUI < handle
             app.dragPoint(3) = hity;
             
             %Update the contrast
-            cMaxVal = maxVal/100*app.MaxValue;
-            cMinVal = minVal/100*app.MaxValue;
-            if cMaxVal <= cMinVal
-                cMaxVal = cMinVal + 0.001;
+            if maxVal <= minVal
+                maxVal = minVal + 0.001;
             end
             
-            app.cScalePerImage{app.imIdx} = [cMinVal, cMaxVal];
-            Graphics.UpdateImage(app); 
+            
             
         end
         
