@@ -15,6 +15,12 @@ classdef Graphics < handle
         function UpdateUserObjects(app)
         %Updates the image for the current view
             %Don't draw anything if the image isn't drawn yet.
+            if isempty(app.slicePerImage)
+                return
+            end         
+            if length(app.slicePerImage) < app.imagePerAxis(app.current_view)
+                return
+            end            
             if app.slicePerImage(app.imagePerAxis(app.current_view)) == -1
                 return
             end

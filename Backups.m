@@ -4,6 +4,8 @@ classdef Backups < handle
         function CreateBackup(app)
             %Creates a backupObj that stores the current state of the app.
             %Also flags the unsavedProgress to true.
+            %TODO: only keep ~5 backups. 
+            
             obj = BackupObj();
             
             app.unsavedProgress     = true;

@@ -45,15 +45,22 @@ classdef Interaction < handle
                 return
             end
 %             UOidx           = app.UOBox.ItemsData(index);
-            obj             = app.userObjects{index};
-            [view, slice]   = GUI.GetUOViewAndSlice(obj);    
+
+            %Find obj
+            index = Objects.findUOIndex(app, index);
+            if index == -1
+                return
+            end
             
-            %Switch slice and view            
+            %Switch slice and view       
+            obj                             = app.userObjects{index{l
+            [view, slice]                   = GUI.GetUOViewAndSlice(obj);    
             app.viewPerImage(app.imIdx)     = view;
             app.slicePerImage(app.imIdx)    = slice;
             
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
+            GUI.UpdateSliceSlider(app)
+            Graphics.UpdateImage(app)
+            GUI.ResetAxisZoom(app)
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
@@ -121,10 +128,11 @@ classdef Interaction < handle
             end
             %Check if the screen that was pressed is different from the
             %current view.
-            if( (hit.Source.Parent == app.UIAxes1                       ...
+            if (hit.Source.Parent == app.UIAxes1                       ...
                     && app.current_view == 2)       ||                  ...
                 (hit.Source.Parent == app.UIAxes2                       ...
-                    && app.current_view == 1)   )
+                    && app.current_view == 1)       &&                  ...
+                    hit.Button == 1
             
                     %Switch focus to the screen that was pressed
                     Backups.CreateBackup(app);
@@ -175,7 +183,12 @@ classdef Interaction < handle
                 %Here we adjust the contrast
                 GUI.StartChangingContrast(app, hit)
                 
-                
+            elseif hit.Button == 3
+                %Here we open a contextmenu when clicking a UO
+                id = Objects.FindUOClicked(app, hit);
+                if id > 0
+                   GUI.UOContextMenu(app, id, hit) 
+                end
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -240,24 +253,25 @@ classdef Interaction < handle
             key     = event.Key;
             if isempty(app.data)
                 return
-%             elseif(~isfield(app.data{app.imIdx},'img') ||...
-%                     isempty(app.data{app.imIdx}.img))
-%                 return
             end
-            if(strcmp(key,'uparrow'))
-                GUI.SliceUp(app)
-            elseif(strcmp(key,'downarrow'))
-                GUI.SliceDown(app)
-            elseif(strcmp(key, 'backspace'))
-                Interaction.BackspacePressed(app)
-            elseif(strcmp(key, 'escape'))
-                GUI.RevertControlsStatus(app)
-%             elseif(strcmp(key, 'z'))
-%                 Interaction.ToggleZoom(app)
-            elseif(strcmp(key, 'h'))
-                GUI.ResetAxisZoom(app)
-            elseif(strcmp(key, 'control'))
-                app.ctrl    = true;
+            
+            switch key
+                case 'uparrow'
+                    GUI.SliceUp(app)
+                case 'downarrow'
+                    GUI.SliceDown(app)
+                case 'backspace'
+                    Interaction.BackspacePressed(app)
+                case 'escape'
+                    GUI.RevertControlsStatus(app)
+                case 'h'
+                    GUI.ResetAxisZoom(app)
+                case 'control'
+                    app.ctrl    = true;
+                case 'f12'
+                    Interaction.Debug(app)
+                otherwise
+                    return
             end
         end
         
@@ -267,20 +281,13 @@ classdef Interaction < handle
             key     = event.Key;
             if isempty(app.data)
                 return
-%             elseif(~isfield(app.data{app.imIdx},'img') ||...
-%                     isempty(app.data{app.imIdx}.img))
-%                 return
             end
-            if(strcmp(key,'uparrow'))
-                GUI.SliceUp(app)
-            elseif(strcmp(key,'downarrow'))
-                GUI.SliceDown(app)
-            elseif(strcmp(key, 'backspace'))
-                Interaction.BackspacePressed(app)
-            elseif(strcmp(key, 'z'))
-                Interaction.ToggleZoom(app)
-            elseif(strcmp(key, 'control'))
-                app.ctrl    = false;
+            
+            switch key
+                case 'control'
+                    app.ctrl    = false;
+                otherwise
+                    return
             end
         end
         
@@ -360,9 +367,10 @@ classdef Interaction < handle
 %                 app.current_slice =...
 %                     round(size(app.data{app.imIdx}.img,3)/2);
 %             end
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
-            GUI.UpdateAxisButtons(app);
+            GUI.UpdateSliceSlider(app)
+            Graphics.UpdateImage(app)
+            GUI.UpdateAxisButtons(app)
+            GUI.ResetAxisZoom(app)
         end
         
         function ResetStudy(app)
@@ -673,6 +681,11 @@ classdef Interaction < handle
         %   value - new value for current_slice
             slice = round(value);
             imID    = app.imagePerAxis(axID);
+            
+            if isempty(app.data{imID})
+                return
+            end
+            
             imgSize = size(app.data{imID}.img);
             %Limit the value between 1 and max
             if(slice < 1)
@@ -940,6 +953,12 @@ classdef Interaction < handle
             app.colors_list = app.colors_list(IX,:);
             Graphics.UpdateImage(app);
             Graphics.UpdateSelectionContour(app);
+        end
+        
+        function Debug(app)
+            %Used for quick access to the app state
+            disp('Debugging, press "continue"')
+            a = 12;
         end
         
     end

@@ -63,6 +63,8 @@ classdef Objects < handle
             end
         end
         
+        function findUOByInde
+        
         
         function DeleteUO(app)
             %When the deletemenu in he UOBox conextmenu is called.
@@ -145,7 +147,9 @@ classdef Objects < handle
            if isa(hit.Source, 'matlab.graphics.primitive.Text')
                UOId = Objects.FindTextUO(app, hit);
            elseif isa(hit.Source, 'matlab.graphics.chart.primitive.Contour')
-               UOId = Object.FindContourUO(app, hit);
+               UOId = Objects.FindContourUO(app, hit);
+           else
+               UOId = -1;
            end
         end
         
@@ -162,31 +166,44 @@ classdef Objects < handle
             end            
         end
         
-        function FindContourUO(app, hit)
+        function UOId = FindContourUO(app, hit)
             %Finds a userobject with a contour graphics object.
             UOId = -1;
             contour = hit.Source.ContourMatrix;
             
+            
+            %For each point in obj.points, check if it exists in the 
+            %contourmatrix. if so, that's the object. 
             for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};               
-                points = obj.points;
-                for pointId = 1:size(points, 1)
-                    x = points
-                    
+                obj = app.userObjects{i};   
+                
+                %if the obj doesn't have the right imageID, skip it
+                Cv      = app.current_view;
+                imID    = app.imagePerAxis(Cv);
+                if obj.imageIdx ~= imID
+                    continue
                 end
+                
+                %Compare points
+                points = obj.points;
+                hits = 0;
+                for pointId = 1:size(points, 1)
+                    x = points(pointId, 1);
+                    y = points(pointId, 2);
+                    res = ...
+                        sum(sum(contour == x, 1) .* sum(contour == y, 1));
+                    if res == 0
+                        break
+                    else
+                        hits = hits + 1;
+                    end
+                end
+                
+                if hits == size(points, 1)
+                    UOId = obj.ID;
+                end                
             end 
-            
-            
         end
-        
-        
-        function res = pointInContour(x,y, contour)
-           %Checks whether a point exists in a contourMatrix
-           
-           res = sum(sum(contour == x, 1) .* sum(contour == y, 1));
-           
-        end
-        
         
         
     end

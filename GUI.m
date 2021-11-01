@@ -259,8 +259,15 @@ classdef GUI < handle
             ax      = app.GetAxis(app.current_view);
             imIdx   = app.imagePerAxis(app.current_view);
             imSize  = size(app.data{imIdx}.img);
-            ax.XLim = [0, imSize(2)];
-            ax.YLim = [0, imSize(1)];
+            imSize(app.viewPerImage(imIdx)) = []; %Correct for view
+            
+            if app.viewPerImage(imIdx) == 3
+                ax.XLim = [0, imSize(2)];
+                ax.YLim = [0, imSize(1)];
+            else
+                ax.XLim = [0, imSize(1)];
+                ax.YLim = [0, imSize(2)];
+            end
             
         end
         
@@ -512,7 +519,7 @@ classdef GUI < handle
                 end
 
                 [view, slice]   = GUI.GetUOViewAndSlice(obj);
-                views           = {'Sag', 'Cor', 'Ax'};
+                views           = {'Cor', 'Sag', 'Ax'};
                 view            = views{view};
                 types           = {'ROI', 'MSR', 'ROI'};
                 type            = types{obj.type};

@@ -63,11 +63,30 @@ classdef Objects < handle
             end
         end
         
+        function i = findUOIndex(app, index)
+           for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                if obj.ID == index
+                    break
+                end
+            end
+            
+            %no matching objects
+            if obj.ID ~= index
+                i = -1;
+                return
+            end 
+        end
         
         function DeleteUO(app)
             %When the deletemenu in he UOBox conextmenu is called.
             idx     = app.UOBox.Value;
             if isempty(idx)
+                return
+            end
+            
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
                 return
             end
             
@@ -80,6 +99,14 @@ classdef Objects < handle
         function RenameUO(app)
             %When the renamemenu in he UOBox conextmenu is called.
             idx     = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
             newName     = Interaction.PromptName();
             newName     = Objects.CheckNameUnique(app, newName, ...
                 app.userObjects{idx}.type);
@@ -92,6 +119,10 @@ classdef Objects < handle
             %When the copytoMenu in the UOBox contextmenu is called.
             idx         = app.UOBox.Value;
             if isempty(idx)
+                return
+            end
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
                 return
             end
             

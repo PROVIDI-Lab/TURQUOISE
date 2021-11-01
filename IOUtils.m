@@ -108,6 +108,9 @@ classdef IOUtils < handle
             catch
                 return
             end
+            if strcmp(fn(1:2), '* ')
+                    fn = fn(3:end);
+            end
             if ~contains(fn, '.rmsstudio_reslice.nii')
                 reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
                 if exist(reslice_name, 'file') == 0
@@ -231,6 +234,11 @@ classdef IOUtils < handle
             %Loads userobjects from the disk that correspond to the image
             %at idx.
             folder      = app.AvailableimagesListBox.Items{idx};
+            
+            if strcmp(folder(1:2), '* ')
+                    folder = folder(3:end);
+            end
+            
             direc       = fullfile(app.current_folder,...
                     folder);
             %First find any segmentations
@@ -346,7 +354,7 @@ classdef IOUtils < handle
             if ~exist('filepath','var')
                 
                 if ~isempty(app.filepath)
-                    targetDir = fullfile(app.filepath, '..', '..');
+                    targetDir = fullfile(app.filepath, '..');
                     fp = uigetdir(targetDir,'Select a subject folder');
                 else
                     fp = uigetdir('C:','Select a subject folder');

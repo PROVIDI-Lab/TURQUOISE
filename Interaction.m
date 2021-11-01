@@ -45,15 +45,22 @@ classdef Interaction < handle
                 return
             end
 %             UOidx           = app.UOBox.ItemsData(index);
-            obj             = app.userObjects{index};
-            [view, slice]   = GUI.GetUOViewAndSlice(obj);    
+
+            %Find obj
+            index = Objects.findUOIndex(app, index);
+            if index == -1
+                return
+            end
             
-            %Switch slice and view            
+            %Switch slice and view       
+            obj                             = app.userObjects{index};
+            [view, slice]                   = GUI.GetUOViewAndSlice(obj);    
             app.viewPerImage(app.imIdx)     = view;
             app.slicePerImage(app.imIdx)    = slice;
             
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
+            GUI.UpdateSliceSlider(app)
+            Graphics.UpdateImage(app)
+            GUI.ResetAxisZoom(app)
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
@@ -360,9 +367,10 @@ classdef Interaction < handle
 %                 app.current_slice =...
 %                     round(size(app.data{app.imIdx}.img,3)/2);
 %             end
-            GUI.UpdateSliceSlider(app);
-            Graphics.UpdateImage(app);
-            GUI.UpdateAxisButtons(app);
+            GUI.UpdateSliceSlider(app)
+            Graphics.UpdateImage(app)
+            GUI.UpdateAxisButtons(app)
+            GUI.ResetAxisZoom(app)
         end
         
         function ResetStudy(app)
@@ -438,12 +446,13 @@ classdef Interaction < handle
         %Input:
         %   app - the RMSstudio app
         %
-        
             if isempty(app.AvailableimagesListBox.Items)
                 return
             end
+            GUI.DisableAllButtonsAndActions(app)
             Study.SaveToDisk(app)
             app.unsavedProgress = false;
+            GUI.RevertControlsStatus(app)
         end
         
         function Exit(app)
@@ -673,6 +682,11 @@ classdef Interaction < handle
         %   value - new value for current_slice
             slice = round(value);
             imID    = app.imagePerAxis(axID);
+            
+            if isempty(app.data{imID})
+                return
+            end
+            
             imgSize = size(app.data{imID}.img);
             %Limit the value between 1 and max
             if(slice < 1)
@@ -944,7 +958,7 @@ classdef Interaction < handle
         
         function Debug(app)
             %Used for quick access to the app state
-            disp('Debugging, press the double arrows to return to normal')
+            disp('Debugging, press "continue"')
             a = 12;
         end
         

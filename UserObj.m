@@ -57,6 +57,7 @@ classdef UserObj < matlab.mixin.SetGet
             for i = 1:length(obj.graphics)
                 obj.visible              = visible;
                 if ~isvalid(obj.graphics{i})
+                    %TODO: find error Not enough input arguments.
                     Graphics.DrawUserObjects(app, app.current_view)
                 else
                     obj.graphics{i}.Visible  = visible; 
