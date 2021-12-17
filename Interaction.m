@@ -103,11 +103,6 @@ classdef Interaction < handle
             GUI.DisableAllButtonsAndActions(app);
             GUI.RevertControlsStatus(app);
             app.current_view    = new_view_idx;
-                      
-            app.View1Button.BackgroundColor = [.96 .96 .96];
-            app.View2Button.BackgroundColor = [.96 .96 .96];
-            
-            eval(['app.' caller_name '.BackgroundColor = [.96 .96 .0];']);
                        
             %Switch to the correct image
             index   = app.imagePerAxis(new_view_idx);
@@ -213,9 +208,9 @@ classdef Interaction < handle
             app.currentCircle       = [];
             
             Graphics.UpdateImage(app)
-            set(hit.Source,...
-                    'WindowButtonMotionFcn',...
-                    '')
+%             set(hit.Source,...
+%                     'WindowButtonMotionFcn',...
+%                     '')
             set(hit.Source,...
                     'WindowButtonUpFcn',...
                     '')
@@ -229,8 +224,26 @@ classdef Interaction < handle
             %Calls ROI.MoveROIPoint with the new position of the cursor 
             %relative to the top left corner with the scale of the image.
             if isempty(app.dragPoint)
+                UOId = Objects.FindUOUnderMouse(app, hit);
+                
+                if UOId == -1
+                    if app.prevUOTextShown ~= 0
+                        Objects.ToggleVisibleUOInfoBox(app, app.prevUOTextShown)
+                        app.prevUOTextShown = 0;
+                    end
+                    return
+                end
+                
+                if app.userObjects{UOId}.boxVisible
+                    return
+                end
+                    
+                Objects.ToggleVisibleUOInfoBox(app, UOId)
+                app.prevUOTextShown = UOId;
+                
                 return
             end
+            
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
@@ -242,6 +255,8 @@ classdef Interaction < handle
             elseif app.drawing.mode == 6
                 GUI.AdjustContrast(app, hitx, hity)
             end
+            
+            
             
         end
         
@@ -266,6 +281,28 @@ classdef Interaction < handle
                     GUI.RevertControlsStatus(app)
                 case 'h'
                     GUI.ResetAxisZoom(app)
+                case 'd'
+                    Interaction.DrawPolygon(app)
+                case 'z'
+                    Interaction.ToggleZoom(app)
+                case 'e'
+                    Interaction.EditPolygon(app)
+                case 'c'
+                    Interaction.CalculateADCVals(app)
+                case 'f'
+                    Interaction.PermuteFlip(app)
+                case 'g'
+                    Interaction.PermuteFlipUOs(app)
+                case 'u'
+                    Interaction.FlipZ(app)
+                case 'i' 
+                    Interaction.FlipXYObj(app)
+                case 'o' 
+                    Interaction.HideAllTooltips(app)
+                case 'l'
+                    Interaction.LoadStudy(app)
+                case 'v'
+                    Interaction.showADCHist(app)
                 case 'control'
                     app.ctrl    = true;
                 case 'f12'
@@ -792,6 +829,13 @@ classdef Interaction < handle
             %If a filepath is given, first check if a list with profile
             %names already exists.
             
+            if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+            end
+            
             profile = '';
             
             if nargin() == 2
@@ -827,7 +871,7 @@ classdef Interaction < handle
                            'Callback','delete(gcf)');
 
                    %Default
-                    profile = {names{1}};
+                    profile = names{1};
                     
                     uiwait(d);
 
@@ -847,9 +891,10 @@ classdef Interaction < handle
             %anything else.
                 profile = inputdlg(['Enter profile name.' newline       ...
                 '(We suggest the first three letters of your name']);
-            
                 if isempty(profile)
-                    profile = {''};
+                    profile = '';
+                else
+                    profile = profile{1};
                 end
             end
             
@@ -862,6 +907,9 @@ classdef Interaction < handle
             end
             app.user_profile    = profile;
             app.backup_list     = [];
+            
+            %Reload everything
+            Study.InitStudy(app)
             
             
             %When the file exists, but 'other' is chosen, prompt for new
@@ -933,8 +981,10 @@ classdef Interaction < handle
             selection = questdlg('You have unsaved work. Save?',...
               'Save?',...
               'Yes','No','Cancel','Cancel'); 
-          proceed = false;
-          switch selection
+            app.UIFigure.Visible = 'off';
+            app.UIFigure.Visible = 'on';
+            proceed = false;
+            switch selection
               case 'Yes'
                  Interaction.Save(app)
                  proceed = true;
@@ -942,7 +992,7 @@ classdef Interaction < handle
                  proceed = true;
               case 'Cancel'
                  proceed = false;
-           end            
+            end            
         end
         
         
@@ -961,6 +1011,294 @@ classdef Interaction < handle
             disp('Debugging, press "continue"')
             a = 12;
         end
+        
+        
+        function CalculateADCVals(app)
+            
+            
+            
+            img = app.data{app.imIdx}.img;
+            
+            total_mask = permute(zeros(size(img)),[2,1,3]);
+            total_mask_necr = zeros(size(total_mask));
+            counter = 0;
+            
+            names = containers.Map;
+            
+            for i = 1:length(app.userObjects)
+               uo = app.userObjects{i};
+               if uo.imageIdx ~= app.imIdx
+                   continue
+               end
+
+               tmp_mask = uo.data;
+               if ~all(size(total_mask) == size(uo.data))
+                   minx = min(size(tmp_mask,1), size(total_mask,1));
+                   miny = min(size(tmp_mask,2), size(total_mask,2)); 
+                   
+                   tmp_mask = zeros(size(total_mask));
+                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny, :);
+               end
+
+               if contains(uo.name, 'Whole Tumor')
+                   total_mask = total_mask + tmp_mask;
+                   total_mask_necr = total_mask_necr + tmp_mask;
+                   counter = counter + 1;
+               else
+                   total_mask = total_mask - tmp_mask;
+               end
+               
+               [~,~,z] = ind2sub(size(uo.data), find(uo.data));                
+               names(uo.name) = mode(z);
+            end
+
+            total_mask(total_mask > 1) = 1;
+            total_mask(total_mask < 0) = 0;
+            total_mask_necr(total_mask_necr > 1) = 1;
+            total_mask_necr(total_mask_necr < 0) = 0;
+            
+            tmp = Interaction.overlayMask(img, total_mask);
+            if mean(tmp(:)) > 500
+                img = img / 1000;
+            elseif mean(tmp(:)) < 0.5
+                img = img * 1000;
+            end
+
+            %apply mask tot ADC
+            adc_list = Interaction.overlayMask(img, total_mask);
+            adc_necr = Interaction.overlayMask(img, total_mask_necr);  
+            
+            z = cell2mat(names.values);
+            z = z(strcmp(names.keys, 'Whole Tumor'));
+            if isempty(z)
+                z = cell2mat(names.values);
+                z = z(strcmp(names.keys, 'Whole Tumor1'));
+            end            
+
+            if z > size(total_mask, 3)
+                disp('Size is fucky')
+                return
+            end
+            
+            main_slc_mask = total_mask(:,:,z);
+            adc_single = img(:,:,z);
+            main_slc_adc    = Interaction.overlayMask(...
+                adc_single, main_slc_mask);
+            main_slc_mask_necr = total_mask_necr(:,:,z);
+            main_slc_adc_necr = Interaction.overlayMask(...
+                adc_single, main_slc_mask_necr);
+
+            %write output            
+            a = app.current_folder;
+            a = erase(a,'D:\Retrospective_original\');
+            a = erase(a, '\rmsstudio');
+            a = strsplit(a, '\');
+            id = a{1};
+            accession = a{2};
+            val = app.AvailableimagesListBox.Value;
+            val = erase(val, '* ');            
+            
+            outdir = fullfile('D:\ADC', id, accession);
+
+            if ~exist(outdir, 'dir')
+                mkdir(outdir)
+            end   
+
+            out_fn = fullfile(outdir, [val '_multi.txt']);
+            fileID = fopen(out_fn, 'w');
+            fprintf(fileID, '%.5f\n', adc_list);
+            fclose(fileID);
+
+            out_fn = fullfile(outdir, [val '_multi_necr.txt']);
+            fileID = fopen(out_fn, 'w');
+            fprintf(fileID, '%.5f\n', adc_necr);
+            fclose(fileID);
+
+            %single slice
+
+            out_fn = fullfile(outdir, [val '_single.txt']);
+            fileID = fopen(out_fn, 'w');
+            fprintf(fileID, '%.5f\n', main_slc_adc);
+            fclose(fileID);
+            out_fn = fullfile(outdir, [val '_single_necr.txt']);
+            fileID = fopen(out_fn, 'w');
+            fprintf(fileID, '%.5f\n', main_slc_adc_necr);
+            fclose(fileID);
+
+            %write stats to file
+
+            frmt = ['%s\t%s\t%s\t'...
+                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
+                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
+                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
+                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n'];
+
+
+            fileID = fopen('D:\ADC\stats.txt', 'a');
+            fprintf(fileID, frmt, ...
+                val, id, accession,...
+                'single', 1, length(main_slc_adc), ...
+                mean(main_slc_adc), prctile(main_slc_adc, 0),...
+                prctile(main_slc_adc, 25), prctile(main_slc_adc, 50), ...
+                prctile(main_slc_adc, 75),prctile(main_slc_adc, 100),...
+                ...
+                'single_necr', 1, length(main_slc_adc_necr), ...
+                mean(main_slc_adc_necr), prctile(main_slc_adc_necr, 0),...
+                prctile(main_slc_adc_necr, 25), prctile(main_slc_adc_necr, 50), ...
+                prctile(main_slc_adc_necr, 75),prctile(main_slc_adc_necr, 100),...
+                ...
+                'multi', counter, length(adc_list), ...
+                mean(adc_list), prctile(adc_list, 0),prctile(adc_list, 25), ...
+                prctile(adc_list, 50), prctile(adc_list, 75),...
+                prctile(adc_list, 100),...
+                ...
+                'multi_necr', counter, length(adc_necr), ...
+                mean(adc_necr), prctile(adc_necr, 0),prctile(adc_necr, 25), ...
+                prctile(adc_necr, 50), prctile(adc_necr, 75),...
+                prctile(adc_necr, 100)...
+            );
+            fclose(fileID);
+            
+        end
+        
+        function showADCHist(app)
+            
+            img = app.data{app.imIdx}.img;
+            total_mask = permute(zeros(size(img)),[2,1,3]);
+            
+            names = containers.Map;
+            
+            for i = 1:length(app.userObjects)
+               uo = app.userObjects{i};
+               if uo.imageIdx ~= app.imIdx
+                   continue
+               end
+
+               tmp_mask = uo.data;
+               if ~all(size(total_mask) == size(uo.data))
+                   minx = min(size(tmp_mask,1), size(total_mask,1));
+                   miny = min(size(tmp_mask,2), size(total_mask,2)); 
+                   
+                   tmp_mask = zeros(size(total_mask));
+                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny, :);
+               end
+
+               if contains(uo.name, 'Whole Tumor')
+                   total_mask = total_mask + tmp_mask;
+               else
+                   total_mask = total_mask - tmp_mask;
+               end
+               
+               [~,~,z] = ind2sub(size(uo.data), find(uo.data));                
+               names(uo.name) = mode(z);
+            end
+
+            total_mask(total_mask > 1) = 1;
+            total_mask(total_mask < 0) = 0;
+            
+            tmp = Interaction.overlayMask(img, total_mask);
+            if mean(tmp(:)) > 500
+                img = img / 1000;
+            elseif mean(tmp(:)) < 0.5
+                img = img * 1000;
+            end
+
+            %apply mask tot ADC
+            adc_list = Interaction.overlayMask(img, total_mask);
+            
+            z = cell2mat(names.values);
+            z = z(strcmp(names.keys, 'Whole Tumor'));
+            if isempty(z)
+                z = cell2mat(names.values);
+                z = z(strcmp(names.keys, 'Whole Tumor1'));
+            end            
+            
+            figure
+            subplot(2,1,1)
+            histogram(adc_list)
+            subplot(2,1,2)
+            imshowpair(img(:,:,z),total_mask(:,:,z))
+            
+        end
+        
+        function values = overlayMask(im, mask)
+           
+            %Overlays mask over image, takes into account different shapes
+            minx = min(size(im,1), size(mask,1));
+            miny = min(size(im,2), size(mask,2));
+            
+            newMask = mask(1:minx, 1:miny, :);
+            newIm   = im(1:minx, 1:miny, :);
+            
+            values = newIm(newMask == 1);            
+        end
+        
+        function PermuteFlip(app)
+            
+                img = app.data{app.imIdx};
+                img = permute(img.img, [2,1,3]);
+                img = flip(img, 1);
+                img = flip(img, 2);
+                
+                app.data{app.imIdx}.img = img;
+                Graphics.UpdateImage(app)
+            
+        end
+        
+        function FlipZ(app)
+            img = app.data{app.imIdx};
+            img = flip(img.img, 3);
+
+            app.data{app.imIdx}.img = img;
+            Graphics.UpdateImage(app)
+        end
+        
+        function FlipXYObj(app)
+            
+            for i = 1:length(app.userObjects)
+                img = app.userObjects{i}.data;                
+    %             img = app.data{app.imIdx};
+%                 img = permute(img, [2,1,3]);
+                img = flip(img, 1);
+                img = flip(img, 2);
+                
+                app.userObjects{i}.data = img;
+            end
+            Graphics.UpdateImage(app)
+        end
+        
+        function HideAllTooltips(app)
+           
+            
+            for i = 1:length(app.userObjects)
+                app.userObjects{i}.setBoxVisible(false) 
+            end
+%             Graphics.UpdateImage(app)            
+            
+        end
+            
+            
+        function PermuteFlipUOs(app)
+            
+            for i = 1:length(app.userObjects)
+                img = app.userObjects{i}.data;                
+            
+    %             img = app.data{app.imIdx};
+                img = permute(img, [2,1,3]);
+%                 img = flip(img, 1);
+%                 img = flip(img, 2);
+                
+                app.userObjects{i}.data = img;
+            end
+            Graphics.UpdateImage(app)
+            
+        end
+        
+        
+        
+        
+        
+        
         
     end
 end

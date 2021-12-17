@@ -63,19 +63,31 @@ classdef Objects < handle
             end
         end
         
-        function i = findUOIndex(app, index)
+        function idx = findUOIndex(app, index)
+            %Returns the index of the uo where ID == index
+            idx = -1;
            for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
                 if obj.ID == index
+                    idx = i;
                     break
                 end
             end
             
-            %no matching objects
-            if obj.ID ~= index
-                i = -1;
-                return
-            end 
+        end
+        
+        function idx = FindUoForImage(app, imIdx)
+            %Returns the index of the first uo with obj.imageIdx == imIdx
+            %If none are found, returns -1
+            idx = -1;
+            
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                if obj.imageIdx == imIdx
+                    idx = i;
+                    break
+                end
+            end
         end
         
         function DeleteUO(app)
@@ -159,14 +171,17 @@ classdef Objects < handle
             app.userObjects{idx}.setVisible(~visible)
         end
         
-        function ToggleVisibleUOInfoBox(app)
+        function ToggleVisibleUOInfoBox(app, varargin)
             %Toggles the visible status of the infobox of the object
             
-            idx     = app.UOBox.Value;
+            if nargin == 1
+                idx     = app.UOBox.Value;
+            else
+                idx   = varargin{1};
+            end
             boxVisible = app.userObjects{idx}.boxVisible;
-            app.userObjects{idx}.setBoxVisible(~boxVisible) 
-        end
-        
+            app.userObjects{idx}.setBoxVisible(~boxVisible)             
+        end        
         
         function UOId = FindUOClicked(app, hit)
            %Called when the user right-clicks a UO. Tries to determine
@@ -180,6 +195,66 @@ classdef Objects < handle
            else
                UOId = -1;
            end
+        end
+        
+        function UOId = FindUOUnderMouse(app, hit)
+           
+            UOId = -1;
+            
+            hitx = round(hit.IntersectionPoint(1));
+            hity = round(hit.IntersectionPoint(2));
+            
+            if isnan(hitx) || isnan(hity)
+                return
+            end
+            
+            x   = round(hit.Point(1));
+            if x <= hit.Source.Position(3)/2
+                view = 1;
+            else
+                view = 2;
+            end
+            
+            imID    = app.imagePerAxis(view);
+            try
+                slice   = app.slicePerImage(imID);
+            catch
+                return
+            end
+             
+            %Go over all UOs in reverse order
+            for i = flip(1:length(app.userObjects))
+                
+                obj = app.userObjects{i};
+                if obj.imageIdx ~= imID
+                    continue
+                end
+                if ~obj.visible
+                    continue
+                end
+                
+                if obj.type == 1 || obj.type == 3
+                    try
+                        if obj.data(hity,hitx,slice)
+                          UOId = obj.ID; 
+                          return
+                        end
+                    catch
+                        return
+                    end
+                elseif obj.type == 2
+                    
+                    d = MathUtils.CalcDistancePointLine([hitx, hity], ...
+                        obj.points(1), obj.points(2));
+                    
+                    if d <= 5
+                        UOId = obj.ID;
+                        return
+                    end                    
+                end
+                
+            end
+            
         end
         
         function UOId = FindTextUO(app, hit)

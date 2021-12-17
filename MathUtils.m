@@ -256,6 +256,20 @@ classdef MathUtils < handle
            
         end
         
+        
+        function dist = CalcDistancePointLine(p0, p1, p2)
+        %Calculates the closest distance between a point and a line 
+        %(as defined by two points).
+        %See: https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
+            
+            x0  = p0(1); y0  = p0(2); x1  = p1(1); y1  = p1(2);
+            x2  = p2(1); y2  = p2(2);
+            
+            dist    = abs( (x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)) / ...
+                sqrt((x2-x1)^2 + (y2-y1)^2);
+            
+        end
+        
     end
     
 end

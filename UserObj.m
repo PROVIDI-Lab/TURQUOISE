@@ -6,7 +6,7 @@ classdef UserObj < matlab.mixin.SetGet
        graphics,                %Graphics of the object
        changed      = true,     %Stores whether to redraw
        visible      = true,     %Stores whether to display
-       boxVisible   = true,     %Stores whether to display infobox
+       boxVisible   = false,     %Stores whether to display infobox
        data,                    %Seg, other
        points,                  %ROIPoints, drawing points
        name,                    %Name of the object
@@ -29,10 +29,14 @@ classdef UserObj < matlab.mixin.SetGet
                 obj.prop            = struct();
                 obj.prop.name       = obj.name;
                 obj.prop.volume     = length(find(L))*VS^3;
-                obj.prop.mean       = mean(V(L(:)));
-                obj.prop.max        = max(V(L(:)));    
-                obj.prop.min        = min(V(L(:)));
-                obj.prop.std        = std(V(L(:)));    
+                obj.prop.mean       = 0;
+                obj.prop.max        = 0;    
+                obj.prop.min        = 0;
+                obj.prop.std        = 0;
+%                 obj.prop.mean       = mean(V(L(:)));
+%                 obj.prop.max        = max(V(L(:)));    
+%                 obj.prop.min        = min(V(L(:)));
+%                 obj.prop.std        = std(V(L(:)));    
             elseif obj.type == 2
                 
                 P1                  = obj.points(1,:);
@@ -54,15 +58,8 @@ classdef UserObj < matlab.mixin.SetGet
                 return
             end
             
-            for i = 1:length(obj.graphics)
-                obj.visible              = visible;
-                if ~isvalid(obj.graphics{i})
-                    %TODO: find error Not enough input arguments.
-                    Graphics.DrawUserObjects(app, app.current_view)
-                else
-                    obj.graphics{i}.Visible  = visible; 
-                end
-            end
+            obj.visible              = visible;
+            obj.graphics{1}.Visible  = visible; 
             
         end
         

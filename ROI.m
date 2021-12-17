@@ -90,9 +90,9 @@ classdef ROI < handle
                 return
             end
 
-            set(hit.Source.Parent.Parent.Parent,                               ...
-                'WindowButtonMotionFcn',                                ...
-                @app.MouseDraggedInImage);
+%             set(hit.Source.Parent.Parent.Parent,                               ...
+%                 'WindowButtonMotionFcn',                                ...
+%                 @app.MouseDraggedInImage);
 
             set(hit.Source.Parent.Parent.Parent,                               ...
                 'WindowButtonUpFcn',                                    ...
@@ -156,6 +156,11 @@ classdef ROI < handle
             else
                pos  = [x,y,z];               
             end
+            
+            if any(isnan(pos))
+                return
+            end
+            
             %If the obj is a circular ROI, edit accordingly
             if app.userObjects{app.currentDragPoint{1}}.type == 3
                %TODO fix different views 
@@ -210,10 +215,11 @@ classdef ROI < handle
             if isempty(app.currentDragPoint)
                 return
             end
-            objId           = app.currentDragPoint{1};
+            objId           = Objects.findUOIndex(app, ...
+                                app.currentDragPoint{1});            
             obj             = app.userObjects{objId};
             points          = obj.points;
-            points(end+1,:) = points(1,:);
+%             points(end+1,:) = points(1,:);
             points          = round(points);
             mask            = ROI.PointsToMask(...
                 app, points, app.imagePerAxis(app.current_view));
@@ -235,7 +241,7 @@ classdef ROI < handle
             points  = round(points);
             mask    = false(size(...
                 app.data{imID}.img(:,:,:, axis4D)));
-            mask    = permute(mask, [2,1,3]);
+            mask    = permute(mask, [2,1,3]);  %this needs to have a better solution
             
             %The mask is made slice by slice.
             idx = unique(points(:,view));   %todo: Index in position 2 exceeds array bounds.
@@ -267,6 +273,10 @@ classdef ROI < handle
             %TODO: Index in position 1 is invalid. Array indices must be 
             %positive integers or logical values.
             %Check for negative points??
+            
+            
+            %bullshit fix, should be better in the future
+            points = points(:,[2,1,3]);
             
             %Add all pixels in between the vertices to the mask
             for x=2:size(points,1)

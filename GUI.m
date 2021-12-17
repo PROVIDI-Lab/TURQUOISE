@@ -26,30 +26,37 @@ classdef GUI < handle
             if(~isempty(app.AvailableimagesListBox.Items))
                 
                 if size(app.AvailableimagesListBox.Items,2) > 1
+                    msg = sprintf('Preparing image 1 of 2');
+                    GUI.updateWaitBar(app, msg, 0.5)
                     app.current_view      = 2;
                     %Keep track of which image is in which view
-                    app.imagePerAxis(app.current_view) = 2;
+                    idx = app.imagePerAxis(app.current_view);
                     app.AvailableimagesListBox.Value =...
-                        app.AvailableimagesListBox.Items{2};
-                    app.imIdx = 2;
+                        app.AvailableimagesListBox.Items{idx};
+                    app.imIdx = idx;
                     %Show everything
-                    GUI.DisplayNewImage(app, 2)
+                    GUI.DisplayNewImage(app, idx)
                     
                     %Switch back
                     app.current_view = 1;
                 end
-                %Keep track of which image is in which view
-                app.imagePerAxis(app.current_view) = 1;
-                app.AvailableimagesListBox.Value =                      ...
-                    app.AvailableimagesListBox.Items{1};
-                app.imIdx = 1;
                 
+                msg = sprintf('Preparing image 2 of 2');
+                GUI.updateWaitBar(app, msg, 1)
+                app.current_view      = 1;
+                %Keep track of which image is in which view
+                idx = app.imagePerAxis(app.current_view);
+                app.AvailableimagesListBox.Value =...
+                    app.AvailableimagesListBox.Items{idx};
+                app.imIdx = idx;
                 %Show everything
-                GUI.DisplayNewImage(app, 1)
+                GUI.DisplayNewImage(app, idx)
                 
             end
             
             GUI.RevertControlsStatus(app);
+            app.UIFigure.Visible = 'off';
+            app.UIFigure.Visible = 'on';
             
         end
         
@@ -71,11 +78,11 @@ classdef GUI < handle
             app.slicePerImage       = ones(1,length(app.slicePerImage))*-1;
             app.viewPerImage        = ones(1,length(app.viewPerImage))*3;
             app.current_view        = 1;
-            app.imagePerAxis        = [1,1];
+%             app.imagePerAxis        = [1,1];
             app.Align               = '';
            
             GUI.UpdateAxisButtons(app);
-            GUI.UpdateViewButtons(app);
+%             GUI.UpdateViewButtons(app);
             GUI.UpdateAlignButtons(app);
            
             h = imagesc(app.UIAxes1, zeros(100));
@@ -99,8 +106,19 @@ classdef GUI < handle
 %             app.view_axis               = 3;
             GUI.UpdateAxisButtons(app);
             app.zoomToggle              = false;
-            app.slicePerImage(index)    = round(size(...
+            
+            uoIdx = Objects.FindUoForImage(app, index);
+            if uoIdx ~= -1
+                uo = app.userObjects{uoIdx};
+                [view, slice]   = GUI.GetUOViewAndSlice(uo);
+                app.slicePerImage(index) = slice;
+                app.viewPerImage(index) = view;
+            else            
+                app.slicePerImage(index)    = round(size(...
                                             app.data{index}.img,3)/2);
+                app.viewPerImage(index) = 3;
+            end
+            
             %Set axis limits
             ax      = app.GetAxis(app.current_view);
             imSize  = size(app.data{index}.img);
@@ -445,20 +463,20 @@ classdef GUI < handle
         
         %% Update buttons
         
-        function UpdateViewButtons(app)
-            %Updates the view buttons to display the correct one.
-            view    = app.current_view;
-            
-            %Reset the values
-            app.View1Button.BackgroundColor     = [.96 .96 .96];
-            app.View2Button.BackgroundColor     = [.96 .96 .96];
-            
-            if     view == 1
-                app.View1Button.BackgroundColor = [.96 .96 0];
-            elseif view == 2
-                app.View2Button.BackgroundColor = [.96 .96 0];
-            end
-        end
+%         function UpdateViewButtons(app)
+%             %Updates the view buttons to display the correct one.
+%             view    = app.current_view;
+%             
+%             %Reset the values
+%             app.View1Button.BackgroundColor     = [.96 .96 .96];
+%             app.View2Button.BackgroundColor     = [.96 .96 .96];
+%             
+%             if     view == 1
+%                 app.View1Button.BackgroundColor = [.96 .96 0];
+%             elseif view == 2
+%                 app.View2Button.BackgroundColor = [.96 .96 0];
+%             end
+%         end
         
         function UpdateAxisButtons(app)
             %Updates the axisview buttons to display the correct one.
@@ -666,6 +684,23 @@ classdef GUI < handle
         end
         
         
+        %% Load bar
+        
+        
+        function newPatientWaitBar(app)
+            app.waitBar = waitbar(0, 'Loading new patient, please wait');
+        end
+        
+        function updateWaitBar(app, msg, status)
+            close(app.waitBar)
+            app.waitBar = waitbar(status, msg);
+        end
+        
+        function closeWaitBar(app)
+           close(app.waitBar) 
+           app.waitBar = [];
+        end
+        
         
         
         %% Enable / disable user interaction
@@ -751,8 +786,8 @@ classdef GUI < handle
                 app.Increase4DButton.Enable = 'on';
             end
             
-            app.View1Button.Enable          = 'on';
-            app.View2Button.Enable          = 'on';
+%             app.View1Button.Enable          = 'on';
+%             app.View2Button.Enable          = 'on';
             app.StatusLampLabel.Text        = 'Idle';
             app.StatusLamp.Color            = 'g';
 %             app.Labels3DButton.Enable       = 'on';
@@ -802,8 +837,8 @@ classdef GUI < handle
             app.SliceIncreaseButton.Enable      = 'off';
             app.Decrease4DButton.Enable         = 'off';
             app.Increase4DButton.Enable         = 'off';
-            app.View1Button.Enable              = 'off';
-            app.View2Button.Enable              = 'off';
+%             app.View1Button.Enable              = 'off';
+%             app.View2Button.Enable              = 'off';
 %             app.ShufflecolorsButton.Enable      = 'off';
             app.DSlider.Enable                  = 'off';
             app.StatusLampLabel.Text            = 'Busy';

@@ -122,7 +122,7 @@ classdef IOUtils < handle
             %Load the file
 %             reslice_name    = convertCharsToStrings(reslice_name);
             nii     = load_nii(reslice_name);
-%             nii     = IOUtils.PermuteFlip(nii);
+            nii     = IOUtils.PermuteFlip(nii);
             nii.img = single(nii.img);
             
             app.data{index}         = nii;
@@ -239,19 +239,18 @@ classdef IOUtils < handle
                     folder = folder(3:end);
             end
             
-            direc       = fullfile(app.current_folder,...
-                    folder);
+            direc       = fullfile(app.current_folder, folder, app.user_profile);
             %First find any segmentations
-            segFiles    = dir(fullfile(direc,'*.nii'));
+            segFiles    = dir(fullfile(direc,'*.json'));
             for file = segFiles'
-                jsonFn  = strrep(file.name,'.nii', '.json');
-                if exist(fullfile(direc,jsonFn),'file')
-                    IOUtils.loadSegmentationPoints(...
-                        app, fullfile(direc,jsonFn), idx);
-                else
-                    IOUtils.LoadSegmentation(...
-                        app, fullfile(direc, file.name), idx);
-                end
+%                 jsonFn  = strrep(file.name,'.nii', '.json');
+%                 if exist(fullfile(direc,jsonFn),'file')
+                IOUtils.loadSegmentationPoints(...
+                    app, fullfile(direc,file.name), idx);
+%                 else
+%                     IOUtils.LoadSegmentation(...
+%                         app, fullfile(direc, file.name), idx);
+%                 end
             end
                     
             %Next, load measurements
@@ -303,10 +302,13 @@ classdef IOUtils < handle
             endPos      = strfind(fn,'-');
             endPos      = endPos(end);
             name        = fn(beginPos + 1: endPos - 1);
+            
+            points = data.points;
+            points(any(isnan(points),2),:) = [];
 
             Objects.AddNewUserObj(app,...
                     "type", 1, ...
-                    "data", ROI.PointsToMask(app, data.points, idx),...
+                    "data", ROI.PointsToMask(app, points, idx),...
                     "points", data.points,...
                     "name", name,...
                     "imageIdx", idx);
@@ -337,10 +339,10 @@ classdef IOUtils < handle
             end
         end
         
-        function LoadSet(app)
-        %Prepares a new database
-            Database.PrepareDatabase(app) 
-        end
+%         function LoadSet(app)
+%         %Prepares a new database
+%             Database.PrepareDatabase(app) 
+%         end
         
         %%
         
@@ -413,6 +415,11 @@ classdef IOUtils < handle
                         erase(text, '.rmsstudio_reslice.nii');
                     counter = counter + 1;
                 else
+                    %skip for now
+                    
+                    continue
+                    
+                    
                     %if no _reslice version exists, reslice
                     reslice_path = fullfile(app.current_folder,...
                         strrep(text,'.nii','.rmsstudio_reslice.nii'));

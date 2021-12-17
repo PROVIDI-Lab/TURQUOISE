@@ -14,6 +14,8 @@ classdef Study < handle
                 return
             end
             
+            GUI.newPatientWaitBar(app)
+            
             %Initiatalize study variables
             app.userObjects         = {};
             app.slicePerImage       = ones(1,nImages)*-1;
@@ -23,27 +25,49 @@ classdef Study < handle
             app.data                = cell(nImages,1);
             
             if isempty(app.user_profile)
-                app.user_profile = {''};
+                app.user_profile = '';
             end
-            
-            %Load the first (2) image(s)
-            IOUtils.LoadNii(app, 2);     
-            IOUtils.LoadNii(app, 1);     
-            
-            %Load the user objects for the first 2 images
-            IOUtils.LoadUserObjects(app, 1);
-            IOUtils.LoadUserObjects(app, 2);
             
             %Find if any files have user objects associated with them
             Study.FindUOsOnDisk(app)
             
-%             %Load all user objects from disk
-%             for idx = 1:nImages
-%                 Study.LoadFromDisk(app, idx)
-%             end
+            loadCounter = 0;
+            for i = 1:length(app.AvailableimagesListBox.Items)
+                if loadCounter >= 2
+                    break
+                end
+                item = app.AvailableimagesListBox.Items{i};
+                if strcmp(item(1:2), '* ')
+                    msg = sprintf('Loading image %d of 2', loadCounter + 1);
+                    GUI.updateWaitBar(app, msg, (loadCounter + 1)/ 2)
+                        
+                    IOUtils.LoadNii(app, i)
+                    IOUtils.LoadUserObjects(app, i);
+                    app.imagePerAxis(loadCounter + 1) = i;
+                    loadCounter = loadCounter + 1;
+                end
+            end
+            
+            %fill the other images
+            for i = 1:length(app.AvailableimagesListBox.Items)
+                if loadCounter >= 2
+                    break
+                end
+                
+                if any(app.imagePerAxis == i)
+                    continue
+                end
+                msg = sprintf('Loading image %d of 2', loadCounter + 1);
+                GUI.updateWaitBar(app, msg, (loadCounter + 1)/ 2)
+                IOUtils.LoadNii(app, i)
+                IOUtils.LoadUserObjects(app, i);
+                app.imagePerAxis(loadCounter + 1) = i;
+                loadCounter = loadCounter + 1;
+            end                
             
             %Initialize the window
             GUI.InitGUI(app)
+            GUI.closeWaitBar(app)
             
         end
         
@@ -54,8 +78,8 @@ classdef Study < handle
                 folder      = app.AvailableimagesListBox.Items{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
-                files       = dir(fullfile(direc)); 
-                if length(files) <= 2
+                files       = dir(fullfile(direc, '*.json')); 
+                if isempty(files)
                     continue
                 end
                 
@@ -88,7 +112,7 @@ classdef Study < handle
                 
                 outfn   = fullfile(app.current_folder,              ...
                                         fn,                         ...
-                                         app.user_profile{1});
+                                         app.user_profile);
                                      
                 IOUtils.saveUObjs(app, imageId, outfn);
             end
@@ -178,7 +202,7 @@ classdef Study < handle
                     distances       = zeros(1,round(length(lines)/2));
                     for i = 1:2:length(lines)
                         distances(round((i+1)/2)) =...
-                            Study.CalcDistancePointLine([hitx, hity],...
+                            MathUtils.CalcDistancePointLine([hitx, hity],...
                                                 lines(i,:), lines(i+1,:));
                     end
                     [d, idx]    = min(distances);
@@ -209,7 +233,7 @@ classdef Study < handle
                     distances       = zeros(round(length(lines)/2));
                     for i = 1:2:length(lines)
                         distances(round((i+1)/2)) =...
-                            CalcDistancePointLine([hitx, hity],...
+                            MathUtils.CalcDistancePointLine([hitx, hity],...
                                             lines(i), lines(i+1));
                     end
                     [d, idx]    = min(distances);
@@ -235,7 +259,7 @@ classdef Study < handle
                     distances       = zeros(round(length(lines)/2));
                     for i = 1:2:length(lines)
                         distances(round((i+1)/2)) =...
-                            CalcDistancePointLine([hitx, hity],...
+                            MathUtils.CalcDistancePointLine([hitx, hity],...
                                             lines(i), lines(i+1));
                     end
                     [d, idx]    = min(distances);
@@ -260,19 +284,6 @@ classdef Study < handle
                 % MEASUREMENTS ARE PRIORITY IN DELETION
                 delObj = 2;
             end
-        end
-        
-        function dist = CalcDistancePointLine(p0, p1, p2)
-        %Calculates the closest distance between a point and a line 
-        %(as defined by two points).
-        %See: https://en.wikipedia.org/wiki/Distance_from_a_point_to_a_line
-            
-            x0  = p0(1); y0  = p0(2); x1  = p1(1); y1  = p1(2);
-            x2  = p2(1); y2  = p2(2);
-            
-            dist    = abs( (x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)) / ...
-                sqrt((x2-x1)^2 + (y2-y1)^2);
-            
         end
         
         
