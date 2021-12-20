@@ -139,8 +139,6 @@ classdef IOUtils < handle
 %                 app.user_profile{1});
             if ~isfolder(fn)
                 mkdir(fn);
-            else
-                delete(fullfile(fn, '*'))   %Remove all previous saved data
             end
             
             segProperties   = {};
@@ -241,12 +239,9 @@ classdef IOUtils < handle
                     folder = folder(3:end);
             end
             
-            if isa(app.user_profile, 'cell')
-                direc       = fullfile(app.current_folder, folder, app.user_profile{1});
-            else
-                direc       = fullfile(app.current_folder, folder, app.user_profile);
-            end
+            if 
             
+            direc       = fullfile(app.current_folder, folder, app.user_profile);
             %First find any segmentations
             segFiles    = dir(fullfile(direc,'*.json'));
             for file = segFiles'
@@ -376,7 +371,7 @@ classdef IOUtils < handle
                 fp              = filepath;
             end
             app.filepath = fp;
-%             h = waitbar(0,'Please wait');
+            h = waitbar(0,'Please wait');
             
             
             %Convert files to nii (if needed), find original filenames and
@@ -387,12 +382,12 @@ classdef IOUtils < handle
                 IOUtils.convertToNii(app);
                 app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
             catch err
-%                 close(h);
+                close(h);
                 uialert(uifigure,err.message,'');
             end
             
             try
-%                 close(h)
+                close(h)
                 app.UIFigure.Visible = 'on';
             catch 
             end

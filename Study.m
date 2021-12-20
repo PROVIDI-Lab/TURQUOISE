@@ -23,14 +23,19 @@ classdef Study < handle
             app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
             app.data                = cell(nImages,1);
+            app.unsavedProgress     = false;
             
             if isempty(app.user_profile)
                 app.user_profile = '';
             end
             
+            Backups.ClearBackups(app)
+            
+            
             %Find if any files have user objects associated with them
             Study.FindUOsOnDisk(app)
             
+            %Load the first two images (preferably with UOs attached)
             loadCounter = 0;
             for i = 1:length(app.AvailableimagesListBox.Items)
                 if loadCounter >= 2
@@ -67,6 +72,7 @@ classdef Study < handle
             
             %Initialize the window
             GUI.InitGUI(app)
+            Backups.CreateBackup(app)
             GUI.closeWaitBar(app)
             
         end

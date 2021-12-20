@@ -15,41 +15,40 @@ classdef Database < handle
            
            %Create a list of subfolders with the studies
            Database.FindStudies(app, fp)
+           Database.AddStudies(app)
            
            IOUtils.PrepareStudy(app, app.dataset{1})
         end
         
         function FindStudies(app, fp)
             %Finds all the subfolders in the database directory and sets
-            %them in the app. The program assumes either of the following
-            %scenarios:
-            %
-            %   1) Each subfolder has a rmsstudio folder. Meaning no
-            %   separate sessions exist per patient.
-            %   2) Each subfolder contains subfolders for 
+            %them in the app.
             
             app.dataset     = [];
             
             %Go over the first layer, this is likely individual patients
-            patients    = dir(fp);
-            
-            
-            contents     = dir(fp);
-            for i   = 3:size(contents,1)
-                if contents(i).isdir
+            folders    = dir(fp);
+            folders    = folders(~ismember({folders.name},{'.','..'}));
+            for i   = 1:length(folders)
+                if folders(i).isdir
+                    
+                    if isfolder(
+                        fullfile(folders(i).folder, folders(i).name, 'rmsstu)
                     app.dataset{end+1} =                                ...
-                        [contents(i).folder '\' contents(i).name];
+                        fullfile(folders(i).folder, folders(i).name);
                 end
-            end
-            
-            
+            end            
+        end
+        
+        function AddStudies(app)
             %Add items to listbox
+            
             app.AvailableStudiesListBox.Items = {};
-                for idx=1:length(app.dataset)
-                    text        = app.dataset{idx};
-                    [~,name,~] = fileparts(text);
-                    app.AvailableStudiesListBox.Items{idx} = name;
-                end
+            for idx=1:length(app.dataset)
+                text        = app.dataset{idx};
+                [~,name,~] = fileparts(text);
+                app.AvailableStudiesListBox.Items{idx} = name;
+            end
             
         end
         
@@ -75,6 +74,13 @@ classdef Database < handle
             %inputs:    app - the RMSStudio app
             %varargin:  optional, the index to switch to.
             
+            if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+            end
+            
             if ~isempty(varargin)
                 index   = varargin{1};
                 app.AvailableStudiesListBox.Value =                     ...
@@ -85,7 +91,7 @@ classdef Database < handle
                 for idx=1:length(app.dataset)
                     text        = app.dataset{idx};
                     [~,name,~] = fileparts(text);
-                    if app.AvailableStudiesListBox.Value == name
+                    if strcmp(app.AvailableStudiesListBox.Value, name)
                         index   = idx;
                         break;
                     end
@@ -94,8 +100,8 @@ classdef Database < handle
             
             %Load the study at the index
             if index < size(app.dataset,2) && index > 0
-                Interaction.Save(app);
-                IOUtils.PrepareStudy(app, app.dataset{index})
+                IOUtils.PrepareStudy(app, ...
+                    fullfile(app.dataset{index},'rmsstudio'))
             end
         end
             

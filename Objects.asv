@@ -37,6 +37,7 @@ classdef Objects < handle
             app.userObjects{end+1}  = obj;
             GUI.UpdateUOBox(app);
             Graphics.UpdateUserObjects(app);
+            Backups.CreateBackup(app);
         end
         
         function name = CheckNameUnique(app, name, type)
@@ -105,6 +106,7 @@ classdef Objects < handle
             app.userObjects(idx) = [];
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
+            Backups.CreateBackup(app); 
         end
         
         
@@ -125,6 +127,7 @@ classdef Objects < handle
             app.userObjects{idx}.name   = newName{1};
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
+            Backups.CreateBackup(app); 
         end
         
         function CopyUOTo(app)
@@ -161,12 +164,50 @@ classdef Objects < handle
                 
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
+            Backups.CreateBackup(app); 
         end
+        
+        %% backups stuff
+        
+        function bck_objects = CreateObjectBackup(app)
+           
+            bck_objects = cell(length(app.userObjects));
+            
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                
+                newObj  = Objects.AddNewUserObj(app,...
+                            "type", obj.type, ...
+                            "data", [], ...
+                            "points", obj.points, ...
+                            "name", obj.name, ... 
+                            "imageIdx", obj.imageIdx, ...
+                            "prop", obj. prop, ...
+                            "ID", obj.ID);
+                        
+                bck_objects{i} = newObj;                
+            end
+            
+        end
+        
+        function RestoreObjectsBackup(app, objects)
+            
+           
+            
+            
+            
+        end
+        
+        
+        %% visibility & interaction
+        
         
         function ToggleVisibleUO(app)
             %Toggles the visible status of the object
             
             idx     = app.UOBox.Value;
+            idx = Objects.findUOIndex(app, idx);
+            
             visible = app.userObjects{idx}.visible;
             app.userObjects{idx}.setVisible(~visible)
         end
@@ -179,6 +220,9 @@ classdef Objects < handle
             else
                 idx   = varargin{1};
             end
+            
+            idx = Objects.findUOIndex(app, idx);
+            
             boxVisible = app.userObjects{idx}.boxVisible;
             app.userObjects{idx}.setBoxVisible(~boxVisible)             
         end        
@@ -216,7 +260,11 @@ classdef Objects < handle
             end
             
             imID    = app.imagePerAxis(view);
-            slice   = app.slicePerImage(imID);
+            try
+                slice   = app.slicePerImage(imID);
+            catch
+                return
+            end
              
             %Go over all UOs in reverse order
             for i = flip(1:length(app.userObjects))
@@ -225,15 +273,19 @@ classdef Objects < handle
                 if obj.imageIdx ~= imID
                     continue
                 end
+                if ~obj.visible
+                    continue
+                end
                 
                 if obj.type == 1 || obj.type == 3
-                   if hity > size(obj.data,1) || hitx > size(obj.data,2)
-                       
-                    
-                   if obj.data(hity,hitx,slice)
-                      UOId = obj.ID; 
-                      return
-                   end
+                    try
+                        if obj.data(hity,hitx,slice)
+                          UOId = obj.ID; 
+                          return
+                        end
+                    catch
+                        return
+                    end
                 elseif obj.type == 2
                     
                     d = MathUtils.CalcDistancePointLine([hitx, hity], ...

@@ -45,6 +45,7 @@ classdef ROI < handle
             GUI.DisableControlsStatus(app);
             drawnow;
 
+            Backups.CreateBackup(app);
             %Construct the segmentation from the drawing.points.
             ROI.CreateSegmentation(app, name{1})
 %             ROI.StoreROIPoints(app)
@@ -62,6 +63,7 @@ classdef ROI < handle
                 return
             end
             
+            Backups.CreateBackup(app);
             %Circular ROI
             if app.userObjects{app.currentDragPoint{1}}.type == 3
                 ROI.ModifyCircle(app);
@@ -123,8 +125,7 @@ classdef ROI < handle
                     continue
                 end
                 
-                z   = app.slicePerImage(imID);
-                idx     = ROI.DistanceToPoints(obj.points, x, y, z);
+                idx     = ROI.DistanceToPoints(obj.points, x, y);
                 if idx  ~= -1
                     app.currentDragPoint   = {i, idx};
                     break
@@ -132,14 +133,8 @@ classdef ROI < handle
             end
         end
             
-        function idx    = DistanceToPoints(points, x, y, z)
+        function idx    = DistanceToPoints(points, x,y)
             idx     = -1;
-            
-            points = points(points(:,3) == z,:);
-            if isempty(points)
-                return
-            end
-            
             xp      = points(:,1);
             yp      = points(:,2);
             d       = sqrt( (x-xp).^2 + (y-yp).^2);
@@ -240,7 +235,6 @@ classdef ROI < handle
             app.userObjects{objId}.set('changed', true);
             app.userObjects{objId}.makeProperties(app);
             Graphics.UpdateUserObjects(app);
-            Backups.CreateBackup(app); 
         end
         
         function mask = PointsToMask(app, points, imID)
@@ -377,7 +371,8 @@ classdef ROI < handle
             if isempty(name)
                	return %TODO: stop drawing
             end
-            points  = ROI.ValidatePoints(app, points);       
+            points  = ROI.ValidatePoints(app, points);
+            Backups.CreateBackup(app);            
             
             Objects.AddNewUserObj(app,...
                     "type", 3, ...
@@ -394,16 +389,14 @@ classdef ROI < handle
             end
             [points, markers] = ...
                     ROI.GetCirclePointsMarkers(app);
-            points  = ROI.ValidatePoints(app, points);           
+            points  = ROI.ValidatePoints(app, points);
+            Backups.CreateBackup(app);            
             
             app.userObjects{app.currentDragPoint{1}}.set(...
                 'data', ROI.PointsToMask(...
                     app, points, app.imagePerAxis(app.current_view)));
             app.userObjects{app.currentDragPoint{1}}.set(...
                 'points', markers);
-            
-            Backups.CreateBackup(app); 
-            
         end
         
         function [points, markers] = GetCirclePointsMarkers(app)

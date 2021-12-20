@@ -36,7 +36,6 @@ classdef Measurements < handle
             
             %Perform measurement
             if(size(app.points{Cv},1) == 2)
-                Backups.CreateBackup(app);
                 Measurements.AddMeasurementToApp(app, [])
             end 
         end

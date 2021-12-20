@@ -37,6 +37,7 @@ classdef Objects < handle
             app.userObjects{end+1}  = obj;
             GUI.UpdateUOBox(app);
             Graphics.UpdateUserObjects(app);
+            Backups.CreateBackup(app);
         end
         
         function name = CheckNameUnique(app, name, type)
@@ -105,6 +106,7 @@ classdef Objects < handle
             app.userObjects(idx) = [];
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
+            Backups.CreateBackup(app); 
         end
         
         
@@ -125,6 +127,7 @@ classdef Objects < handle
             app.userObjects{idx}.name   = newName{1};
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
+            Backups.CreateBackup(app); 
         end
         
         function CopyUOTo(app)
@@ -161,12 +164,58 @@ classdef Objects < handle
                 
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
+            Backups.CreateBackup(app); 
         end
+        
+        %% backups stuff
+        
+        function bck_objects = CreateObjectBackup(app)
+           
+            bck_objects = cell(length(app.userObjects), 1);
+            
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                newObj  = UserObj();
+                newObj.type     = obj.type;
+                newObj.data     = [];
+                newObj.points   = obj.points;
+                newObj.name     = obj.name;
+                newObj.imageIdx = obj.imageIdx;
+                newObj.prop     = obj.prop;
+                newObj.ID       = obj.ID;
+                        
+                bck_objects{i} = newObj;                
+            end
+            
+        end
+        
+        function RestoreObjectBackup(app, objects)
+            
+            app.userObjects = cell(length(objects), 1);
+            
+            for i = 1:length(objects)
+               
+                app.userObjects{i} = objects{i};
+                if objects{i}.type == 1 || objects{i}.type == 3
+                    app.userObjects{i}.data = ...
+                        ROI.PointsToMask(app, ...
+                        objects{i}.points, objects{i}.imageIdx);
+                end
+                
+            end
+            
+        end
+        
+        
+        %% visibility & interaction
+        
         
         function ToggleVisibleUO(app)
             %Toggles the visible status of the object
             
             idx     = app.UOBox.Value;
+            idx = Objects.findUOIndex(app, idx);
+            
             visible = app.userObjects{idx}.visible;
             app.userObjects{idx}.setVisible(~visible)
         end
@@ -179,6 +228,9 @@ classdef Objects < handle
             else
                 idx   = varargin{1};
             end
+            
+            idx = Objects.findUOIndex(app, idx);
+            
             boxVisible = app.userObjects{idx}.boxVisible;
             app.userObjects{idx}.setBoxVisible(~boxVisible)             
         end        
