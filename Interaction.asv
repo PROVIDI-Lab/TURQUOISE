@@ -103,11 +103,6 @@ classdef Interaction < handle
             GUI.DisableAllButtonsAndActions(app);
             GUI.RevertControlsStatus(app);
             app.current_view    = new_view_idx;
-                      
-            app.View1Button.BackgroundColor = [.96 .96 .96];
-            app.View2Button.BackgroundColor = [.96 .96 .96];
-            
-            eval(['app.' caller_name '.BackgroundColor = [.96 .96 .0];']);
                        
             %Switch to the correct image
             index   = app.imagePerAxis(new_view_idx);
@@ -126,6 +121,10 @@ classdef Interaction < handle
             if isempty(app.data{app.imIdx})
                 return
             end
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+            
             %Check if the screen that was pressed is different from the
             %current view.
             if (hit.Source.Parent == app.UIAxes1                       ...
@@ -135,7 +134,6 @@ classdef Interaction < handle
                     hit.Button == 1
             
                     %Switch focus to the screen that was pressed
-                    Backups.CreateBackup(app);
                     if(hit.Source.Parent == app.UIAxes1)
                         Interaction.SwitchViewAndFocus(...
                         app,1,'View1Button');
@@ -197,6 +195,11 @@ classdef Interaction < handle
         
         function MouseReleasedInImage(app, hit)
         %When editing an ROIpoint, finalize the editing
+            
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+        
             if app.drawing.mode == 2
                 %Change segmentation
                 ROI.ValidateModifiedROIPoints(app)
@@ -213,13 +216,8 @@ classdef Interaction < handle
             app.currentCircle       = [];
             
             Graphics.UpdateImage(app)
-            set(hit.Source,...
-                    'WindowButtonMotionFcn',...
-                    '')
-            set(hit.Source,...
-                    'WindowButtonUpFcn',...
-                    '')
-            GUI.SetButtonDownFcn(app)           
+            set(hit.Source,'WindowButtonUpFcn','')
+%             GUI.SetButtonDownFcn(app)           
             end
 
         
@@ -228,9 +226,33 @@ classdef Interaction < handle
             %windowbuttonmotionFCN has been set for the UIAxes elements.
             %Calls ROI.MoveROIPoint with the new position of the cursor 
             %relative to the top left corner with the scale of the image.
-            if isempty(app.dragPoint)
+            if isempty(app.dragPoint) || isempty(app.currentDragPoint)
+                UOId = Objects.FindUOUnderMouse(app, hit);
+                
+                if UOId == -1
+                    if app.prevUOTextShown ~= 0
+                        Objects.ToggleVisibleUOInfoBox(app, app.prevUOTextShown)
+                        app.prevUOTextShown = 0;
+                    end
+                    return
+                end
+                
+                if app.userObjects{...
+                        Objects.findUOIndex(app, UOId)}.boxVisible
+                    return
+                end
+                    
+                Objects.ToggleVisibleUOInfoBox(app, UOId)
+                app.prevUOTextShown = UOId;
+                
                 return
             end
+            
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+            
+            disp(app.drawing.mode)
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
@@ -241,59 +263,78 @@ classdef Interaction < handle
                 ROI.DrawCircularROI(app, [hitx, hity])
             elseif app.drawing.mode == 6
                 GUI.AdjustContrast(app, hitx, hity)
-            end
-            
+            end            
         end
         
         %% Keypresses
         
         function UIKeyPress(app, event)
         % Manages keypresses when UIAxes are in focus
+        
+            key         = event.Key;
+            modifier    = event.Modifier;    
             
-            key     = event.Key;
-            if isempty(app.data)
+            if app.busyStatus   %Don't do anything if the app is busy
+                
+                %Only allow ctrl+escape to break
+                
                 return
             end
             
-            switch key
-                case 'uparrow'
-                    GUI.SliceUp(app)
-                case 'downarrow'
-                    GUI.SliceDown(app)
-                case 'backspace'
-                    Interaction.BackspacePressed(app)
-                case 'escape'
-                    GUI.RevertControlsStatus(app)
-                case 'h'
-                    GUI.ResetAxisZoom(app)
-                case 'd'
-                    Interaction.DrawPolygon(app)
-                case 'z'
-                    Interaction.ToggleZoom(app)
-                case 'e'
-                    Interaction.EditPolygon(app)
-                case 'c'
-                    Interaction.CalculateADCVals(app)
-                case 'f'
-                    Interaction.PermuteFlip(app)
-                case 'g'
-                    Interaction.PermuteFlipUOs(app)
-                case 'u'
-                    Interaction.FlipZ(app)
-                case 'i' 
-                    Interaction.FlipXYObj(app)
-                case 'o' 
-                    Interaction.HideAllTooltips(app)
-                case 'l'
-                    Interaction.LoadStudy(app)
-                case 'v'
-                    Interaction.showADCHist(app)
-                case 'control'
-                    app.ctrl    = true;
-                case 'f12'
-                    Interaction.Debug(app)
-                otherwise
-                    return
+            if isempty(modifier)
+                switch key
+                    case 'uparrow'
+                        GUI.SliceUp(app)
+                    case 'downarrow'
+                        GUI.SliceDown(app)
+                    case 'backspace'
+                        Interaction.BackspacePressed(app)
+                    case 'escape'
+                        GUI.RevertControlsStatus(app)
+                    case 'h'
+                        GUI.ResetAxisZoom(app)
+                    case 'd'
+                        Interaction.DrawPolygon(app)
+                    case 'z'
+                        Interaction.ToggleZoom(app)
+                    case 'e'
+                        Interaction.EditPolygon(app)
+                    case 'c'
+%                         Interaction.CalculateADCVals(app)
+                    case 'f'
+%                         Interaction.PermuteFlip(app)
+                    case 'g'
+%                         Interaction.PermuteFlipUOs(app)
+                    case 'u'
+%                         Interaction.FlipZ(app)
+                    case 'i' 
+%                         Interaction.FlipXYObj(app)
+                    case 'o' 
+%                         Interaction.HideAllTooltips(app)
+                    case 'v'
+                        Interaction.showADCHist(app)
+                    case 'control'
+                        app.ctrl    = true;
+                    case 'f12'
+                        Interaction.Debug(app)
+                end
+                
+            elseif contains(modifier, 'control')
+                
+                switch key
+                    case 'control'
+                        app.ctrl    = true;
+                    case 'o'
+                        Interaction.LoadStudy(app)
+                    case 's'
+                        Interaction.Save(app)
+                    case 'z'
+                        Backups.Undo(app)
+                    case 'y'
+                        Backups.Redo(app)
+                    case 'f2'
+                        Interaction.Reload(app)
+                end
             end
         end
         
@@ -354,9 +395,6 @@ classdef Interaction < handle
             %Input: hitx - the x-coordinate of the mouse
             %       hity - the y-coordinate of the mouse
             
-            %Create backup
-            Backups.CreateBackup(app);
-            
             %Remove any previous deletion contours.
             if(app.selection_contour ~= -1)
                 delete(app.selection_contour);
@@ -376,6 +414,9 @@ classdef Interaction < handle
             if delOb ~= 0
                app.should_show_selection = false;
             end
+            
+            %Create backup
+            Backups.CreateBackup(app);
         end       
         
         
@@ -434,9 +475,6 @@ classdef Interaction < handle
         function DeleteROIsAndMeasurements(app)
         % Removes any measurements and segmentations stored in the current
         % image. 
-            
-            %Create backup
-            Backups.CreateBackup(app);
         
             %Remove measurements
             Measurements.RemoveAllMeasurements(app);
@@ -444,6 +482,9 @@ classdef Interaction < handle
             ROI.RemoveAllROIs(app);
             GUI.UpdateUOBox(app);
             Graphics.UpdateImage(app);
+            
+            %Create backup
+            Backups.CreateBackup(app);
         end
         
         function LoadStudy(app)
@@ -460,6 +501,10 @@ classdef Interaction < handle
             
         end
         
+        function Reload(app)
+            
+            IOUtils.PrepareStudy(app, app.filepath);
+        end
         
         function Save(app)
         %Called when the user presses the 'save_edited' button. Writes the
@@ -473,7 +518,7 @@ classdef Interaction < handle
             end
             GUI.DisableAllButtonsAndActions(app)
             Study.SaveToDisk(app)
-            app.unsavedProgress = false;
+            Study.ToggleUnsavedProgress(app, false);
             GUI.RevertControlsStatus(app)
         end
         
@@ -589,28 +634,22 @@ classdef Interaction < handle
         function PerformAutomaticEllipseMeasurement(app)
             % Called when the user presses the 'measure auto' button.
             
-            %Create Backup
-            Backups.CreateBackup(app);
             Measurements.PerformAutomaticEllipseMeasurement(app)
         end
         
         function MeasureLine(app)
         %Toggles 
-            DP_D = app.drawing.mode;
-            GUI.DisableAllButtonsAndActions(app);
-            if(DP_D ~= 3)
+            if(app.drawing.mode ~= 3)
                 app.drawing.mode    = 3;
             else
                 app.drawing.mode    = 0;
-                app.points{Cv}      = [];
+                app.points{app.current_view}      = [];
             end 
         end
         
         function MagicDraw(app)
             %Called when the user presses the 'magic draw' button.
-            DP_D = app.drawing.mode;
-            GUI.DisableAllButtonsAndActions(app);
-            if(DP_D ~= 4)
+            if(app.drawing.mode ~= 4)
 %                 app.MagicdrawButton.BackgroundColor = [.96 .96 0];
                 app.drawing.mode = 4;
             else
@@ -690,12 +729,6 @@ classdef Interaction < handle
                 drawnow
                 MathUtils.PerformElastixRegistration(app,choice);
             end
-        end
-        
-        function Undo(app)
-            %Called when Undo-button is pressed. 
-%             Study.Undo(app)
-            Backups.RestoreBackup(app)
         end
         
         function UpdateSlice(app, value, axID)
@@ -814,66 +847,74 @@ classdef Interaction < handle
             %If a filepath is given, first check if a list with profile
             %names already exists.
             
+            if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+            end
+            
             profile = '';
             
-            if nargin() == 2
-                file    = fullfile(varargin, 'profiles.txt');
-                file    = file{1};
-                if exist(file, 'file') == 2
-                    fileID  = fopen(file,    'r');
-                    names   = {};
-                    name    = fgetl(fileID);
-                    while name ~= -1
-                        names{end+1}    = name;
-                        name    = fgetl(fileID);
-                    end
-                    fclose(fileID);
-                    names{end+1}        = 'Other';
-                    
-                    d = dialog('Position',[300 300 250 150],'Name',     ...
-                        'Select One');
-                    txt = uicontrol('Parent',d,...
-                           'Style','text',...
-                           'Position',[20 80 210 40],...
-                           'String','Choose profile name');
-
-                    popup = uicontrol('Parent',d,...
-                           'Style','popup',...
-                           'Position',[75 70 100 25],...
-                           'String',names,    ...
-                           'Callback',@popup_callback);
-
-                    btn = uicontrol('Parent',d,...
-                           'Position',[89 20 70 25],...
-                           'String','Select',...
-                           'Callback','delete(gcf)');
-
-                   %Default
-                    profile = names{1};
-                    
-                    uiwait(d);
-
-                else
-                    %A path is specified but not file exists.
-                    
-                    %prompt for profile and write to file.
-                    profile = inputdlg("Enter profile name");
-%                     profile = upper(profile);      
-                    fid     = fopen(file, 'wt');
-                    fprintf(fid, strcat(profile{1}, '\n'));
-                    fclose(fid);
-                    
-                end
-            else
+%             if nargin() == 2
+%                 file    = fullfile(varargin, 'profiles.txt');
+%                 file    = file{1};
+%                 if exist(file, 'file') == 2
+%                     fileID  = fopen(file,    'r');
+%                     names   = {};
+%                     name    = fgetl(fileID);
+%                     while name ~= -1
+%                         names{end+1}    = name;
+%                         name    = fgetl(fileID);
+%                     end
+%                     fclose(fileID);
+%                     names{end+1}        = 'Other';
+%                     
+%                     d = dialog('Position',[300 300 250 150],'Name',     ...
+%                         'Select One');
+%                     txt = uicontrol('Parent',d,...
+%                            'Style','text',...
+%                            'Position',[20 80 210 40],...
+%                            'String','Choose profile name');
+% 
+%                     popup = uicontrol('Parent',d,...
+%                            'Style','popup',...
+%                            'Position',[75 70 100 25],...
+%                            'String',names,    ...
+%                            'Callback',@popup_callback);
+% 
+%                     btn = uicontrol('Parent',d,...
+%                            'Position',[89 20 70 25],...
+%                            'String','Select',...
+%                            'Callback','delete(gcf)');
+% 
+%                    %Default
+%                     profile = names{1};
+%                     
+%                     uiwait(d);
+% 
+%                 else
+%                     %A path is specified but not file exists.
+%                     
+%                     %prompt for profile and write to file.
+%                     profile = inputdlg("Enter profile name");
+% %                     profile = upper(profile);      
+%                     fid     = fopen(file, 'wt');
+%                     fprintf(fid, strcat(profile{1}, '\n'));
+%                     fclose(fid);
+%                     
+%                 end
+%             else
             %If no filepath is given, prompt for the profile and don't do
             %anything else.
-                profile = inputdlg(['Enter profile name.' newline       ...
-                '(We suggest the first three letters of your name']);
-            
-                if isempty(profile)
-                    profile = {''};
-                end
+            profile = inputdlg(['Enter profile name.' newline       ...
+            '(We suggest the first three letters of your name']);
+            if isempty(profile)
+                profile = '';
+            else
+                profile = profile{1};
             end
+%             end
             
             %Add the profile to the app
             profile  = upper(profile);
@@ -885,28 +926,31 @@ classdef Interaction < handle
             app.user_profile    = profile;
             app.backup_list     = [];
             
+            %Reload everything
+            Study.InitStudy(app)
             
-            %When the file exists, but 'other' is chosen, prompt for new
-            %profile name and add it to the file.
-            function popup_callback(popup, event)
-                idx = popup.Value;
-                popup_items = popup.String;
-                res = char(popup_items(idx,:));
-
-                if strcmp(res, 'Other') == 1
-                  profile = inputdlg("Enter profile name");
-                  profile  = upper(profile);
-                  
-                  fid   = fopen(file, 'a+');
-                  fprintf(fid, strcat(profile{1}, '\n'));
-                  fclose(fid);
-                  
-                  delete(gcf)
-                  
-                else
-                  profile = {res};
-                end
-            end
+            
+%             %When the file exists, but 'other' is chosen, prompt for new
+%             %profile name and add it to the file.
+%             function popup_callback(popup, event)
+%                 idx = popup.Value;
+%                 popup_items = popup.String;
+%                 res = char(popup_items(idx,:));
+% 
+%                 if strcmp(res, 'Other') == 1
+%                   profile = inputdlg("Enter profile name");
+%                   profile  = upper(profile);
+%                   
+%                   fid   = fopen(file, 'a+');
+%                   fprintf(fid, strcat(profile{1}, '\n'));
+%                   fclose(fid);
+%                   
+%                   delete(gcf)
+%                   
+%                 else
+%                   profile = {res};
+%                 end
+%             end
         end
         
         
@@ -1259,8 +1303,8 @@ classdef Interaction < handle
             
     %             img = app.data{app.imIdx};
                 img = permute(img, [2,1,3]);
-                img = flip(img, 1);
-                img = flip(img, 2);
+%                 img = flip(img, 1);
+%                 img = flip(img, 2);
                 
                 app.userObjects{i}.data = img;
             end

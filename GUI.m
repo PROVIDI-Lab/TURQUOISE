@@ -662,6 +662,28 @@ classdef GUI < handle
             
         end
         
+        %% Cursor stuff
+        
+        function SetWatchCursor(app)
+            %Sets the cursor for the UIFigure to a loading icon (watch)
+            set(app.UIFigure, 'Pointer', 'watch')
+        end
+        
+        function SetDrawCursor(app)
+            %Sets the cursor for the UIFigure to a crosshair icon 
+            set(app.UIFigure, 'Pointer', 'crosshair')
+        end
+        
+        function SetDragCursor(app)
+            %sets the cursor for the UIFigure to a dragging icon (fleur)
+            set(app.UIFigure, 'Pointer', 'fleur')
+        end
+        
+        function ResetCursor(app)
+            %Sets the cursor for the UIFigure to an arrow icon (default)
+            set(app.UIFigure, 'Pointer', 'arrow')
+        end
+        
         
         %% Context menus
         
@@ -701,148 +723,125 @@ classdef GUI < handle
            app.waitBar = [];
         end
         
+        %% UI text elements
+        
+        function ToggleUnsavedIndicator(app)
+            if app.unsavedProgress
+                app.UIFigure.Name = ['RMSStudio ' app.current_folder ' *'];
+            else
+                app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
+            end
+        end
         
         
         %% Enable / disable user interaction
         
         function SetButtonDownFcn(app)
            %Sets the button down function on all the tempDrawings objects.
-           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);
-%            %UIAxes1
-%            children     = get(app.UIAxes1,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-%            
-%            %UIAxes2
-%            children     = get(app.UIAxes2,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-%             
+           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);       
         end
         
         function RemoveButtonDownFcn(app)
            %Removes the button down function on all the tempDrawings
            set(app.tempDrawings, 'ButtonDownFcn','');
-%            %UIAxes1
-%            children     = get(app.UIAxes1,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn','');
-%            
-%            %UIAxes2
-%            children     = get(app.UIAxes2,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn','');
-            
         end
         
-        % This enables it back (user interaction)
-        function RevertControlsStatus(app,only_non_action_buttons)
-            if(nargin < 2 || only_non_action_buttons == false)
-%                 app.SelectDeleteButton.Enable           = 'on';
-%                 app.UndoButton.Enable                   = 'on';
-%                 app.SelectionsensitivityButton.Enable   = 'on';
-                app.DrawPolygonButton.Enable            = 'on';
-                app.EditPolygonButton.Enable            = 'on';
-                app.AlignLRButton.Enable                = 'on';
-                app.AlignRLButton.Enable                = 'on';
-                app.VisibleSlider.Enable                = 'on';
-%                 app.MagicdrawButton.Enable              = 'on';
-%                 app.SensitivitySlider.Enable            = 'on';
-%                 app.DCheckBox.Enable                    = 'on';
-%                 app.AlignlabelsButton.Enable            = 'on';
-%                 app.AlgorithmDropDown.Enable            = 'on';
-%                 app.MeasureAutoButton.Enable            = 'on';
-%                 app.MeasureLineButton.Enable            = 'on';
-                app.FileMenu.Enable                     = 'on';
-                app.ViewMenu.Enable                     = 'on';
-                app.AnalyseMenu.Enable                  = 'on';
-                app.DrawMenu.Enable                     = 'on';
-                app.SegmentMenu.Enable                  = 'on';
-            end
+        function RevertControlsStatus(app)
+            %Re-ables user interaction with the different menus, buttons,
+            %UI elements and more.
             
-%             app.LoadLabelsButton.Enable         = 'on';
-%             app.SaveeditedsegmButton.Enable     = 'on';
-            app.CoronalButton.Enable            = 'on';
-            app.SagittalButton.Enable           = 'on';
-            app.AxialButton.Enable              = 'on';
-            app.SliceSlider.Enable              = 'on';
-            app.MinvalSlider.Enable             = 'on';
-            app.MaxvalSlider.Enable             = 'on';
-%             app.LoadButton.Enable               = 'on';
-            app.AvailableimagesListBox.Enable   = 'on';
-%             app.ResetstudyButton.Enable         = 'on';
-            app.SliceDecreaseButton.Enable      = 'on';
-            app.SliceIncreaseButton.Enable      = 'on';
-%             app.ShufflecolorsButton.Enable      = 'on';
+            %Buttons
+            app.DrawPolygonButton.Enable            = 'on';
+            app.EditPolygonButton.Enable            = 'on';
+            app.AlignLRButton.Enable                = 'on';
+            app.AlignRLButton.Enable                = 'on';
+            app.VisibleSlider.Enable                = 'on';
+            app.SliceDecreaseButton.Enable          = 'on';
+            app.SliceIncreaseButton.Enable          = 'on';
+             app.CoronalButton.Enable               = 'on';
+            app.SagittalButton.Enable               = 'on';
+            app.AxialButton.Enable                  = 'on';
+
+            %Menus
+            app.FileMenu.Enable                     = 'on';
+            app.ViewMenu.Enable                     = 'on';
+            app.AnalyseMenu.Enable                  = 'on';
+            app.DrawMenu.Enable                     = 'on';
+            app.SegmentMenu.Enable                  = 'on';
             
+            %Sliders
+            app.SliceSlider.Enable                  = 'on';
+            app.MinvalSlider.Enable                 = 'on';
+            app.MaxvalSlider.Enable                 = 'on';
+
+            %Listboxes
+            app.AvailableimagesListBox.Enable       = 'on';
+            app.AvailableStudiesListBox.Enable      = 'on';
+            app.UOBox.Enable                        = 'on';
+
+
+            %4d stuff
             Cv      = app.current_view;
             if(~isempty(app.data{Cv}) && ndims(app.data{Cv}.img) > 3)
-                app.DSlider.Enable          = 'on';
-                app.Decrease4DButton.Enable = 'on';
-                app.Increase4DButton.Enable = 'on';
+                app.DSlider.Enable                  = 'on';
+                app.Decrease4DButton.Enable         = 'on';
+                app.Increase4DButton.Enable         = 'on';
             end
             
-%             app.View1Button.Enable          = 'on';
-%             app.View2Button.Enable          = 'on';
-            app.StatusLampLabel.Text        = 'Idle';
-            app.StatusLamp.Color            = 'g';
-%             app.Labels3DButton.Enable       = 'on';
-%             app.LabelsstatsButton.Enable    = 'on'; 
+            app.StatusLampLabel.Text                = 'Idle';
+            app.StatusLamp.Color                    = 'g';
+            
+            GUI.ResetCursor(app)
+            app.busyStatus                          = false;
+
         end
         
         
         % This prevents user interaction
-        function DisableControlsStatus(app,only_action_buttons)
-%             app.FileMenu.Enable                     = 'off';
-            app.ViewMenu.Enable                     = 'off';
-            app.AnalyseMenu.Enable                  = 'off';
-            app.DrawMenu.Enable                     = 'off';
-            app.SegmentMenu.Enable                  = 'off';
-%             app.SelectDeleteButton.Enable           = 'off';
-%             app.UndoButton.Enable                   = 'off';
-%             app.SelectionsensitivityButton.Enable   = 'off';
+        function DisableControlsStatus(app)
+
+            %Buttons
             app.DrawPolygonButton.Enable            = 'off';
             app.EditPolygonButton.Enable            = 'off';
             app.AlignLRButton.Enable                = 'off';
             app.AlignRLButton.Enable                = 'off';
-%             app.DeleteROIsALLButton.Enable          = 'off';
-%             app.MagicdrawButton.Enable              = 'off';
-%             app.SensitivitySlider.Enable            = 'off';
-%             app.AlignlabelsButton.Enable            = 'off';
-%             app.AlgorithmDropDown.Enable            = 'off';
-%             app.MeasureAutoButton.Enable            = 'off';
-%             app.MeasureLineButton.Enable            = 'off';
-%             app.DCheckBox.Enable                    = 'off';
-%             app.Labels3DButton.Enable               = 'off'; 
-%             app.LabelsstatsButton.Enable            = 'off'; 
-            if(nargin > 1 && only_action_buttons == true)
-                return
-            end
-%             app.LoadLabelsButton.Enable         = 'off';
-%             app.SaveeditedsegmButton.Enable     = 'off';
-            app.CoronalButton.Enable            = 'off';
-            app.SagittalButton.Enable           = 'off';
-            app.AxialButton.Enable              = 'off';
-            app.SliceSlider.Enable              = 'off';
-            app.MinvalSlider.Enable             = 'off';
-            app.MaxvalSlider.Enable             = 'off';
-%             app.LoadButton.Enable               = 'off';
-            app.AvailableimagesListBox.Enable   = 'off';
-%             app.ResetstudyButton.Enable         = 'off';
-            app.SliceDecreaseButton.Enable      = 'off';
-            app.SliceIncreaseButton.Enable      = 'off';
-            app.Decrease4DButton.Enable         = 'off';
-            app.Increase4DButton.Enable         = 'off';
-%             app.View1Button.Enable              = 'off';
-%             app.View2Button.Enable              = 'off';
-%             app.ShufflecolorsButton.Enable      = 'off';
-            app.DSlider.Enable                  = 'off';
-            app.StatusLampLabel.Text            = 'Busy';
-            app.StatusLamp.Color                = 'r';
+            app.VisibleSlider.Enable                = 'off';
+            app.SliceDecreaseButton.Enable          = 'off';
+            app.SliceIncreaseButton.Enable          = 'off';
+             app.CoronalButton.Enable               = 'off';
+            app.SagittalButton.Enable               = 'off';
+            app.AxialButton.Enable                  = 'off';
+
+            %Menus
+            app.FileMenu.Enable                     = 'off';
+            app.ViewMenu.Enable                     = 'off';
+            app.AnalyseMenu.Enable                  = 'off';
+            app.DrawMenu.Enable                     = 'off';
+            app.SegmentMenu.Enable                  = 'off';
+            
+            %Sliders
+            app.SliceSlider.Enable                  = 'off';
+            app.MinvalSlider.Enable                 = 'off';
+            app.MaxvalSlider.Enable                 = 'off';
+
+            %Listboxes
+            app.AvailableimagesListBox.Enable       = 'off';
+            app.AvailableStudiesListBox.Enable      = 'off';
+            app.UOBox.Enable                        = 'off';
+
+
+            %4d stuff
+            app.DSlider.Enable                      = 'off';
+            app.Decrease4DButton.Enable             = 'off';
+            app.Increase4DButton.Enable             = 'off';
+            
+            app.StatusLampLabel.Text                = 'Busy';
+            app.StatusLamp.Color                    = 'r';
+            
+            GUI.SetWatchCursor(app)
+            app.busyStatus                          = true;
+
+
         end
         
         
@@ -853,14 +852,6 @@ classdef GUI < handle
             
             app.currentDragPoint                    = -1;
             app.dragPoint                           = [];
-%             app.DrawpolygonButton.BackgroundColor   = [.96 .96 .96];
-%             app.SelectDeleteButton.BackgroundColor  = [.96 .96 .96];
-%             app.MagicdrawButton.BackgroundColor     = [.96 .96 .96];
-%             app.MeasureLineButton.BackgroundColor   = [.96 .96 .96];
-            
-%             app.current_view                        = 1;
-%             app.View1Button.BackgroundColor         = [.96 .96 0];
-%             app.View2Button.BackgroundColor         = [.96 .96 .96];
             
             %Turns off zooming for all axes
             zoom(app.UIAxes1, 'off')

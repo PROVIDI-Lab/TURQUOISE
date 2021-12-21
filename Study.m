@@ -72,7 +72,9 @@ classdef Study < handle
             
             %Initialize the window
             GUI.InitGUI(app)
+            Backups.ClearBackups(app)
             Backups.CreateBackup(app)
+            Study.ToggleUnsavedProgress(app, false)
             GUI.closeWaitBar(app)
             
         end
@@ -144,17 +146,24 @@ classdef Study < handle
                 return
             end
             
-            
             %Load the image, segmentations and measurement into the study,
             %either from disk, or from the list.
             if isempty(app.data{index})
+                GUI.DisableControlsStatus(app)
                 IOUtils.LoadNii(app, index)    
                 IOUtils.LoadUserObjects(app, index)
+                GUI.RevertControlsStatus(app)
             end
             app.imagePerAxis(app.current_view) = index;
             GUI.SwitchImage(app, index)
         end
                
+        
+        function ToggleUnsavedProgress(app, status)
+            app.unsavedProgress = status;
+            GUI.ToggleUnsavedIndicator(app)
+        end
+        
         
         function [delObj, ij, meas] = FindObjectTypeAtPos(app, hitx, hity)
         %Find the object position at the given position. Measurements 

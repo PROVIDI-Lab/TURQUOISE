@@ -5,11 +5,9 @@ classdef Backups < handle
             %Creates a backupObj that stores the current state of the app.
             %Also flags the unsavedProgress to true.
             
-            disp('made backup')
-            
             obj = BackupObj();
             
-            app.unsavedProgress     = true;
+            Study.ToggleUnsavedProgress(app, true);
             
             obj.current_image_idx   = app.imIdx;
             obj.imagePerAxis        = app.imagePerAxis;
@@ -29,7 +27,6 @@ classdef Backups < handle
             %Add new backup            
             app.backup_list{end+1}  = obj;
             app.backup_idx          = length(app.backup_list);
-            disp(app.backup_idx)
         end
         
         function RestoreBackup(app)

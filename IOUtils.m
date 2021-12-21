@@ -140,6 +140,7 @@ classdef IOUtils < handle
             if ~isfolder(fn)
                 mkdir(fn);
             else
+                
                 delete(fullfile(fn, '*'))   %Remove all previous saved data
             end
             
@@ -376,8 +377,6 @@ classdef IOUtils < handle
                 fp              = filepath;
             end
             app.filepath = fp;
-%             h = waitbar(0,'Please wait');
-            
             
             %Convert files to nii (if needed), find original filenames and
             %set the 'current_folder' object.

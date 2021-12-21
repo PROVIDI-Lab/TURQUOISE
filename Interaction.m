@@ -101,7 +101,6 @@ classdef Interaction < handle
             end
         
             GUI.DisableAllButtonsAndActions(app);
-            GUI.RevertControlsStatus(app);
             app.current_view    = new_view_idx;
                        
             %Switch to the correct image
@@ -121,6 +120,10 @@ classdef Interaction < handle
             if isempty(app.data{app.imIdx})
                 return
             end
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+            
             %Check if the screen that was pressed is different from the
             %current view.
             if (hit.Source.Parent == app.UIAxes1                       ...
@@ -191,6 +194,11 @@ classdef Interaction < handle
         
         function MouseReleasedInImage(app, hit)
         %When editing an ROIpoint, finalize the editing
+            
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+        
             if app.drawing.mode == 2
                 %Change segmentation
                 ROI.ValidateModifiedROIPoints(app)
@@ -207,13 +215,8 @@ classdef Interaction < handle
             app.currentCircle       = [];
             
             Graphics.UpdateImage(app)
-%             set(hit.Source,...
-%                     'WindowButtonMotionFcn',...
-%                     '')
-            set(hit.Source,...
-                    'WindowButtonUpFcn',...
-                    '')
-            GUI.SetButtonDownFcn(app)           
+            set(hit.Source,'WindowButtonUpFcn','')
+%             GUI.SetButtonDownFcn(app)           
             end
 
         
@@ -244,6 +247,11 @@ classdef Interaction < handle
                 return
             end
             
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+            
+            disp(app.drawing.mode)
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
@@ -254,10 +262,7 @@ classdef Interaction < handle
                 ROI.DrawCircularROI(app, [hitx, hity])
             elseif app.drawing.mode == 6
                 GUI.AdjustContrast(app, hitx, hity)
-            end
-            
-            
-            
+            end            
         end
         
         %% Keypresses
@@ -266,8 +271,15 @@ classdef Interaction < handle
         % Manages keypresses when UIAxes are in focus
         
             key         = event.Key;
-            modifier    = event.Modifier;           
+            modifier    = event.Modifier;    
             
+            if app.busyStatus   %Don't do anything if the app is busy
+                %Only allow ctrl+escape to break
+                if strcmp(key, 'escape') && contains(modifier, 'control')
+                    GUI.RevertControlsStatus(app)
+                end
+                return
+            end
             
             if isempty(modifier)
                 switch key
@@ -277,8 +289,6 @@ classdef Interaction < handle
                         GUI.SliceDown(app)
                     case 'backspace'
                         Interaction.BackspacePressed(app)
-                    case 'escape'
-                        GUI.RevertControlsStatus(app)
                     case 'h'
                         GUI.ResetAxisZoom(app)
                     case 'd'
@@ -287,18 +297,6 @@ classdef Interaction < handle
                         Interaction.ToggleZoom(app)
                     case 'e'
                         Interaction.EditPolygon(app)
-                    case 'c'
-%                         Interaction.CalculateADCVals(app)
-                    case 'f'
-%                         Interaction.PermuteFlip(app)
-                    case 'g'
-%                         Interaction.PermuteFlipUOs(app)
-                    case 'u'
-%                         Interaction.FlipZ(app)
-                    case 'i' 
-%                         Interaction.FlipXYObj(app)
-                    case 'o' 
-%                         Interaction.HideAllTooltips(app)
                     case 'v'
                         Interaction.showADCHist(app)
                     case 'control'
@@ -329,6 +327,10 @@ classdef Interaction < handle
         function UIKeyRelease(app, event)
         % Manages keypresses when UIAxes are in focus
             
+            if app.busyStatus   %Don't do anything if the app is busy
+                return
+            end
+        
             key     = event.Key;
             if isempty(app.data)
                 return
@@ -374,7 +376,6 @@ classdef Interaction < handle
         
         %%
         
-        % TODO: split
         function MouseDeleteObjectAtCoordinates(app,hitx,hity)
             %This handles the deletion of objects when the mouse is pressed
             %at the object location. Measurements have priority over
@@ -383,28 +384,30 @@ classdef Interaction < handle
             %Input: hitx - the x-coordinate of the mouse
             %       hity - the y-coordinate of the mouse
             
-            %Remove any previous deletion contours.
-            if(app.selection_contour ~= -1)
-                delete(app.selection_contour);
-                app.selection_contour = -1;
-            end
+            return
             
-            %Find the object type to be deleted. Either Measurement or ROI.
-            [delOb, ij, meas] = Study.FindObjectTypeAtPos(app, hitx, hity);
-            
-            %Remove the objects
-            if(delOb == 1)
-                ROI.RemoveSegmentation(app, ij)
-            elseif(delOb == 2)
-                Measurements.RemoveMeasurement(app, meas)
-            end
-            
-            if delOb ~= 0
-               app.should_show_selection = false;
-            end
-            
-            %Create backup
-            Backups.CreateBackup(app);
+%             %Remove any previous deletion contours.
+%             if(app.selection_contour ~= -1)
+%                 delete(app.selection_contour);
+%                 app.selection_contour = -1;
+%             end
+%             
+%             %Find the object type to be deleted. Either Measurement or ROI.
+%             [delOb, ij, meas] = Study.FindObjectTypeAtPos(app, hitx, hity);
+%             
+%             %Remove the objects
+%             if(delOb == 1)
+%                 ROI.RemoveSegmentation(app, ij)
+%             elseif(delOb == 2)
+%                 Measurements.RemoveMeasurement(app, meas)
+%             end
+%             
+%             if delOb ~= 0
+%                app.should_show_selection = false;
+%             end
+%             
+%             %Create backup
+%             Backups.CreateBackup(app);
         end       
         
         
@@ -435,29 +438,11 @@ classdef Interaction < handle
                	'Yes','No','No');
             if(strcmp(answer,'Yes') > 0)
                 delete(fullfile(app.current_folder,'*rmsstudio*'));
-                GUI.DisableControlsStatus(app);
             else
                 GUI.RevertControlsStatus(app);
             end
             GUI.DisableAllButtonsAndActions(app);
             app.UIFigure.Visible = 'on';
-        end
-        
-        function RemoveSingle(app)
-        %Toggles removal of userobjects when clicking
-            if(~isfield(app.segmentation{app.current_view},'img') &&...
-                    isempty(app.measure_lines{app.current_view}))
-                return
-            end
-            SL_D = app.should_show_selection;
-            GUI.DisableAllButtonsAndActions(app);
-            if(SL_D == false)
-                app.should_show_selection = true;
-            else
-                app.should_show_selection = false;
-            end
-            Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app);
         end
         
         function DeleteROIsAndMeasurements(app)
@@ -485,13 +470,16 @@ classdef Interaction < handle
                    return
                end
            end
-           IOUtils.PrepareStudy(app);
+           GUI.DisableControlsStatus(app)
+           IOUtils.PrepareStudy(app)
+           GUI.RevertControlsStatus(app)
             
         end
         
         function Reload(app)
-            
-            IOUtils.PrepareStudy(app, app.filepath);
+            GUI.DisableControlsStatus(app)
+            IOUtils.PrepareStudy(app, app.filepath)
+            GUI.RevertControlsStatus(app)            
         end
         
         function Save(app)
@@ -504,9 +492,9 @@ classdef Interaction < handle
             if isempty(app.AvailableimagesListBox.Items)
                 return
             end
-            GUI.DisableAllButtonsAndActions(app)
+            GUI.DisableControlsStatus(app)
             Study.SaveToDisk(app)
-            app.unsavedProgress = false;
+            Study.ToggleUnsavedProgress(app, false);
             GUI.RevertControlsStatus(app)
         end
         
@@ -607,17 +595,6 @@ classdef Interaction < handle
             end
         end
         
-        function PointsToSegmentation(app)
-            %Called when the user chooses the PointsToSegmentation Menu
-            %option. Calls functions to construct segmentation objects from
-            %the points in the image.
-            
-            GUI.DisableAllButtonsAndActions(app)
-            ROI.PointsToSegmentation(app)     
-            Graphics.UpdateImage(app)
-            GUI.RevertControlsStatus(app)
-        end
-        
         
         function PerformAutomaticEllipseMeasurement(app)
             % Called when the user presses the 'measure auto' button.
@@ -627,21 +604,17 @@ classdef Interaction < handle
         
         function MeasureLine(app)
         %Toggles 
-            DP_D = app.drawing.mode;
-            GUI.DisableAllButtonsAndActions(app);
-            if(DP_D ~= 3)
+            if(app.drawing.mode ~= 3)
                 app.drawing.mode    = 3;
             else
                 app.drawing.mode    = 0;
-                app.points{Cv}      = [];
+                app.points{app.current_view}      = [];
             end 
         end
         
         function MagicDraw(app)
             %Called when the user presses the 'magic draw' button.
-            DP_D = app.drawing.mode;
-            GUI.DisableAllButtonsAndActions(app);
-            if(DP_D ~= 4)
+            if(app.drawing.mode ~= 4)
 %                 app.MagicdrawButton.BackgroundColor = [.96 .96 0];
                 app.drawing.mode = 4;
             else
@@ -1020,155 +993,6 @@ classdef Interaction < handle
             %Used for quick access to the app state
             disp('Debugging, press "continue"')
             a = 12;
-        end
-        
-        
-        function CalculateADCVals(app)
-            
-            
-            
-            img = app.data{app.imIdx}.img;
-            
-            total_mask = permute(zeros(size(img)),[2,1,3]);
-            total_mask_necr = zeros(size(total_mask));
-            counter = 0;
-            
-            names = containers.Map;
-            
-            for i = 1:length(app.userObjects)
-               uo = app.userObjects{i};
-               if uo.imageIdx ~= app.imIdx
-                   continue
-               end
-
-               tmp_mask = uo.data;
-               if ~all(size(total_mask) == size(uo.data))
-                   minx = min(size(tmp_mask,1), size(total_mask,1));
-                   miny = min(size(tmp_mask,2), size(total_mask,2)); 
-                   
-                   tmp_mask = zeros(size(total_mask));
-                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny, :);
-               end
-
-               if contains(uo.name, 'Whole Tumor')
-                   total_mask = total_mask + tmp_mask;
-                   total_mask_necr = total_mask_necr + tmp_mask;
-                   counter = counter + 1;
-               else
-                   total_mask = total_mask - tmp_mask;
-               end
-               
-               [~,~,z] = ind2sub(size(uo.data), find(uo.data));                
-               names(uo.name) = mode(z);
-            end
-
-            total_mask(total_mask > 1) = 1;
-            total_mask(total_mask < 0) = 0;
-            total_mask_necr(total_mask_necr > 1) = 1;
-            total_mask_necr(total_mask_necr < 0) = 0;
-            
-            tmp = Interaction.overlayMask(img, total_mask);
-            if mean(tmp(:)) > 500
-                img = img / 1000;
-            elseif mean(tmp(:)) < 0.5
-                img = img * 1000;
-            end
-
-            %apply mask tot ADC
-            adc_list = Interaction.overlayMask(img, total_mask);
-            adc_necr = Interaction.overlayMask(img, total_mask_necr);  
-            
-            z = cell2mat(names.values);
-            z = z(strcmp(names.keys, 'Whole Tumor'));
-            if isempty(z)
-                z = cell2mat(names.values);
-                z = z(strcmp(names.keys, 'Whole Tumor1'));
-            end            
-
-            if z > size(total_mask, 3)
-                disp('Size is fucky')
-                return
-            end
-            
-            main_slc_mask = total_mask(:,:,z);
-            adc_single = img(:,:,z);
-            main_slc_adc    = Interaction.overlayMask(...
-                adc_single, main_slc_mask);
-            main_slc_mask_necr = total_mask_necr(:,:,z);
-            main_slc_adc_necr = Interaction.overlayMask(...
-                adc_single, main_slc_mask_necr);
-
-            %write output            
-            a = app.current_folder;
-            a = erase(a,'D:\Retrospective_original\');
-            a = erase(a, '\rmsstudio');
-            a = strsplit(a, '\');
-            id = a{1};
-            accession = a{2};
-            val = app.AvailableimagesListBox.Value;
-            val = erase(val, '* ');            
-            
-            outdir = fullfile('D:\ADC', id, accession);
-
-            if ~exist(outdir, 'dir')
-                mkdir(outdir)
-            end   
-
-            out_fn = fullfile(outdir, [val '_multi.txt']);
-            fileID = fopen(out_fn, 'w');
-            fprintf(fileID, '%.5f\n', adc_list);
-            fclose(fileID);
-
-            out_fn = fullfile(outdir, [val '_multi_necr.txt']);
-            fileID = fopen(out_fn, 'w');
-            fprintf(fileID, '%.5f\n', adc_necr);
-            fclose(fileID);
-
-            %single slice
-
-            out_fn = fullfile(outdir, [val '_single.txt']);
-            fileID = fopen(out_fn, 'w');
-            fprintf(fileID, '%.5f\n', main_slc_adc);
-            fclose(fileID);
-            out_fn = fullfile(outdir, [val '_single_necr.txt']);
-            fileID = fopen(out_fn, 'w');
-            fprintf(fileID, '%.5f\n', main_slc_adc_necr);
-            fclose(fileID);
-
-            %write stats to file
-
-            frmt = ['%s\t%s\t%s\t'...
-                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
-                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
-                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t\t' ... 
-                '%s\t%d\t%d\t%d\t%d\t%d\t%d\t%d\t%d\n'];
-
-
-            fileID = fopen('D:\ADC\stats.txt', 'a');
-            fprintf(fileID, frmt, ...
-                val, id, accession,...
-                'single', 1, length(main_slc_adc), ...
-                mean(main_slc_adc), prctile(main_slc_adc, 0),...
-                prctile(main_slc_adc, 25), prctile(main_slc_adc, 50), ...
-                prctile(main_slc_adc, 75),prctile(main_slc_adc, 100),...
-                ...
-                'single_necr', 1, length(main_slc_adc_necr), ...
-                mean(main_slc_adc_necr), prctile(main_slc_adc_necr, 0),...
-                prctile(main_slc_adc_necr, 25), prctile(main_slc_adc_necr, 50), ...
-                prctile(main_slc_adc_necr, 75),prctile(main_slc_adc_necr, 100),...
-                ...
-                'multi', counter, length(adc_list), ...
-                mean(adc_list), prctile(adc_list, 0),prctile(adc_list, 25), ...
-                prctile(adc_list, 50), prctile(adc_list, 75),...
-                prctile(adc_list, 100),...
-                ...
-                'multi_necr', counter, length(adc_necr), ...
-                mean(adc_necr), prctile(adc_necr, 0),prctile(adc_necr, 25), ...
-                prctile(adc_necr, 50), prctile(adc_necr, 75),...
-                prctile(adc_necr, 100)...
-            );
-            fclose(fileID);
-            
         end
         
         function showADCHist(app)

@@ -4,6 +4,8 @@ classdef Database < handle
         function PrepareDatabase(app)
            %Prepares a new database
            
+           GUI.DisableControlsStatus(app)
+           
            %Prompt for a database location
            fp = uigetdir('Select a folder');
            if(isnumeric(fp) && fp == 0)
@@ -21,6 +23,7 @@ classdef Database < handle
            Database.AddStudies(app, fp)
            
            IOUtils.PrepareStudy(app, app.dataset{1})
+           GUI.RevertControlsStatus(app)
         end
         
         function FindStudies(app, fp)
@@ -57,22 +60,6 @@ classdef Database < handle
             
         end
         
-        function PrevStudy(app)
-            %Called when PrevStudyButton (<--) button is pressed
-            
-            %find current index and switch to the previous one.
-            index   = find(strcmp(app.dataset, app.filepath));
-            Database.SwitchToStudy(app, index - 1)
-        end
-        
-        function NextStudy(app)
-            %Called when NextStudyButton (<--) button is pressed
-            
-            %find current index and switch to the next one
-            index   = find(strcmp(app.dataset, app.filepath));
-            Database.SwitchToStudy(app, index + 1)
-        end
-        
         function SwitchToStudy(app, varargin)
             %Called when a new study is selected in the availablestudies
             %listbox. Switches to that study.
@@ -85,6 +72,8 @@ classdef Database < handle
                    return
                end
             end
+            
+            GUI.DisableControlsStatus(app)
             
             if ~isempty(varargin)
                 index   = varargin{1};
@@ -110,6 +99,8 @@ classdef Database < handle
                 IOUtils.PrepareStudy(app, ...
                     fullfile(app.dataset{index},'rmsstudio'))
             end
+            
+            GUI.RevertControlsStatus(app)
         end
             
             

@@ -40,6 +40,9 @@ classdef GUI < handle
                     %Switch back
                     app.current_view = 1;
                 end
+                
+                msg = sprintf('Preparing image 2 of 2');
+                GUI.updateWaitBar(app, msg, 1)
                 app.current_view      = 1;
                 %Keep track of which image is in which view
                 idx = app.imagePerAxis(app.current_view);
@@ -659,6 +662,28 @@ classdef GUI < handle
             
         end
         
+        %% Cursor stuff
+        
+        function SetWatchCursor(app)
+            %Sets the cursor for the UIFigure to a loading icon (watch)
+            set(app.UIFigure, 'Pointer', 'watch')
+        end
+        
+        function SetDrawCursor(app)
+            %Sets the cursor for the UIFigure to a crosshair icon 
+            set(app.UIFigure, 'Pointer', 'crosshair')
+        end
+        
+        function SetDragCursor(app)
+            %sets the cursor for the UIFigure to a dragging icon (fleur)
+            set(app.UIFigure, 'Pointer', 'fleur')
+        end
+        
+        function ResetCursor(app)
+            %Sets the cursor for the UIFigure to an arrow icon (default)
+            set(app.UIFigure, 'Pointer', 'arrow')
+        end
+        
         
         %% Context menus
         
@@ -698,83 +723,58 @@ classdef GUI < handle
            app.waitBar = [];
         end
         
+        %% UI text elements
+        
+        function ToggleUnsavedIndicator(app)
+            if app.unsavedProgress
+                app.UIFigure.Name = ['RMSStudio ' app.current_folder ' *'];
+            else
+                app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
+            end
+        end
         
         
         %% Enable / disable user interaction
         
         function SetButtonDownFcn(app)
            %Sets the button down function on all the tempDrawings objects.
-           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);
-%            %UIAxes1
-%            children     = get(app.UIAxes1,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-%            
-%            %UIAxes2
-%            children     = get(app.UIAxes2,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn',@app.MouseClickedInImage);
-%             
+%            set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);       
         end
         
         function RemoveButtonDownFcn(app)
            %Removes the button down function on all the tempDrawings
-           set(app.tempDrawings, 'ButtonDownFcn','');
-%            %UIAxes1
-%            children     = get(app.UIAxes1,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn','');
-%            
-%            %UIAxes2
-%            children     = get(app.UIAxes2,'Children');
-%            children     = children(1:end-1);
-% %            set(children,'HitTest','off')
-%            set(children,'ButtonDownFcn','');
+%            set(app.tempDrawings, 'ButtonDownFcn','');
             
         end
         
         % This enables it back (user interaction)
-        function RevertControlsStatus(app,only_non_action_buttons)
-            if(nargin < 2 || only_non_action_buttons == false)
-%                 app.SelectDeleteButton.Enable           = 'on';
-%                 app.UndoButton.Enable                   = 'on';
-%                 app.SelectionsensitivityButton.Enable   = 'on';
-                app.DrawPolygonButton.Enable            = 'on';
-                app.EditPolygonButton.Enable            = 'on';
-                app.AlignLRButton.Enable                = 'on';
-                app.AlignRLButton.Enable                = 'on';
-                app.VisibleSlider.Enable                = 'on';
-%                 app.MagicdrawButton.Enable              = 'on';
-%                 app.SensitivitySlider.Enable            = 'on';
-%                 app.DCheckBox.Enable                    = 'on';
-%                 app.AlignlabelsButton.Enable            = 'on';
-%                 app.AlgorithmDropDown.Enable            = 'on';
-%                 app.MeasureAutoButton.Enable            = 'on';
-%                 app.MeasureLineButton.Enable            = 'on';
-                app.FileMenu.Enable                     = 'on';
-                app.ViewMenu.Enable                     = 'on';
-                app.AnalyseMenu.Enable                  = 'on';
-                app.DrawMenu.Enable                     = 'on';
-                app.SegmentMenu.Enable                  = 'on';
-            end
+        function RevertControlsStatus(app)
+           
+
+            app.DrawPolygonButton.Enable            = 'on';
+            app.EditPolygonButton.Enable            = 'on';
+            app.AlignLRButton.Enable                = 'on';
+            app.AlignRLButton.Enable                = 'on';
+            app.VisibleSlider.Enable                = 'on';
+
+            app.FileMenu.Enable                     = 'on';
+            app.ViewMenu.Enable                     = 'on';
+            app.AnalyseMenu.Enable                  = 'on';
+            app.DrawMenu.Enable                     = 'on';
+            app.SegmentMenu.Enable                  = 'on';
             
-%             app.LoadLabelsButton.Enable         = 'on';
-%             app.SaveeditedsegmButton.Enable     = 'on';
             app.CoronalButton.Enable            = 'on';
             app.SagittalButton.Enable           = 'on';
             app.AxialButton.Enable              = 'on';
             app.SliceSlider.Enable              = 'on';
             app.MinvalSlider.Enable             = 'on';
             app.MaxvalSlider.Enable             = 'on';
-%             app.LoadButton.Enable               = 'on';
+
             app.AvailableimagesListBox.Enable   = 'on';
-%             app.ResetstudyButton.Enable         = 'on';
+            app.AvailableStudiesListBox         = 'on';
+
             app.SliceDecreaseButton.Enable      = 'on';
             app.SliceIncreaseButton.Enable      = 'on';
-%             app.ShufflecolorsButton.Enable      = 'on';
             
             Cv      = app.current_view;
             if(~isempty(app.data{Cv}) && ndims(app.data{Cv}.img) > 3)
@@ -783,12 +783,9 @@ classdef GUI < handle
                 app.Increase4DButton.Enable = 'on';
             end
             
-%             app.View1Button.Enable          = 'on';
-%             app.View2Button.Enable          = 'on';
             app.StatusLampLabel.Text        = 'Idle';
             app.StatusLamp.Color            = 'g';
-%             app.Labels3DButton.Enable       = 'on';
-%             app.LabelsstatsButton.Enable    = 'on'; 
+
         end
         
         

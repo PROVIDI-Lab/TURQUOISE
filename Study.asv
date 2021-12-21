@@ -23,14 +23,19 @@ classdef Study < handle
             app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
             app.data                = cell(nImages,1);
+            app.unsavedProgress     = false;
             
             if isempty(app.user_profile)
                 app.user_profile = '';
             end
             
+            Backups.ClearBackups(app)
+            
+            
             %Find if any files have user objects associated with them
             Study.FindUOsOnDisk(app)
             
+            %Load the first two images (preferably with UOs attached)
             loadCounter = 0;
             for i = 1:length(app.AvailableimagesListBox.Items)
                 if loadCounter >= 2
@@ -57,21 +62,17 @@ classdef Study < handle
                 if any(app.imagePerAxis == i)
                     continue
                 end
-                msg = sprintf('Loading image %d of 2', loadCounter);
-                GUI.updateWaitBar(app, loadCounter / 2, msg)
+                msg = sprintf('Loading image %d of 2', loadCounter + 1);
+                GUI.updateWaitBar(app, msg, (loadCounter + 1)/ 2)
                 IOUtils.LoadNii(app, i)
                 IOUtils.LoadUserObjects(app, i);
                 app.imagePerAxis(loadCounter + 1) = i;
                 loadCounter = loadCounter + 1;
             end                
             
-%             %Load all user objects from disk
-%             for idx = 1:nImages
-%                 Study.LoadFromDisk(app, idx)
-%             end
-            
             %Initialize the window
             GUI.InitGUI(app)
+            Backups.CreateBackup(app)
             GUI.closeWaitBar(app)
             
         end
@@ -154,6 +155,10 @@ classdef Study < handle
             GUI.SwitchImage(app, index)
         end
                
+        
+        function toggleUnsavedProgress(app)
+            app.unsavedProgress = ~app.unsavedProgress;
+        
         
         function [delObj, ij, meas] = FindObjectTypeAtPos(app, hitx, hity)
         %Find the object position at the given position. Measurements 

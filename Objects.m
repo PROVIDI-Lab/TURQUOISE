@@ -231,6 +231,10 @@ classdef Objects < handle
             
             idx = Objects.findUOIndex(app, idx);
             
+            if idx == -1    %UO has been deleted since
+                return
+            end
+            
             boxVisible = app.userObjects{idx}.boxVisible;
             app.userObjects{idx}.setBoxVisible(~boxVisible)             
         end        
@@ -297,7 +301,7 @@ classdef Objects < handle
                 elseif obj.type == 2
                     
                     d = MathUtils.CalcDistancePointLine([hitx, hity], ...
-                        obj.points(1), obj.points(2));
+                        obj.points(1,:), obj.points(2,:));
                     
                     if d <= 5
                         UOId = obj.ID;
