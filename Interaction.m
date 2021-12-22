@@ -158,6 +158,7 @@ classdef Interaction < handle
                     app.drawing.mode                        = 0;
                     app.DrawPolygonButton.BackgroundColor   = ...
                                             [.96 .96 .96];
+                    GUI.ResetCursor(app)
                 end
                 
             elseif(app.drawing.mode == 2)
@@ -202,6 +203,7 @@ classdef Interaction < handle
             if app.drawing.mode == 2
                 %Change segmentation
                 ROI.ValidateModifiedROIPoints(app)
+                GUI.ResetCursor(app)
             elseif app.drawing.mode == 5
                 ROI.FinishDrawingCircular(app)
             elseif app.drawing.mode == 6
@@ -226,11 +228,13 @@ classdef Interaction < handle
             %Calls ROI.MoveROIPoint with the new position of the cursor 
             %relative to the top left corner with the scale of the image.
             if isempty(app.dragPoint) || isempty(app.currentDragPoint)
+                
                 UOId = Objects.FindUOUnderMouse(app, hit);
                 
                 if UOId == -1
                     if app.prevUOTextShown ~= 0
-                        Objects.ToggleVisibleUOInfoBox(app, app.prevUOTextShown)
+                        Objects.ToggleVisibleUOInfoBox(app,...
+                            app.prevUOTextShown)
                         app.prevUOTextShown = 0;
                     end
                     return
@@ -251,11 +255,11 @@ classdef Interaction < handle
                 return
             end
             
-            disp(app.drawing.mode)
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
             if app.drawing.mode == 2
+                GUI.SetDragCursor(app)
                 ROI.MoveROIPoint(app, [hitx, hity])
             %Circular ROI
             elseif app.drawing.mode == 5
@@ -550,14 +554,14 @@ classdef Interaction < handle
                 return
             end
             
-            DP_D = app.drawing.mode ~= 1;
-            if(DP_D)
+            if(app.drawing.mode ~= 1)
                 app.drawing.mode = 1;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 0];
+                GUI.SetDrawCursor(app)
             else
                 app.drawing.mode = 0;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 .96];
-                ROI.ValidateDrawingPoints(app);
+                GUI.ResetCursor(app)
                 Graphics.UpdateImage(app);
             end
             Graphics.UpdateImage(app);

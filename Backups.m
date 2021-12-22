@@ -83,8 +83,6 @@ classdef Backups < handle
                app.backup_idx = app.backup_idx - 1;
                Backups.RestoreBackup(app)
            end
-           
-           disp(app.backup_idx)
             
         end
         
@@ -98,8 +96,6 @@ classdef Backups < handle
                 app.backup_idx = app.backup_idx + 1;
                 Backups.RestoreBackup(app)
             end         
-            
-            disp(app.backup_idx)
             
         end
         
