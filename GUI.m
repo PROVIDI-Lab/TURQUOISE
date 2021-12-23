@@ -23,9 +23,9 @@ classdef GUI < handle
             
             %Select and display the first image of the study, and if
             %possible, display the second image on the second view.
-            if(~isempty(app.AvailableimagesListBox.Items))
+            if(~isempty(app.studyNames))
                 
-                if size(app.AvailableimagesListBox.Items,2) > 1
+                if length(app.studyNames) > 1
                     msg = sprintf('Preparing image 1 of 2');
                     GUI.updateWaitBar(app, msg, 0.5)
                     app.current_view      = 2;
@@ -124,7 +124,7 @@ classdef GUI < handle
             imSize  = size(app.data{index}.img);
             ax.XLim = [0, imSize(2)];
             ax.YLim = [0, imSize(1)];
-                        
+            
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
@@ -145,9 +145,16 @@ classdef GUI < handle
             
             %Set axis limits
             ax      = app.GetAxis(app.current_view);
-            imSize  = size(app.data{index}.img);
-            ax.XLim = [0, imSize(2)];
-            ax.YLim = [0, imSize(1)];
+            if isempty(app.zoomPerImage{index})
+                imSize  = size(app.data{index}.img);
+                ax.XLim = [0, imSize(2)];
+                ax.YLim = [0, imSize(1)];
+                app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
+            else
+                ax.XLim = app.zoomPerImage{index}(1,:);
+                ax.YLim = app.zoomPerImage{index}(2,:);
+            end
+                        
                         
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -169,7 +176,7 @@ classdef GUI < handle
         function Scroll(app, event)
         %Manages the scrollwheelEvent 
         
-            if isempty(app.data) || isempty(app.AvailableimagesListBox.Items)
+            if isempty(app.data) || isempty(app.studyNames)
                 return
             end
             verticalScrollCount     = event.VerticalScrollCount;                                    
@@ -270,6 +277,8 @@ classdef GUI < handle
                                     the_axis.YLim(1), the_axis.YLim(2));                
                                 
             the_axis.YLim   = [yMin, yMax];
+            
+            GUI.StoreZoomLevel(app)
         end
         
         function ResetAxisZoom(app)
@@ -287,6 +296,15 @@ classdef GUI < handle
                 ax.YLim = [0, imSize(2)];
             end
             
+            GUI.StoreZoomLevel(app)            
+        end
+        
+        function StoreZoomLevel(app)
+            %Stores the current XLim and YLim 
+            ax      = app.GetAxis(app.current_view);
+            index   = app.imIdx;
+
+            app.zoomPerImage{index} = [ax.XLim; ax.YLim];
         end
         
         

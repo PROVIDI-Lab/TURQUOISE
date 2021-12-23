@@ -23,16 +23,16 @@ classdef GUI < handle
             
             %Select and display the first image of the study, and if
             %possible, display the second image on the second view.
-            if(~isempty(app.AvailableimagesListBox.Items))
+            if(~isempty(app.studyNames))
                 
-                if size(app.AvailableimagesListBox.Items,2) > 1
+                if length(app.studyNames) > 1
                     msg = sprintf('Preparing image 1 of 2');
                     GUI.updateWaitBar(app, msg, 0.5)
                     app.current_view      = 2;
                     %Keep track of which image is in which view
                     idx = app.imagePerAxis(app.current_view);
                     app.AvailableimagesListBox.Value =...
-                        app.AvailableimagesListBox.Items{idx};
+                        app.studyNames{idx};
                     app.imIdx = idx;
                     %Show everything
                     GUI.DisplayNewImage(app, idx)
@@ -47,7 +47,7 @@ classdef GUI < handle
                 %Keep track of which image is in which view
                 idx = app.imagePerAxis(app.current_view);
                 app.AvailableimagesListBox.Value =...
-                    app.AvailableimagesListBox.Items{idx};
+                    app.studyNames{idx};
                 app.imIdx = idx;
                 %Show everything
                 GUI.DisplayNewImage(app, idx)
@@ -124,7 +124,7 @@ classdef GUI < handle
             imSize  = size(app.data{index}.img);
             ax.XLim = [0, imSize(2)];
             ax.YLim = [0, imSize(1)];
-                        
+            
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
@@ -145,9 +145,16 @@ classdef GUI < handle
             
             %Set axis limits
             ax      = app.GetAxis(app.current_view);
-            imSize  = size(app.data{index}.img);
-            ax.XLim = [0, imSize(2)];
-            ax.YLim = [0, imSize(1)];
+            if isempty(app.zoomPerImage{index})
+                imSize  = size(app.data{index}.img);
+                ax.XLim = [0, imSize(2)];
+                ax.YLim = [0, imSize(1)];
+                app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
+            else
+                ax.XLim = app.zoomPerImage{index}(1,:);
+                ax.YLim = app.zoomPerImage{index}(2,:);
+            end
+                        
                         
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -169,7 +176,7 @@ classdef GUI < handle
         function Scroll(app, event)
         %Manages the scrollwheelEvent 
         
-            if isempty(app.data) || isempty(app.AvailableimagesListBox.Items)
+            if isempty(app.data) || isempty(app.studyNames)
                 return
             end
             verticalScrollCount     = event.VerticalScrollCount;                                    
@@ -270,6 +277,8 @@ classdef GUI < handle
                                     the_axis.YLim(1), the_axis.YLim(2));                
                                 
             the_axis.YLim   = [yMin, yMax];
+            
+            GUI.StoreZoomLevel(app)
         end
         
         function ResetAxisZoom(app)
@@ -287,6 +296,15 @@ classdef GUI < handle
                 ax.YLim = [0, imSize(2)];
             end
             
+            GUI.StoreZoomLevel(app)            
+        end
+        
+        function StoreZoomLevel(app)
+            %Stores the current XLim and YLim 
+            ax      = app.GetAxis(app.current_view);
+            index   = app.imIdx;
+
+            app.zoomPerImage{index} = [ax.XLim; ax.YLim];
         end
         
         
@@ -738,105 +756,110 @@ classdef GUI < handle
         
         function SetButtonDownFcn(app)
            %Sets the button down function on all the tempDrawings objects.
-%            set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);       
+           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);       
         end
         
         function RemoveButtonDownFcn(app)
            %Removes the button down function on all the tempDrawings
-%            set(app.tempDrawings, 'ButtonDownFcn','');
-            
+           set(app.tempDrawings, 'ButtonDownFcn','');
         end
         
-        % This enables it back (user interaction)
         function RevertControlsStatus(app)
-           
-
+            %Re-ables user interaction with the different menus, buttons,
+            %UI elements and more.
+            
+            %Buttons
             app.DrawPolygonButton.Enable            = 'on';
             app.EditPolygonButton.Enable            = 'on';
             app.AlignLRButton.Enable                = 'on';
             app.AlignRLButton.Enable                = 'on';
             app.VisibleSlider.Enable                = 'on';
+            app.SliceDecreaseButton.Enable          = 'on';
+            app.SliceIncreaseButton.Enable          = 'on';
+             app.CoronalButton.Enable               = 'on';
+            app.SagittalButton.Enable               = 'on';
+            app.AxialButton.Enable                  = 'on';
 
+            %Menus
             app.FileMenu.Enable                     = 'on';
             app.ViewMenu.Enable                     = 'on';
             app.AnalyseMenu.Enable                  = 'on';
             app.DrawMenu.Enable                     = 'on';
             app.SegmentMenu.Enable                  = 'on';
             
-            app.CoronalButton.Enable            = 'on';
-            app.SagittalButton.Enable           = 'on';
-            app.AxialButton.Enable              = 'on';
-            app.SliceSlider.Enable              = 'on';
-            app.MinvalSlider.Enable             = 'on';
-            app.MaxvalSlider.Enable             = 'on';
+            %Sliders
+            app.SliceSlider.Enable                  = 'on';
+            app.MinvalSlider.Enable                 = 'on';
+            app.MaxvalSlider.Enable                 = 'on';
 
-            app.AvailableimagesListBox.Enable   = 'on';
-            app.AvailableStudiesListBox         = 'on';
+            %Listboxes
+            app.AvailableimagesListBox.Enable       = 'on';
+            app.AvailableStudiesListBox.Enable      = 'on';
+            app.UOBox.Enable                        = 'on';
 
-            app.SliceDecreaseButton.Enable      = 'on';
-            app.SliceIncreaseButton.Enable      = 'on';
-            
+
+            %4d stuff
             Cv      = app.current_view;
             if(~isempty(app.data{Cv}) && ndims(app.data{Cv}.img) > 3)
-                app.DSlider.Enable          = 'on';
-                app.Decrease4DButton.Enable = 'on';
-                app.Increase4DButton.Enable = 'on';
+                app.DSlider.Enable                  = 'on';
+                app.Decrease4DButton.Enable         = 'on';
+                app.Increase4DButton.Enable         = 'on';
             end
             
-            app.StatusLampLabel.Text        = 'Idle';
-            app.StatusLamp.Color            = 'g';
+            app.StatusLampLabel.Text                = 'Idle';
+            app.StatusLamp.Color                    = 'g';
+            
+            GUI.ResetCursor(app)
+            app.busyStatus                          = false;
 
         end
         
         
         % This prevents user interaction
-        function DisableControlsStatus(app,only_action_buttons)
-%             app.FileMenu.Enable                     = 'off';
-            app.ViewMenu.Enable                     = 'off';
-            app.AnalyseMenu.Enable                  = 'off';
-            app.DrawMenu.Enable                     = 'off';
-            app.SegmentMenu.Enable                  = 'off';
-%             app.SelectDeleteButton.Enable           = 'off';
-%             app.UndoButton.Enable                   = 'off';
-%             app.SelectionsensitivityButton.Enable   = 'off';
+        function DisableControlsStatus(app)
+
+            %Buttons
             app.DrawPolygonButton.Enable            = 'off';
             app.EditPolygonButton.Enable            = 'off';
             app.AlignLRButton.Enable                = 'off';
             app.AlignRLButton.Enable                = 'off';
-%             app.DeleteROIsALLButton.Enable          = 'off';
-%             app.MagicdrawButton.Enable              = 'off';
-%             app.SensitivitySlider.Enable            = 'off';
-%             app.AlignlabelsButton.Enable            = 'off';
-%             app.AlgorithmDropDown.Enable            = 'off';
-%             app.MeasureAutoButton.Enable            = 'off';
-%             app.MeasureLineButton.Enable            = 'off';
-%             app.DCheckBox.Enable                    = 'off';
-%             app.Labels3DButton.Enable               = 'off'; 
-%             app.LabelsstatsButton.Enable            = 'off'; 
-            if(nargin > 1 && only_action_buttons == true)
-                return
-            end
-%             app.LoadLabelsButton.Enable         = 'off';
-%             app.SaveeditedsegmButton.Enable     = 'off';
-            app.CoronalButton.Enable            = 'off';
-            app.SagittalButton.Enable           = 'off';
-            app.AxialButton.Enable              = 'off';
-            app.SliceSlider.Enable              = 'off';
-            app.MinvalSlider.Enable             = 'off';
-            app.MaxvalSlider.Enable             = 'off';
-%             app.LoadButton.Enable               = 'off';
-            app.AvailableimagesListBox.Enable   = 'off';
-%             app.ResetstudyButton.Enable         = 'off';
-            app.SliceDecreaseButton.Enable      = 'off';
-            app.SliceIncreaseButton.Enable      = 'off';
-            app.Decrease4DButton.Enable         = 'off';
-            app.Increase4DButton.Enable         = 'off';
-%             app.View1Button.Enable              = 'off';
-%             app.View2Button.Enable              = 'off';
-%             app.ShufflecolorsButton.Enable      = 'off';
-            app.DSlider.Enable                  = 'off';
-            app.StatusLampLabel.Text            = 'Busy';
-            app.StatusLamp.Color                = 'r';
+            app.VisibleSlider.Enable                = 'off';
+            app.SliceDecreaseButton.Enable          = 'off';
+            app.SliceIncreaseButton.Enable          = 'off';
+             app.CoronalButton.Enable               = 'off';
+            app.SagittalButton.Enable               = 'off';
+            app.AxialButton.Enable                  = 'off';
+
+            %Menus
+            app.FileMenu.Enable                     = 'off';
+            app.ViewMenu.Enable                     = 'off';
+            app.AnalyseMenu.Enable                  = 'off';
+            app.DrawMenu.Enable                     = 'off';
+            app.SegmentMenu.Enable                  = 'off';
+            
+            %Sliders
+            app.SliceSlider.Enable                  = 'off';
+            app.MinvalSlider.Enable                 = 'off';
+            app.MaxvalSlider.Enable                 = 'off';
+
+            %Listboxes
+            app.AvailableimagesListBox.Enable       = 'off';
+            app.AvailableStudiesListBox.Enable      = 'off';
+            app.UOBox.Enable                        = 'off';
+
+
+            %4d stuff
+            app.DSlider.Enable                      = 'off';
+            app.Decrease4DButton.Enable             = 'off';
+            app.Increase4DButton.Enable             = 'off';
+            
+            app.StatusLampLabel.Text                = 'Busy';
+            app.StatusLamp.Color                    = 'r';
+            
+            GUI.SetWatchCursor(app)
+            app.busyStatus                          = true;
+
+
         end
         
         
@@ -847,14 +870,6 @@ classdef GUI < handle
             
             app.currentDragPoint                    = -1;
             app.dragPoint                           = [];
-%             app.DrawpolygonButton.BackgroundColor   = [.96 .96 .96];
-%             app.SelectDeleteButton.BackgroundColor  = [.96 .96 .96];
-%             app.MagicdrawButton.BackgroundColor     = [.96 .96 .96];
-%             app.MeasureLineButton.BackgroundColor   = [.96 .96 .96];
-            
-%             app.current_view                        = 1;
-%             app.View1Button.BackgroundColor         = [.96 .96 0];
-%             app.View2Button.BackgroundColor         = [.96 .96 .96];
             
             %Turns off zooming for all axes
             zoom(app.UIAxes1, 'off')

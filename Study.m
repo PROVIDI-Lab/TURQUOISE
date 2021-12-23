@@ -9,7 +9,7 @@ classdef Study < handle
             %Initialises all objects that are used when working with a
             %study. Called after PrepareStudy.
             
-            nImages     = length(app.AvailableimagesListBox.Items);
+            nImages     = length(app.studyNames);
             if nImages == 0
                 return
             end
@@ -22,8 +22,9 @@ classdef Study < handle
             app.viewPerImage        = ones(1,nImages)*3;
             app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
-            app.data                = cell(nImages,1);
+            app.data                = cell(nImages, 1);
             app.unsavedProgress     = false;
+            app.zoomPerImage        = cell(nImages, 1);
             
             if isempty(app.user_profile)
                 app.user_profile = '';
@@ -37,7 +38,7 @@ classdef Study < handle
             
             %Load the first two images (preferably with UOs attached)
             loadCounter = 0;
-            for i = 1:length(app.AvailableimagesListBox.Items)
+            for i = 1:length(app.studyNames)
                 if loadCounter >= 2
                     break
                 end
@@ -54,7 +55,7 @@ classdef Study < handle
             end
             
             %fill the other images
-            for i = 1:length(app.AvailableimagesListBox.Items)
+            for i = 1:length(app.studyNames)
                 if loadCounter >= 2
                     break
                 end
@@ -81,9 +82,9 @@ classdef Study < handle
         
         function FindUOsOnDisk(app)
             
-            nImages     = length(app.AvailableimagesListBox.Items);
+            nImages     = length(app.studyNames);
             for idx = 1:nImages
-                folder      = app.AvailableimagesListBox.Items{idx};
+                folder      = app.studyNames{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
                 files       = dir(fullfile(direc, '*.json')); 
@@ -111,8 +112,8 @@ classdef Study < handle
             %Saves the current study to the .rmsstudio folder. All the 
             %User-made objects are written to either .nii or .csv files.
             
-            for imageId=1:length(app.AvailableimagesListBox.Items)
-                fn      = app.AvailableimagesListBox.Items{imageId};
+            for imageId=1:length(app.studyNames)
+                fn      = app.studyNames{imageId};
                 
                 if strcmp(fn(1:2), '* ')
                     fn = fn(3:end);
@@ -135,6 +136,7 @@ classdef Study < handle
             if app.imIdx == index
                 return
             end
+            
             %Switch to new image
             app.imIdx = index;
             

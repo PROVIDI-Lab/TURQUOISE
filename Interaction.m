@@ -30,6 +30,10 @@ classdef Interaction < handle
                 return
             end
             
+            %Save current zoom. Used to store any changes made througout
+            %the standard UI instead of ctrl+scroll.
+            GUI.StoreZoomLevel(app)
+            
             %Update app
             Study.SwitchImage(app, index)
         end
@@ -88,7 +92,7 @@ classdef Interaction < handle
         
     %% UIAxes interactions
     
-        function SwitchViewAndFocus(app,new_view_idx,caller_name)
+        function SwitchViewAndFocus(app,new_view_idx,~)
         % When switching to another view, store current properties for
         % later recalling them
         % Input: new_view_idx - idx of view that was pressed
@@ -96,11 +100,16 @@ classdef Interaction < handle
         %        calling this function from unknown sources (not
         %        pre-defined).
         
-            if isempty(app.AvailableimagesListBox.Items)
+            if isempty(app.studyNames)
                 return
             end
         
             GUI.DisableAllButtonsAndActions(app);
+            
+            %Save current zoom. Used to store any changes made througout
+            %the standard UI instead of ctrl+scroll.
+            GUI.StoreZoomLevel(app)
+            
             app.current_view    = new_view_idx;
                        
             %Switch to the correct image
@@ -493,7 +502,7 @@ classdef Interaction < handle
         %Input:
         %   app - the RMSstudio app
         %
-            if isempty(app.AvailableimagesListBox.Items)
+            if isempty(app.studyNames)
                 return
             end
             GUI.DisableControlsStatus(app)
@@ -669,7 +678,7 @@ classdef Interaction < handle
             popup = uicontrol('Parent',d,                               ...
                 'Style','popup',                                        ...
                 'Position',[75 70 100 25],                              ...
-                'String',app.AvailableimagesListBox.Items,              ...
+                'String',app.studyNames,              ...
                 'Callback',@popup_callback);
             
             btn = uicontrol('Parent',d,                                 ...
@@ -677,7 +686,7 @@ classdef Interaction < handle
                 'String','Align!',                                      ...
                 'Callback','delete(gcf)');
             
-            choice = app.AvailableimagesListBox.Items{1};
+            choice = app.studyNames{1};
             
             % Wait for d to close before running to completion
             uiwait(d);
@@ -937,7 +946,7 @@ classdef Interaction < handle
                    'Parent',    d,...
                    'Style',     'popup',...
                    'Position',  [75 70 100 25],...
-                   'String',    app.AvailableimagesListBox.Items,...
+                   'String',    app.studyNames,...
                    'Callback',  @popup_callback);
 
             btn = uicontrol('Parent',d,...

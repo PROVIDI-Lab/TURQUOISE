@@ -407,7 +407,7 @@ classdef Graphics < handle
             view        = app.viewPerImage(imID);
             maxSize     = size(app.data{imID}.img, view);
             sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
-            nameString  = app.AvailableimagesListBox.Items{imID};
+            nameString  = app.studyNames{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);
             
             if axID == 1

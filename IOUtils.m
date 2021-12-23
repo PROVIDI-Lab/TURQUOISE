@@ -104,7 +104,7 @@ classdef IOUtils < handle
         
             fp = app.current_folder;
             try
-                fn = app.AvailableimagesListBox.Items{index};
+                fn = app.studyNames{index};
             catch
                 return
             end
@@ -134,13 +134,9 @@ classdef IOUtils < handle
         function saveUObjs(app, imageId, fn)
         %Saves all the user objects for the current image
         
-%             fn      = fullfile(app.current_folder, ...
-%                 app.AvailableimagesListBox.Items{imageId},...
-%                 app.user_profile{1});
             if ~isfolder(fn)
                 mkdir(fn);
             else
-                
                 delete(fullfile(fn, '*'))   %Remove all previous saved data
             end
             
@@ -236,7 +232,7 @@ classdef IOUtils < handle
         function LoadUserObjects(app, idx)
             %Loads userobjects from the disk that correspond to the image
             %at idx.
-            folder      = app.AvailableimagesListBox.Items{idx};
+            folder      = app.studyNames{idx};
             
             if strcmp(folder(1:2), '* ')
                     folder = folder(3:end);
@@ -411,13 +407,13 @@ classdef IOUtils < handle
             files = dir(fullfile(app.current_folder,...
                 '*.nii'));
             
-            app.AvailableimagesListBox.Items = {};
+            app.studyNames = {};
             
             counter = 1;
             for file_id=1:length(files)
                 text        = files(file_id).name; 
                 if contains(text, '.rmsstudio_reslice.nii')
-                    app.AvailableimagesListBox.Items{counter} = ...
+                    app.studyNames{counter} = ...
                         erase(text, '.rmsstudio_reslice.nii');
                     counter = counter + 1;
                 else
@@ -435,11 +431,13 @@ classdef IOUtils < handle
                     
                     current_path = fullfile(app.current_folder, text);
                     IOUtils.ResliceResampleNii(current_path, reslice_path)
-                    app.AvailableimagesListBox.Items{counter} = ...
+                    app.studyNames{counter} = ...
                         erase(text, '.nii');
                     counter = counter + 1;
                 end
-            end       
+            end   
+            
+            app.AvailableimagesListBox.Items = app.studyNames;
         end
         
         function convertToNii(app)
