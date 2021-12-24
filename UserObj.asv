@@ -54,12 +54,8 @@ classdef UserObj < matlab.mixin.SetGet
         end
         
         function createMask(obj, app)
-            if obj.type ~= 1 && obj.type ~= 3
-                return
-            end
+            if 
             
-            obj.data    = ROI.PointsToMask(app,...
-                obj.points, app.imIdx, obj.type);            
         end
         
         function setVisible(obj, visible, ~)

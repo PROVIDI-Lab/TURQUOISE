@@ -149,7 +149,7 @@ classdef IOUtils < handle
                     continue
                 end
                 
-                if uObj.type == 1
+                if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
                     IOUtils.saveSegmentation(app, uObj, fn);
                     IOUtils.saveSegmentationPoints(uObj, fn);
                     segProperties{end+1} = uObj.prop;
@@ -221,7 +221,8 @@ classdef IOUtils < handle
             outFn   = fullfile(fn,...
                         [obj.name, '-segmentation.json']);
             
-            jsonObj     = struct('points', obj.points);
+            jsonObj     = struct('points', obj.points, ...
+                            'type', obj.type);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');
@@ -309,10 +310,16 @@ classdef IOUtils < handle
             
             points = data.points;
             points(any(isnan(points),2),:) = [];
+            
+            if isfield(data, 'type')
+                type = data.type;
+            else
+                type = 1;
+            end
 
             Objects.AddNewUserObj(app,...
-                    "type", 1, ...
-                    "data", ROI.PointsToMask(app, points, idx),...
+                    "type", type, ...
+                    "data", ROI.PointsToMask(app, points, idx, type),...
                     "points", data.points,...
                     "name", name,...
                     "imageIdx", idx);

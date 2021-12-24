@@ -40,14 +40,14 @@ classdef Objects < handle
             Backups.CreateBackup(app);
         end
         
-        function name = CheckNameUnique(app, name, type)
+        function name = CheckNameUnique(app, name, ~)
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
             counter     = 0;
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if obj.imageIdx ~= app.imIdx || obj.type ~= type
+                if obj.imageIdx ~= app.imIdx 
                     continue
                 end
                 %Very ugly way of removing any numbers from string.
@@ -91,8 +91,153 @@ classdef Objects < handle
             end
         end
         
+        function [view, slice] = GetUOViewAndSlice(obj)
+        %Finds the most occuring slice per view axis. Returns the view & 
+        %slice for which the most voxels are included in the segmentation
+        %at the given index.
+        
+            %Find index of corresponding segmentation
+            if ~isempty(obj.data)
+                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
+            else
+                x   = obj.points(:,1); 
+                y   = obj.points(:,2); 
+                z   = obj.points(:,3); 
+            end
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+        end
+        
+        function EditUO(app)
+            %When the edit menu in he UOBox contextmenu is called.
+            idx     = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            obj     = app.userObjects{idx};
+            
+            switch obj.type
+                case 1
+                    Objects.EditPolygon(app, idx)
+                case 3
+                    Objects.EditCircle(app, idx)
+            end            
+        end
+        
+        function EditPolygon(app, idx)
+            obj     = app.userObjects{idx};
+            points  = obj.points(:,1:2);
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(false);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h = images.roi.Polygon(ax, 'Position', points);
+            cm = h.ContextMenu;
+            %Add item to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save Polygon');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingPolygon, app, h};
+            
+        end
+        
+        function FinishEditingPolygon(~, ~, app, polygon)
+            idx     = app.UOBox.Value;
+            idx     = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            points  = polygon.Position;
+            
+            slice   = app.slicePerImage(app.imIdx);
+            slice   = ones(size(points(:,1)))*slice;
+            
+            points  = [points, slice];
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            %Create new contour
+            app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.set('changed', true);
+            
+            %turn contour back on
+            app.userObjects{idx}.setVisible(true)
+%             delete('app.userObjects{idx}.graphics')
+            
+            %Remove polygon
+            delete(polygon)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        function EditCircle(app, idx)
+            obj     = app.userObjects{idx};
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(false);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h   = images.roi.Circle(ax,...
+                'Center',obj.points(1:2),'Radius',obj.points(3));
+            cm = h.ContextMenu;
+            %Add item to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save ROI');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingCircle, app, h};
+        end
+        
+        function FinishEditingCircle(~, ~, app, roi)
+            idx     = app.UOBox.Value;
+            idx     = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            view    = app.viewPerImage(app.imIdx);
+            slice   = app.slicePerImage(app.imIdx);
+            points  = [roi.Center, roi.Radius, view, slice];
+            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
+            
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            %Create new contour
+            app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.set('changed', true);
+            
+            %turn contour back on
+            app.userObjects{idx}.setVisible(true)
+            
+            %Remove polygon
+            delete(roi)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        
+        
+        
+        
+        %%
         function DeleteUO(app)
-            %When the deletemenu in he UOBox conextmenu is called.
+            %When the deletemenu in he UOBox contextmenu is called.
             idx     = app.UOBox.Value;
             if isempty(idx)
                 return

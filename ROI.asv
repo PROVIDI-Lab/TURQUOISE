@@ -45,7 +45,6 @@ classdef ROI < handle
             GUI.DisableControlsStatus(app);
             drawnow;
 
-            Backups.CreateBackup(app);
             %Construct the segmentation from the drawing.points.
             ROI.CreateSegmentation(app, name{1})
 %             ROI.StoreROIPoints(app)
@@ -53,156 +52,6 @@ classdef ROI < handle
             app.points{Cv} = [];
             GUI.RevertControlsStatus(app);
         end
-        
-        function ValidateModifiedROIPoints(app)
-            %Called after an ROI point is moved and the mouse is released.
-            %Does mostly the same as ValidateDrawingPoints, just with the
-            %most recent roiPoints and not drawing.points.
-            
-            if isempty(app.currentDragPoint)
-                return
-            end
-            
-            Backups.CreateBackup(app);
-            %Circular ROI
-            if app.userObjects{app.currentDragPoint{1}}.type == 3
-                ROI.ModifyCircle(app);
-            else            
-                %Normal ROI
-                ROI.ModifySegmentation(app)
-            end
-        end            
-        
-        %% Dragging ROI points
-        
-        function StartDragging(app, hit)
-        %Stores the location from which an ROIpoint is being dragged.
-%             x = hit.Source.Parent.Parent.Parent.CurrentPoint(1);
-%             y = hit.Source.Parent.Parent.Parent.CurrentPoint(2);
-            %TODO: do I even use x & y anywhere?
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
-            app.dragPoint   = [hitx, 0, hity, 0];
-            ROI.FindPoint(app);
-            
-            %Only continue if a point has been found
-            if isempty(app.currentDragPoint)
-                return
-            end
-
-%             set(hit.Source.Parent.Parent.Parent,                               ...
-%                 'WindowButtonMotionFcn',                                ...
-%                 @app.MouseDraggedInImage);
-
-            set(hit.Source.Parent.Parent.Parent,                               ...
-                'WindowButtonUpFcn',                                    ...
-                @app.MouseReleasedInImage);
-                
-        end
-        
-        function FindPoint(app)
-            %Finds the point closest to where the user clicked in the
-            %image if the point is within 5 voxels and in the same plane as
-            %the view.
-            %Writes the point index to the app.currentDragPoint object.
-            
-            if isempty(app.dragPoint)
-                return
-            end
-            %TODO: check if this works in sag/cor views
-            x   = app.dragPoint(1);
-            y   = app.dragPoint(3);
-            
-            %Go over all ROI objects and check whether any point is within
-            % 5 voxels (in the current plane) of where the user clicked
-            %in the image.
-            
-            imID    = app.imagePerAxis(app.current_view);
-            
-            for i   = length(app.userObjects):-1:1
-                obj     = app.userObjects{i};
-                if obj.imageIdx ~= imID %ignore objects on different images
-                    continue
-                end
-                
-                idx     = ROI.DistanceToPoints(obj.points, x, y);
-                if idx  ~= -1
-                    app.currentDragPoint   = {i, idx};
-                    break
-                end                
-            end
-        end
-            
-        function idx    = DistanceToPoints(points, x,y)
-            idx     = -1;
-            xp      = points(:,1);
-            yp      = points(:,2);
-            d       = sqrt( (x-xp).^2 + (y-yp).^2);
-            [M, I]  = min(d);
-            if M <= 10 %less than 5 voxels away
-               idx  = I;
-            end
-        end
-        
-        
-        function MoveROIPoint(app, newPos)
-           %Modifies an ROI point to be in a new position. Called when the 
-           %user drags one of the points.
-           
-            imID    = app.imagePerAxis(app.current_view);
-            view    = app.viewPerImage(imID);
-           
-            x    = round(newPos(1));
-            y    = round(newPos(2));
-            z    = app.slicePerImage(imID);
-            
-            if view == 1
-               pos  = [z,x,y];
-            elseif view == 2
-               pos  = [x,z,y];
-            else
-               pos  = [x,y,z];               
-            end
-            
-            if any(isnan(pos))
-                return
-            end
-            
-            %If the obj is a circular ROI, edit accordingly
-            if app.userObjects{app.currentDragPoint{1}}.type == 3
-               %TODO fix different views 
-               points  = app.userObjects{...
-                        app.currentDragPoint{1}}.points(:,1:2);
-                if app.currentDragPoint{2} == 1%Middle is dragged, move ROI
-                    dx  = x - points(1,1);
-                    dy  = y - points(1,2);
-                    x2  = points(2,1) + dx;
-                    y2  = points(2,2) + dy;
-
-            %                     app.userObjects{app.currentDragPoint{1}}.points = ...
-            %                         round([x,y,z; x2,y2,z]);
-                    app.currentCircle = round([x,y,x2,y2]);
-                else %Edge is dragged, increase size
-
-                    app.currentCircle  = round(...
-                        [points(1,1), points(1,2), x, y]);
-                end
-                %Draw guide circle
-                if app.current_view  == 1
-                    Graphics.DrawCircleInAxis(app, app.UIAxes1);
-                else
-                    Graphics.DrawCircleInAxis(app, app.UIAxes2);
-                end
-                return
-            else %Normal ROI
-                app.userObjects{app.currentDragPoint{1}}.points(...
-                    app.currentDragPoint{2},:)     = round(pos);
-            end
-
-            Graphics.UpdateUserInteractions(app);
-        end
-        
-        
         
         function CreateSegmentation(app, name)
         %Creates a segmentation from a collection of points.
@@ -215,111 +64,56 @@ classdef ROI < handle
                 "name", name)
         end        
         
-        function ModifySegmentation(app)
-            %Creates a modified segmentation from the app.roiPoints. Mostly
-            %the same as CreateSegmentation.
-            
-            if isempty(app.currentDragPoint)
-                return
-            end
-            objId           = Objects.findUOIndex(app, ...
-                                app.currentDragPoint{1});            
-            obj             = app.userObjects{objId};
-            points          = obj.points;
-%             points(end+1,:) = points(1,:);
-            points          = round(points);
-            mask            = ROI.PointsToMask(...
-                app, points, app.imagePerAxis(app.current_view));
-            
-            app.userObjects{objId}.set('data', mask);
-            app.userObjects{objId}.set('changed', true);
-            app.userObjects{objId}.makeProperties(app);
-            Graphics.UpdateUserObjects(app);
-        end
-        
-        function mask = PointsToMask(app, points, imID)
+        function mask = PointsToMask(app, points, type)
         %Creates an array the size of the current image where everything in
         %the points is filled in.
         
-            view    = app.viewPerImage(imID);
-            axis4D  = app.d4PerImage(imID);
-        
             %preallocate the mask
-            points  = round(points);
             mask    = false(size(...
                 app.data{imID}.img(:,:,:, axis4D)));
-            mask    = permute(mask, [2,1,3]);  %this needs to have a better solution
+            mask    = permute(mask, [2,1,3]);  
+            %this needs to have a better solution
+
+            if type == 3
+                maskSlc     = ROI.GetCircularMask(points);
+                mask        = ROI.AddSliceToMask(...
+                    mask, maskSlc, points(4), points(5));
+                return
+            elseif type == 4
+                maskSlc     = ROI.GetEllipseMask(points);
+                mask        = ROI.AddSliceToMask(...
+                    mask, maskSlc, points(4), points(5));
+                return
+            elseif type ~= 1
+                return
+            end
+            
+            points  = round(points);
+            [view, ~]   = ROI.GetViewAndSlice(points);                        
             
             %The mask is made slice by slice.
-            idx = unique(points(:,view));   %todo: Index in position 2 exceeds array bounds.
+            idx = unique(points(:,view));   
+            %todo: Index in position 2 exceeds array bounds.
             for ii = idx'
                 tmpPoints   = points( points(:, view) == ii,:);
-                mask = ROI.ConstructVertices(mask, tmpPoints);
-            end
-
-            %finalise segmentation, fill all holes
-            for iz  = 1:size(mask, view)
-                %iz=app.current_slice:app.current_slice
-                %1:size(app.segmentation.img,3)
-                if(view == 3)
-                    mask(:,:,iz) = imfill(mask(:,:,iz), 'holes');
-                elseif(view == 2)
-                    mask(:,iz,:) = imfill(squeeze(mask(:,iz,:)), 'holes');
-                elseif(view == 1)
-                    mask(iz,:,:) = imfill(squeeze(mask(iz,:,:)), 'holes');
-                end
-            end       
+                maskDim     = size(mask);
+                maskDim(view) = [];
+                maskSlc = ones(maskDim);
+                maskSlc = roipoly(maskSlc, tmpPoints(:,1), tmpPoints(:,2));
+                mask    = ROI.AddSliceToMask(mask, maskSlc, view, ii);
+            end              
         end
         
-        function mask = ConstructVertices(mask, points)
-            %Gets a mask and some points in a 2d plane. Fills in all the 
-            %areas between the points in the mask to construct vertices.
-
-            %Add first point again to complete the circle
-            points(end+1,:) = points(1,:);
-            %TODO: Index in position 1 is invalid. Array indices must be 
-            %positive integers or logical values.
-            %Check for negative points??
-            
-            
-            %bullshit fix, should be better in the future
-            points = points(:,[2,1,3]);
-            
-            %Add all pixels in between the vertices to the mask
-            for x=2:size(points,1)
-                mask(...
-                    points(x-1,1),...
-                    points(x-1,2),...
-                    points(x-1,3))  = 1;
-                mask(...
-                    points(x,1),...
-                    points(x,2),...
-                    points(x,3))    = 1;
-
-                %Construct vector between point x and x-1
-                d = points(x,:)-points(x-1,:);
-                d = d/norm(d,2);
-                if(any(isnan(d)))
-                    continue
-                end
-
-                %Add all points between the most recently drawn points
-                catcher = 1;
-                while (catcher < 500)
-                    p = round(points(x-1,:)+d*catcher);
-                    mask(p(1),p(2),p(3)) = 1;
-                    if(all(p-points(x,:) == 0))
-                        break
-                    end
-                    catcher = catcher + 1;
-                end
-                if(catcher == 500)
-                    disp('Catcher!');
-                end
-
+        function mask = AddSliceToMask(mask, maskSlc, view, slc)
+            if(view == 3)
+                mask(:,:,slc) = maskSlc;
+            elseif(view == 2)
+                mask(:,slc,:) = maskSlc;
+            elseif(view == 1)
+                mask(slc,:,:) = maskSlc;
             end
         end
-        
+
         function points = ValidatePoints(app, points)
         %Makes sure that all points are valid.
         
@@ -333,6 +127,24 @@ classdef ROI < handle
             points          = max(points,1);
         end
         
+        function [view, slice] = GetViewAndSlice(points)
+            %Finds the view that was (most likely) used to draw the ROI as
+            %well as the slice that has the moist points on it.
+            
+            x   = points(:,1); 
+            y   = points(:,2); 
+            z   = points(:,3); 
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+        end
+        
         %% Circular ROIs
         
         function StartDrawingCircular(app, hit)
@@ -342,37 +154,29 @@ classdef ROI < handle
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             app.dragPoint       = [hitx, x, hity, y];
-            app.currentCircle   = [hitx, hity, 0, 0];
             
-%             set(hit.Source.Parent,                                      ...
-%                 'WindowButtonMotionFcn',                                ...
-%                 @app.MouseDraggedInImage);
-% 
-%             set(hit.Source.Parent,                                      ...
-%                 'WindowButtonUpFcn',                                    ...
-%                 @app.MouseReleasedInImage);
+            ax = app.GetAxis(app.current_view);
+            roi = drawcircle(ax);        
             
+            cm = roi.ContextMenu;
+            %Add item to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save Circle');
+            m1.MenuSelectedFcn = ...
+                {@ROI.FinishDrawingCircular, app, roi};
         end
         
-        function FinishDrawingCircular(app)
-        %Constructs a list of points from which a segmentation can be 
-        %constructed. Then adds the corresponding segmentation to the 
-        %program.
-        
-            %Stop drawing
-            app.drawing.mode = 0;
-            
-            [points, markers] = ...
-                ROI.GetCirclePointsMarkers(app);
+        function FinishDrawingCircular(~, ~, app, roi)
+        %Constructs a mask from the circular ROI object.
+        %Prompts the user for a name and adds a new user object.
             
             %Validate & Create
-            
             name    = Interaction.PromptName();
             if isempty(name)
-               	return %TODO: stop drawing
+               	return 
             end
-            points  = ROI.ValidatePoints(app, points);
-            Backups.CreateBackup(app);            
+            
+            points  = [roi.Center, roi.Radius];
+            maskSlc    = ROI.GetCircularMask(app, points);            
             
             Objects.AddNewUserObj(app,...
                     "type", 3, ...
@@ -382,70 +186,11 @@ classdef ROI < handle
                     "name", name{1})
         end
         
-        function ModifyCircle(app)
-        %Modifies an existing circular ROI user object
-            if isempty(app.currentCircle)
-                return
-            end
-            [points, markers] = ...
-                    ROI.GetCirclePointsMarkers(app);
-            points  = ROI.ValidatePoints(app, points);
-            Backups.CreateBackup(app);            
-            
-            app.userObjects{app.currentDragPoint{1}}.set(...
-                'data', ROI.PointsToMask(...
-                    app, points, app.imagePerAxis(app.current_view)));
-            app.userObjects{app.currentDragPoint{1}}.set(...
-                'points', markers);
-        end
         
-        function [points, markers] = GetCirclePointsMarkers(app)
-        %Constructs the points at the edge of a circular ROI as well as
-        %the markers that define it from app.currentCircle.
-            
-            imID    = app.imagePerAxis(Cv);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage(imID);
-            %Find position of circle
-            tmp                 = num2cell(app.currentCircle);
-            [x0, y0, x1, y1]    = deal(tmp{:});
-            rad                 = pdist([x0,y0; x1,y1],'euclidean');
-            
-            %Sample enough points
-            nPoints = round(2 * rad * pi); 
-            if isnan(nPoints)
-                nPoints = 100;
-            end
-            angles  = linspace(0, 2*pi, nPoints);
-            x       = round(rad * cos(angles) + x0);
-            y       = round(rad * sin(angles) + y0);
-            z       = ones(1, nPoints) * slice;
-            
-            if view        == 3
-                points  = [x;y;z]';
-            elseif view    == 2
-                points  = [x;z;y]';
-            elseif view    == 1
-                points  = [z;x;y]';
-            end
-            
-            %Create markers that define the circle (one in the middle,
-            %one at the edge)
-            insert  = @(a, x, n)cat(2,  x(1:n-1), a, x(n:end)); 
-            mark0   = insert(slice, [x0, y0], view);
-            mark1   = insert(slice, [x1, y1], view);
-            markers = [mark0; mark1];
+        function GetCircularMask(app, points)
+            %Takes the center
             
             
-        end
-        
-        function DrawCircularROI(app, newPos)
-            app.currentCircle(3:4) = newPos;
-            if app.current_view  == 1
-                Graphics.DrawCircleInAxis(app, app.UIAxes1);
-            else
-                Graphics.DrawCircleInAxis(app, app.UIAxes2);
-            end 
         end
         
         %%

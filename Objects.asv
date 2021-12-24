@@ -91,8 +91,53 @@ classdef Objects < handle
             end
         end
         
+        function EditUO(app)
+            %When the edit menu in he UOBox contextmenu is called.
+            idx     = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            obj     = app.userObjects{idx};
+            points  = obj.points(:,1:2);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h = images.roi.Polygon(ax, 'Position', points);
+            cm = h.ContextMenu;
+            %Add item to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save Polygon');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingUO, app, h};
+            
+        end
+        
+        function FinishEditingUO(src, event, app, polygon)
+            idx     = app.UOBox.Value;
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            points  = polygon.Position;
+            
+            slice   = app.slicePerImage(app.imIdx);
+            slice   = ones(size(points(:,1)))*slice;
+            
+            points  = [points, slice];
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            
+            
+        end
+        
         function DeleteUO(app)
-            %When the deletemenu in he UOBox conextmenu is called.
+            %When the deletemenu in he UOBox contextmenu is called.
             idx     = app.UOBox.Value;
             if isempty(idx)
                 return
@@ -171,30 +216,38 @@ classdef Objects < handle
         
         function bck_objects = CreateObjectBackup(app)
            
-            bck_objects = cell(length(app.userObjects));
+            bck_objects = cell(length(app.userObjects), 1);
             
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                
-                newObj  = Objects.AddNewUserObj(app,...
-                            "type", obj.type, ...
-                            "data", [], ...
-                            "points", obj.points, ...
-                            "name", obj.name, ... 
-                            "imageIdx", obj.imageIdx, ...
-                            "prop", obj. prop, ...
-                            "ID", obj.ID);
+                newObj  = UserObj();
+                newObj.type     = obj.type;
+                newObj.data     = [];
+                newObj.points   = obj.points;
+                newObj.name     = obj.name;
+                newObj.imageIdx = obj.imageIdx;
+                newObj.prop     = obj.prop;
+                newObj.ID       = obj.ID;
                         
                 bck_objects{i} = newObj;                
             end
             
         end
         
-        function RestoreObjectsBackup(app, objects)
+        function RestoreObjectBackup(app, objects)
             
-           
+            app.userObjects = cell(length(objects), 1);
             
-            
+            for i = 1:length(objects)
+               
+                app.userObjects{i} = objects{i};
+                if objects{i}.type == 1 || objects{i}.type == 3
+                    app.userObjects{i}.data = ...
+                        ROI.PointsToMask(app, ...
+                        objects{i}.points, objects{i}.imageIdx);
+                end
+                
+            end
             
         end
         
@@ -222,6 +275,10 @@ classdef Objects < handle
             end
             
             idx = Objects.findUOIndex(app, idx);
+            
+            if idx == -1    %UO has been deleted since
+                return
+            end
             
             boxVisible = app.userObjects{idx}.boxVisible;
             app.userObjects{idx}.setBoxVisible(~boxVisible)             
@@ -289,7 +346,7 @@ classdef Objects < handle
                 elseif obj.type == 2
                     
                     d = MathUtils.CalcDistancePointLine([hitx, hity], ...
-                        obj.points(1), obj.points(2));
+                        obj.points(1,:), obj.points(2,:));
                     
                     if d <= 5
                         UOId = obj.ID;

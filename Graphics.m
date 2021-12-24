@@ -59,8 +59,6 @@ classdef Graphics < handle
                 Graphics.DrawPointsInAxis(app,axID);
             elseif app.drawing.mode == 2
                 Graphics.DrawROIPointsInAxis(app, axID);
-            elseif app.drawing.mode == 5
-                Graphics.DrawCircleInAxis(app, axID)
             end
         end
         
@@ -370,29 +368,6 @@ classdef Graphics < handle
                 hold(the_axis,'off');
                 app.tempDrawings = [app.tempDrawings; h2];
             end
-        end
-        
-        function DrawCircleInAxis(app, axID)
-        %Plots a circle when the user is drawing a circular ROI.
-            the_axis    = app.GetAxis(axID);
-            if ~isempty(app.tempDrawings)
-                Graphics.DeleteAllTempDrawings(app);
-            end
-            x0      = app.currentCircle(1);
-            y0      = app.currentCircle(2);
-            x1      = app.currentCircle(3);
-            y1      = app.currentCircle(4);
-            rad     = pdist([x0,y0; x1,y1],'euclidean');
-
-            nPoints = round(2 * rad * pi); 
-            angles  = linspace(0, 2*pi, nPoints);
-            x       = round(rad * cos(angles) + x0);
-            y       = round(rad * sin(angles) + y0);
-            hold(the_axis,'on');
-            h = plot(the_axis, x, y, 'b-');
-            hold(the_axis,'off');
-            app.tempDrawings = [app.tempDrawings; h];
-            
         end
         
 
