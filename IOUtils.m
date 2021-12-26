@@ -2,24 +2,6 @@ classdef IOUtils < handle
 
     methods (Static)
         
-        % After nifti import
-%         function [nii, ratio] = RMSStandardVolumeTreatment(app, nii)
-%             if app.interpolateImages
-%                 min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
-%                 tic
-%                 [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,  ...
-%                                    nii.hdr.dime.pixdim(2:4), ...
-%                                    min_vs*ones(1,3));
-%                 toc
-%             else
-%                 ratio = [1,1,1];
-%             end
-%             nii.img = permute(nii.img,[2 1 3 4]);
-%             nii.img = flip(nii.img,1);
-%             nii.img = flip(nii.img,2);
-%             nii.img = flip(nii.img,3);
-%         end
-        
         function [nii, ratio] = ResampleNii(nii, inverse)
             min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
             
@@ -221,8 +203,8 @@ classdef IOUtils < handle
             outFn   = fullfile(fn,...
                         [obj.name, '-segmentation.json']);
             
-            jsonObj     = struct('points', obj.points, ...
-                            'type', obj.type);
+            jsonObj     = struct(   'points', obj.points, ...
+                                    'type', obj.type);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');

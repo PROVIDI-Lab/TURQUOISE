@@ -18,7 +18,7 @@ classdef UserObj < matlab.mixin.SetGet
     methods        
         function obj = makeProperties(obj, app)
             
-            if obj.type == 1 || obj.type == 3
+            if obj.type == 1 || obj.type == 3 || obj.type == 4
                 axis4D      = app.d4PerImage(obj.imageIdx);
                 L           = obj.data == 1;
                 VS          = ...

@@ -59,30 +59,27 @@ classdef ROI < handle
             Objects.AddNewUserObj(app,...
                 "type", 1, ...
                 "data", ROI.PointsToMask(...
-                app, app.points{Cv}, app.imagePerAxis(Cv)),...
+                app, app.points{Cv}, app.imagePerAxis(Cv), 1),...
                 "points", app.points{Cv}, ...
                 "name", name)
         end        
         
-        function mask = PointsToMask(app, points, type)
+        function mask = PointsToMask(app, points, imID, type)
         %Creates an array the size of the current image where everything in
         %the points is filled in.
         
             %preallocate the mask
-            mask    = false(size(...
-                app.data{imID}.img(:,:,:, axis4D)));
-            mask    = permute(mask, [2,1,3]);  
-            %this needs to have a better solution
+            mask    = false(size(app.data{imID}.img));
 
             if type == 3
-                maskSlc     = ROI.GetCircularMask(points);
+                maskSlc     = ROI.GetCircularMask(points, mask);
                 mask        = ROI.AddSliceToMask(...
                     mask, maskSlc, points(4), points(5));
                 return
             elseif type == 4
-                maskSlc     = ROI.GetEllipseMask(points);
+                maskSlc     = ROI.GetEllipseMask(points, mask);
                 mask        = ROI.AddSliceToMask(...
-                    mask, maskSlc, points(4), points(5));
+                    mask, maskSlc, points(5), points(6));
                 return
             elseif type ~= 1
                 return
@@ -147,13 +144,7 @@ classdef ROI < handle
         
         %% Circular ROIs
         
-        function StartDrawingCircular(app, hit)
-            
-            x = hit.Source.Parent.CurrentPoint(1);
-            y = hit.Source.Parent.CurrentPoint(2);
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
-            app.dragPoint       = [hitx, x, hity, y];
+        function StartDrawingCircular(app)
             
             ax = app.GetAxis(app.current_view);
             roi = drawcircle(ax);        
@@ -175,23 +166,123 @@ classdef ROI < handle
                	return 
             end
             
-            points  = [roi.Center, roi.Radius];
-            maskSlc    = ROI.GetCircularMask(app, points);            
+            %Create points & mask
+            view    = app.viewPerImage(app.imIdx);
+            slice   = app.slicePerImage(app.imIdx);
+            points  = [roi.Center, roi.Radius, view, slice];
+            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
             
+            %Create UO
             Objects.AddNewUserObj(app,...
                     "type", 3, ...
-                    "data", ROI.PointsToMask(...
-                    app, points, app.imagePerAxis(app.current_view)),...
-                    "points", markers, ...
+                    "data", mask, ...
+                    "points", points, ...
                     "name", name{1})
+                
+            %Remove polygon
+            delete(roi)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
         end
         
         
-        function GetCircularMask(app, points)
-            %Takes the center
+        function maskSlc = GetCircularMask(points, mask)
+            %Returns a slice with a circular mask defined by the points.
+            %The center is given in the first two points (x,y) and the
+            %radius by the third point.
+            %An empty mask is given as well to find the correct dimensions
+            %of the slice. The view is stored in points(4)
             
+            centerX     = points(1);
+            centerY     = points(2);
+            radius      = points(3);
+            view        = points(4);
             
+            maskDim     = size(mask);
+            maskDim(view) = [];
+            
+            [xx, yy] = meshgrid(1:maskDim(2), 1:maskDim(1));
+            % create the circle.
+            maskSlc = (yy - centerY).^2 + (xx - centerX).^2 <= radius.^2;
         end
+        %% Ellipse ROIs
+        
+        function StartDrawingEllipse(app)
+            
+            ax = app.GetAxis(app.current_view);
+            roi = drawellipse(ax);        
+            
+            cm = roi.ContextMenu;
+            %Add item to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save ROI');
+            m1.MenuSelectedFcn = ...
+                {@ROI.FinishDrawingEllipse, app, roi};
+        end
+        
+        function FinishDrawingEllipse(~, ~, app, roi)
+        %Constructs a mask from the Ellipse ROI object.
+        %Prompts the user for a name and adds a new user object.
+            
+            %Validate & Create
+            name    = Interaction.PromptName();
+            if isempty(name)
+               	return 
+            end
+            
+            %Create points & mask
+            view    = app.viewPerImage(app.imIdx);
+            slice   = app.slicePerImage(app.imIdx);
+            points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
+                view, slice];
+            
+            %preallocate the mask
+            mask    = false(size(app.data{app.imIdx}.img));            
+            maskSlc = createMask(roi);
+            mask    = ROI.AddSliceToMask(...
+                    mask, maskSlc, view, slice);
+            
+            %Create UO
+            Objects.AddNewUserObj(app,...
+                    "type", 4, ...
+                    "data", mask, ...
+                    "points", points, ...
+                    "name", name{1})
+                
+            %Remove polygon
+            delete(roi)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        
+        function maskSlc = GetEllipseMask(points, mask)
+            %Returns a slice with a Ellipse mask defined by the points.
+            %The center is given in the first two points (x,y) and the
+            %Semi axes by points 3-4. The rotation is stored in points(5).
+            %An empty mask is given as well to find the correct dimensions
+            %of the slice. The view is stored in points(6)
+            
+            centerX     = points(1);
+            centerY     = points(2);
+            radiusX     = points(3);
+            radiusY     = points(4);
+            rotation    = points(5);
+            view        = points(6);
+            
+            maskDim     = size(mask);
+            maskDim(view) = [];
+            
+            [xx, yy] = meshgrid(1:maskDim(2), 1:maskDim(1));
+            
+            xr          = xx - x
+            
+            % create the ellipse
+            maskSlc = (yy - centerY).^2 ./ radiusY^2 ...
+                + (xx - centerX).^2 ./ radiusX^2 <= 1;
+        end
+        
         
         %%
         

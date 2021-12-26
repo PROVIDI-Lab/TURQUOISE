@@ -79,7 +79,7 @@ classdef ROI < handle
             elseif type == 4
                 maskSlc     = ROI.GetEllipseMask(points, mask);
                 mask        = ROI.AddSliceToMask(...
-                    mask, maskSlc, points(4), points(5));
+                    mask, maskSlc, points(6), points(7));
                 return
             elseif type ~= 1
                 return
@@ -233,7 +233,8 @@ classdef ROI < handle
             %Create points & mask
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage(app.imIdx);
-            points  = [roi.Center, roi.SemiAxes, view, slice];
+            points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
+                view, slice];
             mask    = ROI.PointsToMask(app, points, app.imIdx, 4);
             
             %Create UO
@@ -254,23 +255,32 @@ classdef ROI < handle
         function maskSlc = GetEllipseMask(points, mask)
             %Returns a slice with a Ellipse mask defined by the points.
             %The center is given in the first two points (x,y) and the
-            %Semi axes by points 3-4
+            %Semi axes by points 3-4. The rotation is stored in points(5).
             %An empty mask is given as well to find the correct dimensions
-            %of the slice. The view is stored in points(5)
+            %of the slice. The view is stored in points(6)
             
             centerX     = points(1);
             centerY     = points(2);
             radiusX     = points(3);
             radiusY     = points(4);
-            view        = points(5);
+            rotation    = points(5);
+            view        = points(6);
             
             maskDim     = size(mask);
             maskDim(view) = [];
             
+            %define grid
             [xx, yy] = meshgrid(1:maskDim(2), 1:maskDim(1));
+            
+            %apply rotation
+            theta       = (90 - rotation) * pi / 180;
+            xr          = xx - centerX;
+            yr          = yy - centerY;
+            x0          = cos(theta)*xr + sin(theta)*yr;
+            y0          = -sin(theta)*xr + cos(theta)*yr;
+            
             % create the ellipse
-            maskSlc = (yy - centerY).^2 ./ radiusY^2 ...
-                + (xx - centerX).^2 ./ radiusX^2 <= 1;
+            maskSlc = x0.^2 / radiusY^2 + y0.^2 / radiusX^2 <= 1;
         end
         
         

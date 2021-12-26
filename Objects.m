@@ -434,7 +434,7 @@ classdef Objects < handle
                     continue
                 end
                 
-                if obj.type == 1 || obj.type == 3
+                if obj.type == 1 || obj.type == 3 || obj.type == 4
                     try
                         if obj.data(hity,hitx,slice)
                           UOId = obj.ID; 

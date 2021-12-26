@@ -73,7 +73,7 @@ classdef Graphics < handle
                 end
 
                 switch obj.type 
-                   case {1, 3}
+                   case {1, 3, 4}
                        Graphics.DrawROIInAxis(app, axID, obj)
                    case 2
                        Graphics.DrawMeasurementInAxis(...
