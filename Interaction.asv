@@ -728,11 +728,9 @@ classdef Interaction < handle
             %a custom one.
             
             C = get(app.UIFigure, 'CurrentPoint');
-            P0 = app.UIFigure.Position;
-            x = C(1) + P0(1);
-            y = round(P0(4)/2);
+            P0 = 
             
-            d = dialog('Position',[x y 250 150],'Name','Select One');
+            d = dialog('Position',[C(1) C(2) 250 150],'Name','Select One');
             txt = uicontrol('Parent',d,...
                    'Style','text',...
                    'Position',[20 80 210 40],...

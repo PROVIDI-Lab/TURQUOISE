@@ -36,7 +36,7 @@ classdef ROI < handle
             end
             
             %Prompt user for name
-            name    = Interaction.PromptName();
+            name    = Interaction.PromptName(app);
             if isempty(name)
                	return
             end
@@ -161,7 +161,7 @@ classdef ROI < handle
         %Prompts the user for a name and adds a new user object.
             
             %Validate & Create
-            name    = Interaction.PromptName();
+            name    = Interaction.PromptName(app);
             if isempty(name)
                	return 
             end
@@ -225,7 +225,7 @@ classdef ROI < handle
         %Prompts the user for a name and adds a new user object.
             
             %Validate & Create
-            name    = Interaction.PromptName();
+            name    = Interaction.PromptName(app);
             if isempty(name)
                	return 
             end

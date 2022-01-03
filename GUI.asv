@@ -714,12 +714,10 @@ classdef GUI < handle
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
             
-            m1.MenuSelectedFcn = ...
-                {@Objects.DeleteUO, app, id};
-            
             set(app.UIFigure.ContextMenu,'uicontextmenu',cm);
             
             open(cm, pos(1), pos(2));
+            pause(1000)
             disp('test')
            
            return

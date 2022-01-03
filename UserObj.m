@@ -54,7 +54,7 @@ classdef UserObj < matlab.mixin.SetGet
         end
         
         function createMask(obj, app)
-            if obj.type ~= 1 && obj.type ~= 3
+            if obj.type ~= 1 && obj.type ~= 3 && obj.type ~= 4
                 return
             end
             

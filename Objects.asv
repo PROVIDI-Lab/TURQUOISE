@@ -217,6 +217,7 @@ classdef Objects < handle
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage(app.imIdx);
             points  = [roi.Center, roi.Radius, view, slice];
+            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
             
             app.userObjects{idx}.points = points;
             app.userObjects{idx}.makeProperties(app);
@@ -247,13 +248,13 @@ classdef Objects < handle
             %Create polygon with contextmenu
             ax = app.GetAxis(app.current_view);
             h   = images.roi.Ellipse(ax,...
-                'Center',obj.points(1:2)','SemiAxes',obj.points(3:4)',...
+                'Center',obj.points(1:2),'SemiAxes',obj.points(3:4),...
                 'RotationAngle', obj.points(5));
             cm = h.ContextMenu;
             %Add item to save the polygon & stop editing
             m1 = uimenu(cm,'Text','Save ROI');
             m1.MenuSelectedFcn = ...
-                {@Objects.FinishEditingEllipse, app, h};
+                {@Objects.FinishEditingCircle, app, h};
         end
         
         function FinishEditingEllipse(~, ~, app, roi)
@@ -265,8 +266,8 @@ classdef Objects < handle
             
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage(app.imIdx);
-            points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
-                view, slice];
+            points  = [roi.Center, roi.Radius, view, slice];
+            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
             
             app.userObjects{idx}.points = points;
             app.userObjects{idx}.makeProperties(app);
