@@ -47,7 +47,7 @@ classdef Measurements < handle
             
             %Add name to list, if no name is specified, prompt for one.
             if size(name,1) == 0
-                name    = Interaction.PromptName();
+                name    = Interaction.PromptName(app);
             end
             Cv  = app.current_view;
             Objects.AddNewUserObj(app,...

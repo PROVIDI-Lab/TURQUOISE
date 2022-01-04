@@ -2,24 +2,6 @@ classdef IOUtils < handle
 
     methods (Static)
         
-        % After nifti import
-%         function [nii, ratio] = RMSStandardVolumeTreatment(app, nii)
-%             if app.interpolateImages
-%                 min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
-%                 tic
-%                 [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,  ...
-%                                    nii.hdr.dime.pixdim(2:4), ...
-%                                    min_vs*ones(1,3));
-%                 toc
-%             else
-%                 ratio = [1,1,1];
-%             end
-%             nii.img = permute(nii.img,[2 1 3 4]);
-%             nii.img = flip(nii.img,1);
-%             nii.img = flip(nii.img,2);
-%             nii.img = flip(nii.img,3);
-%         end
-        
         function [nii, ratio] = ResampleNii(nii, inverse)
             min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
             
@@ -149,7 +131,7 @@ classdef IOUtils < handle
                     continue
                 end
                 
-                if uObj.type == 1
+                if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
                     IOUtils.saveSegmentation(app, uObj, fn);
                     IOUtils.saveSegmentationPoints(uObj, fn);
                     segProperties{end+1} = uObj.prop;
@@ -221,7 +203,8 @@ classdef IOUtils < handle
             outFn   = fullfile(fn,...
                         [obj.name, '-segmentation.json']);
             
-            jsonObj     = struct('points', obj.points);
+            jsonObj     = struct(   'points', obj.points, ...
+                                    'type', obj.type);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');
@@ -307,12 +290,18 @@ classdef IOUtils < handle
             endPos      = endPos(end);
             name        = fn(beginPos + 1: endPos - 1);
             
-            points = data.points;
+            points = data.points;            
             points(any(isnan(points),2),:) = [];
+            
+            if isfield(data, 'type')
+                type = data.type;
+            else
+                type = 1;
+            end
 
             Objects.AddNewUserObj(app,...
-                    "type", 1, ...
-                    "data", ROI.PointsToMask(app, points, idx),...
+                    "type", type, ...
+                    "data", ROI.PointsToMask(app, points, idx, type),...
                     "points", data.points,...
                     "name", name,...
                     "imageIdx", idx);

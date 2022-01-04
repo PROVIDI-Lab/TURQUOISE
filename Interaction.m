@@ -58,7 +58,7 @@ classdef Interaction < handle
             
             %Switch slice and view       
             obj                             = app.userObjects{index};
-            [view, slice]                   = GUI.GetUOViewAndSlice(obj);    
+            [view, slice]                   = Objects.GetUOViewAndSlice(obj);    
             app.viewPerImage(app.imIdx)     = view;
             app.slicePerImage(app.imIdx)    = slice;
             
@@ -170,9 +170,9 @@ classdef Interaction < handle
                     GUI.ResetCursor(app)
                 end
                 
-            elseif(app.drawing.mode == 2)
-                %Here we want to drag a point
-                ROI.StartDragging(app, hit)
+%             elseif(app.drawing.mode == 2)
+%                 %Here we want to drag a point
+%                 ROI.StartDragging(app, hit)
             
             elseif(app.drawing.mode == 3)
                 % Here we are adding a manual measurement
@@ -180,11 +180,7 @@ classdef Interaction < handle
                 
             elseif(app.drawing.mode == 4)
                 % Here we are using the automatic ROI drawing
-                Segmentation.MouseMagicDraw(app,hit,hitx,hity);
-            
-            elseif app.drawing.mode == 5
-                %Here we are drawing a circular ROI
-                ROI.StartDrawingCircular(app, hit);                
+                Segmentation.MouseMagicDraw(app,hit,hitx,hity);            
             
             elseif hit.Button == 2
                 %Here we adjust the contrast
@@ -192,9 +188,10 @@ classdef Interaction < handle
                 
             elseif hit.Button == 3
                 %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOClicked(app, hit);
+                id = Objects.FindUOUnderMouse(app, hit, app.current_view);                
                 if id > 0
-                   GUI.UOContextMenu(app, id, hit) 
+                    C = get(app.UIFigure, 'CurrentPoint');
+                    GUI.UOContextMenu(app, id, C) 
                 end
             end
             
@@ -209,11 +206,11 @@ classdef Interaction < handle
                 return
             end
         
-            if app.drawing.mode == 2
-                %Change segmentation
-                ROI.ValidateModifiedROIPoints(app)
-                GUI.ResetCursor(app)
-            elseif app.drawing.mode == 5
+%             if app.drawing.mode == 2
+%                 %Change segmentation
+%                 ROI.ValidateModifiedROIPoints(app)
+%                 GUI.ResetCursor(app)
+            if app.drawing.mode == 5
                 ROI.FinishDrawingCircular(app)
             elseif app.drawing.mode == 6
                 app.drawing.mode = 0;
@@ -238,25 +235,7 @@ classdef Interaction < handle
             %relative to the top left corner with the scale of the image.
             if isempty(app.dragPoint) || isempty(app.currentDragPoint)
                 
-                UOId = Objects.FindUOUnderMouse(app, hit);
-                
-                if UOId == -1
-                    if app.prevUOTextShown ~= 0
-                        Objects.ToggleVisibleUOInfoBox(app,...
-                            app.prevUOTextShown)
-                        app.prevUOTextShown = 0;
-                    end
-                    return
-                end
-                
-                if app.userObjects{...
-                        Objects.findUOIndex(app, UOId)}.boxVisible
-                    return
-                end
-                    
-                Objects.ToggleVisibleUOInfoBox(app, UOId)
-                app.prevUOTextShown = UOId;
-                
+                GUI.MouseHover(app, hit)                
                 return
             end
             
@@ -267,13 +246,13 @@ classdef Interaction < handle
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
             %Edit ROI
-            if app.drawing.mode == 2
-                GUI.SetDragCursor(app)
-                ROI.MoveROIPoint(app, [hitx, hity])
+%             if app.drawing.mode == 2
+%                 GUI.SetDragCursor(app)
+%                 ROI.MoveROIPoint(app, [hitx, hity])
             %Circular ROI
-            elseif app.drawing.mode == 5
-                ROI.DrawCircularROI(app, [hitx, hity])
-            elseif app.drawing.mode == 6
+%             if app.drawing.mode == 5
+%                 ROI.DrawCircularROI(app, [hitx, hity])
+            if app.drawing.mode == 6
                 GUI.AdjustContrast(app, hitx, hity)
             end            
         end
@@ -288,7 +267,7 @@ classdef Interaction < handle
             
             if app.busyStatus   %Don't do anything if the app is busy
                 %Only allow ctrl+escape to break
-                if strcmp(key, 'escape') && contains(modifier, 'control')
+                if strcmp(key, 'escape') 
                     GUI.RevertControlsStatus(app)
                 end
                 return
@@ -308,8 +287,8 @@ classdef Interaction < handle
                         Interaction.DrawPolygon(app)
                     case 'z'
                         Interaction.ToggleZoom(app)
-                    case 'e'
-                        Interaction.EditPolygon(app)
+%                     case 'e'
+%                         Interaction.EditPolygon(app)
                     case 'v'
                         Interaction.showADCHist(app)
                     case 'control'
@@ -577,35 +556,20 @@ classdef Interaction < handle
             Graphics.UpdateSelectionContour(app); 
         end
         
-        function EditPolygon(app)
-            %Toggles the edit function on or off.
-            
-            if app.drawing.mode == 2
-                app.drawing.mode = 0;
-                app.EditPolygonButton.BackgroundColor = [.96 .96 .96];
-                GUI.RemoveButtonDownFcn(app);
-                app.currentDragPoint    = {};
-                app.dragPoint           = [];
-                Graphics.UpdateUserInteractions(app);
-            else
-                app.drawing.mode = 2;
-                app.EditPolygonButton.BackgroundColor = [.96 .96 0];
-                GUI.SetButtonDownFcn(app);
-                Graphics.UpdateUserInteractions(app);
-%                 setptr(gcf, 'hand');
-            end
-        end
-        
         function CircularROI(app)
         %Prepares drawing a Circular ROI
             if isempty(app.data{app.imIdx})
                 return
             end
-            if(app.drawing.mode ~= 5)
-                app.drawing.mode = 5;
-            else
-                app.drawing.mode = 0;
+            ROI.StartDrawingCircular(app);    
+        end
+        
+        function EllipseROI(app)
+        %Prepares drawing a Circular ROI
+            if isempty(app.data{app.imIdx})
+                return
             end
+            ROI.StartDrawingEllipse(app);    
         end
         
         
@@ -758,12 +722,17 @@ classdef Interaction < handle
         end
         %% Prompts
         
-        function choice = PromptName()
+        function choice = PromptName(app)
             %Called when the user finishes drawing an ROI or measurement.
             %Prompts them for a name that is either in the selection box or
             %a custom one.
             
-            d = dialog('Position',[300 300 250 150],'Name','Select One');
+            C = get(app.UIFigure, 'CurrentPoint');
+            P0 = app.UIFigure.Position;
+            x = C(1) + P0(1);
+            y = round(P0(4)/2);
+            
+            d = dialog('Position',[x y 250 150],'Name','Select One');
             txt = uicontrol('Parent',d,...
                    'Style','text',...
                    'Position',[20 80 210 40],...

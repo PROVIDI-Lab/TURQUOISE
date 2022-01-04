@@ -40,14 +40,14 @@ classdef Objects < handle
             Backups.CreateBackup(app);
         end
         
-        function name = CheckNameUnique(app, name, type)
+        function name = CheckNameUnique(app, name, ~)
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
             counter     = 0;
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if obj.imageIdx ~= app.imIdx || obj.type ~= type
+                if obj.imageIdx ~= app.imIdx 
                     continue
                 end
                 %Very ugly way of removing any numbers from string.
@@ -91,11 +91,248 @@ classdef Objects < handle
             end
         end
         
-        function DeleteUO(app)
-            %When the deletemenu in he UOBox conextmenu is called.
+        function [view, slice] = GetUOViewAndSlice(obj)
+        %Finds the most occuring slice per view axis. Returns the view & 
+        %slice for which the most voxels are included in the segmentation
+        %at the given index.
+        
+            %Find index of corresponding segmentation
+            if ~isempty(obj.data)
+                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
+            else
+                x   = obj.points(:,1); 
+                y   = obj.points(:,2); 
+                z   = obj.points(:,3); 
+            end
+            %Find most occurring value
+            [Mx, Fx]    = mode(x);
+            [My, Fy]    = mode(y);
+            [Mz, Fz]    = mode(z);
+            
+            [~,  view]  = max([Fx, Fy, Fz]);
+            
+            modes       = [Mx, My, Mz];
+            slice       = modes(view);
+        end
+        
+        function EditUO(app)
+            %When the edit menu in he UOBox contextmenu is called.
             idx     = app.UOBox.Value;
             if isempty(idx)
                 return
+            end
+            
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            obj     = app.userObjects{idx};
+            
+            switch obj.type
+                case 1
+                    Objects.EditPolygon(app, idx)
+                case 3
+                    Objects.EditCircle(app, idx)
+                case 4
+                    Objects.EditEllipse(app, idx)
+            end            
+        end
+        
+        function EditPolygon(app, idx)
+            obj     = app.userObjects{idx};
+            points  = obj.points(:,1:2);
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(false);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h = images.roi.Polygon(ax, 'Position', points);
+            cm = h.ContextMenu;
+            cm.Children(1).Visible = 'off';
+            %Add items to save the polygon & stop editing
+            m1 = uimenu(cm,'Text','Save Polygon');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingPolygon, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
+            
+        end
+        
+        function FinishEditingPolygon(~, ~, app, polygon)
+            idx     = app.UOBox.Value;
+            idx     = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            points  = polygon.Position;
+            
+            slice   = app.slicePerImage(app.imIdx);
+            slice   = ones(size(points(:,1)))*slice;
+            
+            points  = [points, slice];
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            %Create new contour
+            app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.set('changed', true);
+            
+            %turn contour back on
+            app.userObjects{idx}.setVisible(true)
+%             delete('app.userObjects{idx}.graphics')
+            
+            %Remove polygon
+            delete(polygon)
+            
+            %backup
+            Backups.CreateBackup(app)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        function EditCircle(app, idx)
+            obj     = app.userObjects{idx};
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(false);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h   = images.roi.Circle(ax,...
+                'Center',obj.points(1:2),'Radius',obj.points(3));
+            cm = h.ContextMenu;
+            cm.Children(1).Visible = 'off';
+            %Add items to save the roi & stop editing
+            m1 = uimenu(cm,'Text','Save ROI');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingCircle, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
+        end
+        
+        function FinishEditingCircle(~, ~, app, roi)
+            idx     = app.UOBox.Value;
+            idx     = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            view    = app.viewPerImage(app.imIdx);
+            slice   = app.slicePerImage(app.imIdx);
+            points  = [roi.Center, roi.Radius, view, slice];
+            
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            %Create new contour
+            app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.set('changed', true);
+            
+            %turn contour back on
+            app.userObjects{idx}.setVisible(true)
+            
+            %Remove polygon
+            delete(roi)
+            
+            %backup
+            Backups.CreateBackup(app)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        function EditEllipse(app, idx)
+            obj     = app.userObjects{idx};
+            points  = obj.points;
+            
+            if size(points,1) > size(points,2) && size(points,2) == 1
+                points = points';
+            end
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(false);
+            
+            %Create polygon with contextmenu
+            ax = app.GetAxis(app.current_view);
+            h   = images.roi.Ellipse(ax,...
+                'Center',points(1:2),'SemiAxes',points(3:4),...
+                'RotationAngle', points(5));
+            cm = h.ContextMenu;
+            cm.Children(1).Visible = 'off';
+            %Add items to save the roi & stop editing
+            m1 = uimenu(cm,'Text','Save ROI');
+            m1.MenuSelectedFcn = ...
+                {@Objects.FinishEditingEllipse, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
+        end
+        
+        function FinishEditingEllipse(~, ~, app, roi)
+            idx     = app.UOBox.Value;
+            idx     = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            view    = app.viewPerImage(app.imIdx);
+            slice   = app.slicePerImage(app.imIdx);
+            points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
+                view, slice];
+            
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.makeProperties(app);
+            
+            %Create new contour
+            app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.set('changed', true);
+            
+            %turn contour back on
+            app.userObjects{idx}.setVisible(true)
+            
+            %Remove polygon
+            delete(roi)
+            
+            %backup
+            Backups.CreateBackup(app)
+            
+            %Redraw
+            Graphics.UpdateImage(app)
+        end
+        
+        
+        function CancelEditing(~, ~, app, roi, idx)
+            %Remove the roi object and turn the visibility of the existing
+            %object back on. 
+            
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(true);
+            
+            delete(roi)
+            
+        end
+        
+        
+        
+        
+        %%
+        function DeleteUO(app, varargin)
+            %When the deletemenu in he UOBox contextmenu is called.
+            
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
             end
             
             idx = Objects.findUOIndex(app, idx);
@@ -121,7 +358,7 @@ classdef Objects < handle
                 return
             end
             
-            newName     = Interaction.PromptName();
+            newName     = Interaction.PromptName(app);
             newName     = Objects.CheckNameUnique(app, newName, ...
                 app.userObjects{idx}.type);
             app.userObjects{idx}.name   = newName{1};
@@ -199,7 +436,9 @@ classdef Objects < handle
                 if objects{i}.type == 1 || objects{i}.type == 3
                     app.userObjects{i}.data = ...
                         ROI.PointsToMask(app, ...
-                        objects{i}.points, objects{i}.imageIdx);
+                        objects{i}.points,...
+                        objects{i}.imageIdx,...
+                        objects{i}.type);
                 end
                 
             end
@@ -239,21 +478,21 @@ classdef Objects < handle
             app.userObjects{idx}.setBoxVisible(~boxVisible)             
         end        
         
-        function UOId = FindUOClicked(app, hit)
-           %Called when the user right-clicks a UO. Tries to determine
-           %which is clicked.
-           
-           %TODO: add line
-           if isa(hit.Source, 'matlab.graphics.primitive.Text')
-               UOId = Objects.FindTextUO(app, hit);
-           elseif isa(hit.Source, 'matlab.graphics.chart.primitive.Contour')
-               UOId = Objects.FindContourUO(app, hit);
-           else
-               UOId = -1;
-           end
-        end
+%         function UOId = FindUOClicked(app, hit)
+%            %Called when the user right-clicks a UO. Tries to determine
+%            %which is clicked.
+%            
+%            %TODO: add line
+%            if isa(hit.Source, 'matlab.graphics.primitive.Text')
+%                UOId = Objects.FindTextUO(app, hit);
+%            elseif isa(hit.Source, 'matlab.graphics.chart.primitive.Contour')
+%                UOId = Objects.FindContourUO(app, hit);
+%            else
+%                UOId = -1;
+%            end
+%         end
         
-        function UOId = FindUOUnderMouse(app, hit)
+        function UOId = FindUOUnderMouse(app, hit, varargin)
            
             UOId = -1;
             
@@ -264,11 +503,15 @@ classdef Objects < handle
                 return
             end
             
-            x   = round(hit.Point(1));
-            if x <= hit.Source.Position(3)/2
-                view = 1;
+            if nargin == 2
+                x   = round(hit.Point(1));
+                if x <= hit.Source.Position(3)/2
+                    view = 1;
+                else
+                    view = 2;
+                end
             else
-                view = 2;
+                view = varargin{1};
             end
             
             imID    = app.imagePerAxis(view);
@@ -289,7 +532,7 @@ classdef Objects < handle
                     continue
                 end
                 
-                if obj.type == 1 || obj.type == 3
+                if obj.type == 1 || obj.type == 3 || obj.type == 4
                     try
                         if obj.data(hity,hitx,slice)
                           UOId = obj.ID; 
@@ -313,58 +556,58 @@ classdef Objects < handle
             
         end
         
-        function UOId = FindTextUO(app, hit)
-            %Finds a userobject with a text graphics object.
-            UOId = -1;
-            name = hit.Source.String{1};
-            
-            for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};               
-                if strcmp(obj.name, name)
-                   UOId = obj.ID; 
-                end
-            end            
-        end
-        
-        function UOId = FindContourUO(app, hit)
-            %Finds a userobject with a contour graphics object.
-            UOId = -1;
-            contour = hit.Source.ContourMatrix;
-            
-            
-            %For each point in obj.points, check if it exists in the 
-            %contourmatrix. if so, that's the object. 
-            for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};   
-                
-                %if the obj doesn't have the right imageID, skip it
-                Cv      = app.current_view;
-                imID    = app.imagePerAxis(Cv);
-                if obj.imageIdx ~= imID
-                    continue
-                end
-                
-                %Compare points
-                points = obj.points;
-                hits = 0;
-                for pointId = 1:size(points, 1)
-                    x = points(pointId, 1);
-                    y = points(pointId, 2);
-                    res = ...
-                        sum(sum(contour == x, 1) .* sum(contour == y, 1));
-                    if res == 0
-                        break
-                    else
-                        hits = hits + 1;
-                    end
-                end
-                
-                if hits == size(points, 1)
-                    UOId = obj.ID;
-                end                
-            end 
-        end
-        
+%         function UOId = FindTextUO(app, hit)
+%             %Finds a userobject with a text graphics object.
+%             UOId = -1;
+%             name = hit.Source.String{1};
+%             
+%             for i = 1:length(app.userObjects)
+%                 obj = app.userObjects{i};               
+%                 if strcmp(obj.name, name)
+%                    UOId = obj.ID; 
+%                 end
+%             end            
+%         end
+%         
+%         function UOId = FindContourUO(app, hit)
+%             %Finds a userobject with a contour graphics object.
+%             UOId = -1;
+%             contour = hit.Source.ContourMatrix;
+%             
+%             
+%             %For each point in obj.points, check if it exists in the 
+%             %contourmatrix. if so, that's the object. 
+%             for i = 1:length(app.userObjects)
+%                 obj = app.userObjects{i};   
+%                 
+%                 %if the obj doesn't have the right imageID, skip it
+%                 Cv      = app.current_view;
+%                 imID    = app.imagePerAxis(Cv);
+%                 if obj.imageIdx ~= imID
+%                     continue
+%                 end
+%                 
+%                 %Compare points
+%                 points = obj.points;
+%                 hits = 0;
+%                 for pointId = 1:size(points, 1)
+%                     x = points(pointId, 1);
+%                     y = points(pointId, 2);
+%                     res = ...
+%                         sum(sum(contour == x, 1) .* sum(contour == y, 1));
+%                     if res == 0
+%                         break
+%                     else
+%                         hits = hits + 1;
+%                     end
+%                 end
+%                 
+%                 if hits == size(points, 1)
+%                     UOId = obj.ID;
+%                 end                
+%             end 
+%         end
+%         
         
     end
 end

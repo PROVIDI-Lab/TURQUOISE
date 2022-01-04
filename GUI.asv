@@ -32,7 +32,7 @@ classdef GUI < handle
                     %Keep track of which image is in which view
                     idx = app.imagePerAxis(app.current_view);
                     app.AvailableimagesListBox.Value =...
-                        app.studyNames{idx};
+                        app.AvailableimagesListBox.Items{idx};
                     app.imIdx = idx;
                     %Show everything
                     GUI.DisplayNewImage(app, idx)
@@ -47,7 +47,7 @@ classdef GUI < handle
                 %Keep track of which image is in which view
                 idx = app.imagePerAxis(app.current_view);
                 app.AvailableimagesListBox.Value =...
-                    app.studyNames{idx};
+                    app.AvailableimagesListBox.Items{idx};
                 app.imIdx = idx;
                 %Show everything
                 GUI.DisplayNewImage(app, idx)
@@ -110,7 +110,7 @@ classdef GUI < handle
             uoIdx = Objects.FindUoForImage(app, index);
             if uoIdx ~= -1
                 uo = app.userObjects{uoIdx};
-                [view, slice]   = GUI.GetUOViewAndSlice(uo);
+                [view, slice]   = Objects.GetUOViewAndSlice(uo);
                 app.slicePerImage(index) = slice;
                 app.viewPerImage(index) = view;
             else            
@@ -554,10 +554,10 @@ classdef GUI < handle
                        name =  num2str(name);
                 end
 
-                [view, slice]   = GUI.GetUOViewAndSlice(obj);
+                [view, slice]   = Objects.GetUOViewAndSlice(obj);
                 views           = {'Cor', 'Sag', 'Ax'};
                 view            = views{view};
-                types           = {'ROI', 'MSR', 'ROI'};
+                types           = {'POL', 'MSR', 'CIR', 'ELL'};
                 type            = types{obj.type};
                 name            = GUI.GetUOBoxName(...
                                     type, name, slice, view, obj.visible);
@@ -571,31 +571,6 @@ classdef GUI < handle
             idx     = size(app.UOBox.Items, 2) + 1;
             app.UOBox.Items{idx}       = 'None';
             app.UOBox.ItemsData(idx)   = -1;
-        end
-        
-        function [view, slice] = GetUOViewAndSlice(obj)
-        %Finds the most occuring slice per view axis. Returns the view & 
-        %slice for which the most voxels are included in the segmentation
-        %at the given index.
-        
-            %Find index of corresponding segmentation
-            if ~isempty(obj.data)
-                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
-            else
-                x   = obj.points(:,1); 
-                y   = obj.points(:,2); 
-                z   = obj.points(:,3); 
-            end
-            %Find most occurring value
-            [Mx, Fx]    = mode(x);
-            [My, Fy]    = mode(y);
-            [Mz, Fz]    = mode(z);
-            
-            [~,  view]  = max([Fx, Fy, Fz]);
-            
-            modes       = [Mx, My, Mz];
-            slice       = modes(view);
-            
         end
         
         function name = GetUOBoxName(del, name, slice, view, visible)
@@ -692,31 +667,58 @@ classdef GUI < handle
             set(app.UIFigure, 'Pointer', 'crosshair')
         end
         
-        function SetDragCursor(app)
-            %sets the cursor for the UIFigure to a dragging icon (fleur)
-            set(app.UIFigure, 'Pointer', 'fleur')
-        end
-        
         function ResetCursor(app)
             %Sets the cursor for the UIFigure to an arrow icon (default)
             set(app.UIFigure, 'Pointer', 'arrow')
         end
         
+        function MouseHover(app, hit)
+            %Called by Interaction.MouseDraggedInImage. Checks which UO is
+            %underneath the cursor (if any). Toggles the UOInfoBox of the
+            %respective UO.
+            
+            UOId = Objects.FindUOUnderMouse(app, hit);
+
+            if UOId == -1
+                if app.prevUOTextShown ~= 0
+                    Objects.ToggleVisibleUOInfoBox(app,...
+                        app.prevUOTextShown)
+                    app.prevUOTextShown = 0;
+                end
+                return
+            end
+
+            if app.userObjects{...
+                    Objects.findUOIndex(app, UOId)}.boxVisible
+                return
+            end
+
+            if app.prevUOTextShown ~= UOId
+                Objects.ToggleVisibleUOInfoBox(app,...
+                        app.prevUOTextShown)
+            end
+
+            Objects.ToggleVisibleUOInfoBox(app, UOId)
+            app.prevUOTextShown = UOId;
+        end
         
         %% Context menus
         
-        function UOContextMenu(app, id, hit)
+        function UOContextMenu(app, id, pos)
             %Creates a contextmenu where the user clicked
             
-            return
-            cm = uicontextmenu(hit.Source.Parent.Parent.Parent);
+            cm = uicontextmenu(app.UIFigure);
+            
             m1 = uimenu(cm,'Text','Delete');
             m2 = uimenu(cm,'Text','Rename');
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
-            m5 = uimenu(cm,'Text','Toggle Info Box');
-            hit.Source.Parent.Parent.Parent.ContextMenu = cm;
-            open(cm, hit.IntersectionPoint(1), hit.IntersectionPoint(2))
+            
+            set(app.UIFigure.ContextMenu,'uicontextmenu',cm);
+            
+            open(cm, pos(1), pos(2));
+            pause(1000)
+            disp('test')
            
            return
            
@@ -770,7 +772,6 @@ classdef GUI < handle
             
             %Buttons
             app.DrawPolygonButton.Enable            = 'on';
-            app.EditPolygonButton.Enable            = 'on';
             app.AlignLRButton.Enable                = 'on';
             app.AlignRLButton.Enable                = 'on';
             app.VisibleSlider.Enable                = 'on';
@@ -820,7 +821,6 @@ classdef GUI < handle
 
             %Buttons
             app.DrawPolygonButton.Enable            = 'off';
-            app.EditPolygonButton.Enable            = 'off';
             app.AlignLRButton.Enable                = 'off';
             app.AlignRLButton.Enable                = 'off';
             app.VisibleSlider.Enable                = 'off';
