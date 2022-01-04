@@ -150,10 +150,14 @@ classdef Objects < handle
             ax = app.GetAxis(app.current_view);
             h = images.roi.Polygon(ax, 'Position', points);
             cm = h.ContextMenu;
-            %Add item to save the polygon & stop editing
+            cm.Children(1).Visible = 'off';
+            %Add items to save the polygon & stop editing
             m1 = uimenu(cm,'Text','Save Polygon');
             m1.MenuSelectedFcn = ...
                 {@Objects.FinishEditingPolygon, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
             
         end
         
@@ -201,10 +205,14 @@ classdef Objects < handle
             h   = images.roi.Circle(ax,...
                 'Center',obj.points(1:2),'Radius',obj.points(3));
             cm = h.ContextMenu;
-            %Add item to save the polygon & stop editing
+            cm.Children(1).Visible = 'off';
+            %Add items to save the roi & stop editing
             m1 = uimenu(cm,'Text','Save ROI');
             m1.MenuSelectedFcn = ...
                 {@Objects.FinishEditingCircle, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
         end
         
         function FinishEditingCircle(~, ~, app, roi)
@@ -240,6 +248,11 @@ classdef Objects < handle
         
         function EditEllipse(app, idx)
             obj     = app.userObjects{idx};
+            points  = obj.points;
+            
+            if size(points,1) > size(points,2) && size(points,2) == 1
+                points = points';
+            end
             
             %Hide contour
             app.userObjects{idx}.setVisible(false);
@@ -247,13 +260,17 @@ classdef Objects < handle
             %Create polygon with contextmenu
             ax = app.GetAxis(app.current_view);
             h   = images.roi.Ellipse(ax,...
-                'Center',obj.points(1:2)','SemiAxes',obj.points(3:4)',...
-                'RotationAngle', obj.points(5));
+                'Center',points(1:2),'SemiAxes',points(3:4),...
+                'RotationAngle', points(5));
             cm = h.ContextMenu;
-            %Add item to save the polygon & stop editing
+            cm.Children(1).Visible = 'off';
+            %Add items to save the roi & stop editing
             m1 = uimenu(cm,'Text','Save ROI');
             m1.MenuSelectedFcn = ...
                 {@Objects.FinishEditingEllipse, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
         end
         
         function FinishEditingEllipse(~, ~, app, roi)
@@ -288,6 +305,18 @@ classdef Objects < handle
             Graphics.UpdateImage(app)
         end
         
+        
+        function CancelEditing(~, ~, app, roi, idx)
+            %Remove the roi object and turn the visibility of the existing
+            %object back on. 
+            
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(true);
+            
+            delete(roi)
+            
+        end
         
         
         
@@ -407,7 +436,9 @@ classdef Objects < handle
                 if objects{i}.type == 1 || objects{i}.type == 3
                     app.userObjects{i}.data = ...
                         ROI.PointsToMask(app, ...
-                        objects{i}.points, objects{i}.imageIdx);
+                        objects{i}.points,...
+                        objects{i}.imageIdx,...
+                        objects{i}.type);
                 end
                 
             end

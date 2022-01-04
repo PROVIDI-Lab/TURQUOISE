@@ -154,6 +154,9 @@ classdef Objects < handle
             m1 = uimenu(cm,'Text','Save Polygon');
             m1.MenuSelectedFcn = ...
                 {@Objects.FinishEditingPolygon, app, h};
+            m2 = uimenu(cm, 'Text', 'Cancel');
+            m2.MenuSelectedFcn = ...
+                {@Objects.CancelEditing, app, h, idx};
             
         end
         
@@ -217,7 +220,6 @@ classdef Objects < handle
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage(app.imIdx);
             points  = [roi.Center, roi.Radius, view, slice];
-            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
             
             app.userObjects{idx}.points = points;
             app.userObjects{idx}.makeProperties(app);
@@ -248,13 +250,13 @@ classdef Objects < handle
             %Create polygon with contextmenu
             ax = app.GetAxis(app.current_view);
             h   = images.roi.Ellipse(ax,...
-                'Center',obj.points(1:2),'SemiAxes',obj.points(3:4),...
+                'Center',obj.points(1:2)','SemiAxes',obj.points(3:4)',...
                 'RotationAngle', obj.points(5));
             cm = h.ContextMenu;
             %Add item to save the polygon & stop editing
             m1 = uimenu(cm,'Text','Save ROI');
             m1.MenuSelectedFcn = ...
-                {@Objects.FinishEditingCircle, app, h};
+                {@Objects.FinishEditingEllipse, app, h};
         end
         
         function FinishEditingEllipse(~, ~, app, roi)
@@ -266,8 +268,8 @@ classdef Objects < handle
             
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage(app.imIdx);
-            points  = [roi.Center, roi.Radius, view, slice];
-            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
+            points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
+                view, slice];
             
             app.userObjects{idx}.points = points;
             app.userObjects{idx}.makeProperties(app);
@@ -289,6 +291,17 @@ classdef Objects < handle
             Graphics.UpdateImage(app)
         end
         
+        
+        function CancelEditing(~, ~, app, roi, idx)
+            %Remove th
+            
+            
+            %Hide contour
+            app.userObjects{idx}.setVisible(true);
+            
+            delete(roi)
+            
+        end
         
         
         
@@ -388,6 +401,7 @@ classdef Objects < handle
                 newObj.type     = obj.type;
                 newObj.data     = [];
                 newObj.points   = obj.points;
+                disp(obj.points)
                 newObj.name     = obj.name;
                 newObj.imageIdx = obj.imageIdx;
                 newObj.prop     = obj.prop;
@@ -408,7 +422,9 @@ classdef Objects < handle
                 if objects{i}.type == 1 || objects{i}.type == 3
                     app.userObjects{i}.data = ...
                         ROI.PointsToMask(app, ...
-                        objects{i}.points, objects{i}.imageIdx);
+                        objects{i}.points,...
+                        objects{i}.imageIdx,...
+                        objects{i}.type);
                 end
                 
             end

@@ -290,7 +290,7 @@ classdef IOUtils < handle
             endPos      = endPos(end);
             name        = fn(beginPos + 1: endPos - 1);
             
-            points = data.points;
+            points = data.points;            
             points(any(isnan(points),2),:) = [];
             
             if isfield(data, 'type')
