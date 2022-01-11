@@ -471,7 +471,8 @@ classdef Interaction < handle
         function Reload(app)
             GUI.DisableControlsStatus(app)
             IOUtils.PrepareStudy(app, app.filepath)
-            GUI.RevertControlsStatus(app)            
+            GUI.RevertControlsStatus(app)     
+            app.ctrl    = false;
         end
         
         function Save(app)
