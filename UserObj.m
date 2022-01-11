@@ -80,11 +80,11 @@ classdef UserObj < matlab.mixin.SetGet
             for i = 1:length(obj.graphics)
                 %if text..
                 if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
+                    obj.boxVisible           = boxVisible;
                     if ~isvalid(obj.graphics{i})
                         continue
                     end
                     obj.graphics{i}.Visible  = boxVisible; 
-                    obj.boxVisible           = boxVisible;
                 end
             end
             
