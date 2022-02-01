@@ -130,13 +130,7 @@ classdef IOUtils < handle
                 if uObj.imageIdx ~= imageId
                     continue
                 end
-
-                if uObj.deleted
-                    %Remove all previous saved data if any
-                    delete(fullfile(fn, '*'))  
-                    continue
-                end
-
+                
                 if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
                     IOUtils.saveSegmentation(app, uObj, fn);
                     IOUtils.saveSegmentationPoints(uObj, fn);
@@ -216,6 +210,10 @@ classdef IOUtils < handle
 
             if exist(outFn, 'file')
                 delete(outFn)
+            end
+
+            if obj.deleted
+                return
             end
             
             %write new json to disk

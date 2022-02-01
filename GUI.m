@@ -548,6 +548,9 @@ classdef GUI < handle
                 if obj.imageIdx ~= app.imagePerAxis(app.current_view)
                    continue
                 end
+                if obj.deleted
+                    continue
+                end
 
                 name     = obj.name;
                 if ~ischar(name)

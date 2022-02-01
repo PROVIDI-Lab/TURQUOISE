@@ -68,7 +68,7 @@ classdef Graphics < handle
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
                 if obj.imageIdx ~= app.imagePerAxis(axID)...
-                        || ~obj.visible
+                        || ~obj.visible || obj.deleted
                     continue
                 end
 

@@ -340,13 +340,18 @@ classdef Objects < handle
                 return
             end
             
-            %delete / change properties
-            app.userObjects{idx}.deleted = true;
-            app.userObjects{idx}.graphics = [];
-            app.userObjects{idx}.data = [];
-            app.userObjects{idx}.points = [];
-            app.userObjects{idx}.prop = [];
-
+            app.userObjects(idx).deleted = true;
+            type,                    %ROI = 1, measurement = 2, ...
+            app.userObjects(idx).graphics,                %Graphics of the object
+            changed      = true,     %Stores whether to redraw
+            visible      = true,     %Stores whether to display
+            boxVisible   = false,     %Stores whether to display infobox
+            data,                    %Seg, other
+            points,                  %ROIPoints, drawing points
+            name,                    %Name of the object
+            prop,                    %Other properties
+            ID,                      %Which userObj is this
+            deleted,           
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
             Backups.CreateBackup(app); 
