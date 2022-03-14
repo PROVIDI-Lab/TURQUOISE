@@ -64,7 +64,7 @@ classdef Interaction < handle
             
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
-            GUI.ResetAxisZoom(app)
+%             GUI.ResetAxisZoom(app)
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
@@ -486,6 +486,8 @@ classdef Interaction < handle
                 return
             end
             GUI.DisableControlsStatus(app)
+            d = uiprogressdlg(app.UIFigure, 'Title','Saving',...
+                'Indeterminate','on');
             Study.SaveToDisk(app)
             Study.ToggleUnsavedProgress(app, false);
             GUI.RevertControlsStatus(app)
@@ -1050,40 +1052,6 @@ classdef Interaction < handle
             values = newIm(newMask == 1);            
         end
         
-        function PermuteFlip(app)
-            
-                img = app.data{app.imIdx};
-                img = permute(img.img, [2,1,3]);
-                img = flip(img, 1);
-                img = flip(img, 2);
-                
-                app.data{app.imIdx}.img = img;
-                Graphics.UpdateImage(app)
-            
-        end
-        
-        function FlipZ(app)
-            img = app.data{app.imIdx};
-            img = flip(img.img, 3);
-
-            app.data{app.imIdx}.img = img;
-            Graphics.UpdateImage(app)
-        end
-        
-        function FlipXYObj(app)
-            
-            for i = 1:length(app.userObjects)
-                img = app.userObjects{i}.data;                
-    %             img = app.data{app.imIdx};
-%                 img = permute(img, [2,1,3]);
-                img = flip(img, 1);
-                img = flip(img, 2);
-                
-                app.userObjects{i}.data = img;
-            end
-            Graphics.UpdateImage(app)
-        end
-        
         function HideAllTooltips(app)
            
             
@@ -1092,24 +1060,9 @@ classdef Interaction < handle
             end
 %             Graphics.UpdateImage(app)            
             
-        end
+        end         
             
-            
-        function PermuteFlipUOs(app)
-            
-            for i = 1:length(app.userObjects)
-                img = app.userObjects{i}.data;                
-            
-    %             img = app.data{app.imIdx};
-                img = permute(img, [2,1,3]);
-%                 img = flip(img, 1);
-%                 img = flip(img, 2);
-                
-                app.userObjects{i}.data = img;
-            end
-            Graphics.UpdateImage(app)
-            
-        end
+
         
         
         

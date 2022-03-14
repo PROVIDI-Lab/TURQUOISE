@@ -130,7 +130,13 @@ classdef IOUtils < handle
                 if uObj.imageIdx ~= imageId
                     continue
                 end
-                
+
+                if uObj.deleted
+                    %Remove all previous saved data if any
+                    delete(fullfile(fn, '*'))  
+                    continue
+                end
+
                 if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
                     IOUtils.saveSegmentation(app, uObj, fn);
                     IOUtils.saveSegmentationPoints(uObj, fn);
@@ -210,10 +216,6 @@ classdef IOUtils < handle
 
             if exist(outFn, 'file')
                 delete(outFn)
-            end
-
-            if obj.deleted
-                return
             end
             
             %write new json to disk
@@ -526,6 +528,16 @@ classdef IOUtils < handle
                 mkdir(fullfile(fp,'rmsstudio'))
             end
             
+        end
+
+        function segList = FindAllSegmentationsForImage(app, i)
+            
+            segList = {};
+            files = fullfile(app.current_folder,              ...
+                        app.studyNames{app.imIdx},   ...
+                         app.user_profile)
+
+
         end
         
     end

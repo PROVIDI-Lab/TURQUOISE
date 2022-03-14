@@ -529,6 +529,31 @@ classdef IOUtils < handle
             end
             
         end
+
+        function segList = FindAllSegmentationsForImage(app, i)
+            
+            segList = {};
+            files = dir(fullfile(app.current_folder,              ...
+                        app.studyNames{i},   ...
+                         app.user_profile));
+
+            for i = 1:length(files)
+                file = files(i);
+                if file.isdir
+                    continue
+                end
+
+                [~, name, ext] = fileparts(...
+                    fullfile(file.folder, file.name));
+                name = strrep(name,'-segmentation', '');
+
+                if ~strcmp(ext, '.json')
+                    continue
+                end
+
+                segList{end+1} = name;
+            end
+        end
         
     end
    

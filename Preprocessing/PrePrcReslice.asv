@@ -2,10 +2,7 @@ classdef PrePrcReslice < handle
     methods (Static)
 
         function Start(app)
-            %Very ugly way to gain acces to nifti functions
-            addpath(...
-                fullfile(...
-                fileparts(fileparts(mfilename('fullpath'))),'nifti'))
+
             d = uiprogressdlg(app.UIFigure, 'Title','Reslicing Niis');
             
             %Either process multiple folders, or a single one
@@ -25,19 +22,15 @@ classdef PrePrcReslice < handle
                     message = ['Folder ' num2str(i) ...
                         ' out of ' num2str(length(folders))];
 
-                    PrePrcReslice.ResliceFolder(app, folder.name, d, message)
+                    PrePrcReslice.CorrFolder(app, folder.name, d, message)
                 end
             else
                 %single folder
                 message = ['Folder 1 out of 1'];
-                PrePrcReslice.ResliceFolder(app, '', d, message)
+                PrePrcReslice.CorrFolder(app, '', d, message)
             end
 
-            close(d);
-        end
-
-        function ResliceFolder(app, folder, d, msg)
-            files = dir(fullfile(app.filepath, folder,'*.nii'));
+            files = dir(fullfile(app.filepath,'*.nii'));
             for i = 1:length(files)
                 d.Value = i/length(files);
                 file = files(i);
@@ -46,15 +39,17 @@ classdef PrePrcReslice < handle
                 end
                 
                 reslice_path = fullfile(app.outpath,...
-                         folder, ...
-                         'rmsstudio',...
                         strrep(file.name,'.nii','.rmsstudio_reslice.nii'));
                 current_path = fullfile(file.folder, file.name);
                 PrePrcReslice.ResliceResampleNii(...
                     current_path, reslice_path,...
                     app.ResampleisotropicCheckBox.Value)
             end
+
+            close(d);
         end
+
+        function
 
         
         function ResliceResampleNii(current_file, reslice_file, resampleQ)

@@ -63,6 +63,17 @@ classdef Objects < handle
                 name    = strcat(name, num2str(counter));
             end
         end
+
+        function names = GetAllUOsForImage(app, index)
+            names = {};
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                if obj.imageIdx ~= index 
+                    continue
+                end
+                names{end+1} = obj.name;
+            end
+        end
         
         function idx = findUOIndex(app, index)
             %Returns the index of the uo where ID == index

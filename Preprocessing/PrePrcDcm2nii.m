@@ -11,10 +11,37 @@ classdef PrePrcDcm2nii < handle
                 return
             end
 
-            d = uiprogressdlg(app.UIFigure, 'Title','Converting Dicoms',...
-                'Indeterminate','on');
+            d = uiprogressdlg(app.UIFigure, 'Title','Converting DCMs');
 
+            if app.MultipleimagesCheckBox.Value
 
+                folders = dir(app.filepath);
+                folders = folders(~ismember({folders.name},{'.','..'}));
+
+                for i = 1:length(folders)
+                    folder = folders(i);
+
+                    if ~folder.isdir
+                        continue
+                    end
+
+                    mkdir(fullfile(...
+                        app.outpath, folder.name))
+
+                    d.Value = i/length(folders);
+                    d.Message = ['Folder ' num2str(i) ...
+                        ' out of ' num2str(length(folders))];
+                    PrePrcDcm2nii.convertFolder(app, folder.name, dcm2nii)
+                end
+            else
+                PrePrcDcm2nii.convertFolder(app, '', dcm2nii)
+            end
+
+            close(d);
+
+        end
+
+        function convertFolder(app, name, dcm2nii)
             cmnd = dcm2nii;
             if app.DescriptioninnameCheckBox.Value
                 cmnd = [cmnd ' -f %d '];
@@ -32,11 +59,11 @@ classdef PrePrcDcm2nii < handle
                 cmnd = [cmnd '-p n '];
             end
 
-            cmnd = [cmnd '"' app.outpath  '" "' app.filepath '"'];
+            out = fullfile(app.outpath, name);
+            in = fullfile(app.filepath, name);
+
+            cmnd = [cmnd '-o "' out  '" "' in '"'];
             system(cmnd);
-
-            close(d);
-
         end
 
         function dcm2nii = checkDcm2nii()
