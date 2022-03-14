@@ -3,14 +3,7 @@ classdef GUI < handle
         
         function InitGUI(app)
            %Initialises the window for when a new study is loaded.
-           %Called by Study.InitStudy
-           
-            
-%             rect = get(app.UIAxes1,'OuterPosition');
-%             imagesc(app.UIAxes1,zeros(rect([4 3])));
-%             colormap(app.UIAxes1,'gray');
-%             axis(app.UIAxes1,'off');
-            
+           %Called by Study.InitStudy            
 
             %Enable all menus
             app.ViewMenu.Enable     = 'on';
@@ -18,8 +11,10 @@ classdef GUI < handle
             app.DrawMenu.Enable     = 'on';
             app.SegmentMenu.Enable  = 'on';
 
-
             GUI.ResetViews(app);
+
+            d = uiprogressdlg(app.UIFigure, 'Title',...
+                'New Patient');
             
             %Select and display the first image of the study, and if
             %possible, display the second image on the second view.
@@ -27,7 +22,8 @@ classdef GUI < handle
                 
                 if length(app.studyNames) > 1
                     msg = sprintf('Preparing image 1 of 2');
-                    GUI.updateWaitBar(app, msg, 0.5)
+                    d.Message = msg;
+                    d.Value = 0.5;
                     app.current_view      = 2;
                     %Keep track of which image is in which view
                     idx = app.imagePerAxis(app.current_view);
@@ -42,7 +38,8 @@ classdef GUI < handle
                 end
                 
                 msg = sprintf('Preparing image 2 of 2');
-                GUI.updateWaitBar(app, msg, 1)
+                d.Message = msg;
+                d.Value = 1;
                 app.current_view      = 1;
                 %Keep track of which image is in which view
                 idx = app.imagePerAxis(app.current_view);
@@ -57,6 +54,7 @@ classdef GUI < handle
             GUI.RevertControlsStatus(app);
             app.UIFigure.Visible = 'off';
             app.UIFigure.Visible = 'on';
+            close(d);
             
         end
         
@@ -725,29 +723,8 @@ classdef GUI < handle
             open(cm, pos(1), pos(2));
             disp('test')
            
-           return
-           
-           
+           return           
         end
-        
-        
-        %% Load bar
-        
-        
-        function newPatientWaitBar(app)
-            app.waitBar = waitbar(0, 'Loading new patient, please wait');
-        end
-        
-        function updateWaitBar(app, msg, status)
-            close(app.waitBar)
-            app.waitBar = waitbar(status, msg);
-        end
-        
-        function closeWaitBar(app)
-           close(app.waitBar) 
-           app.waitBar = [];
-        end
-        
         %% UI text elements
         
         function ToggleUnsavedIndicator(app)

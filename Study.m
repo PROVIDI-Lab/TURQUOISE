@@ -14,7 +14,8 @@ classdef Study < handle
                 return
             end
             
-            GUI.newPatientWaitBar(app)
+            d = uiprogressdlg(app.UIFigure, 'Title',...
+                'New Patient');
             
             %Initiatalize study variables
             app.userObjects         = {};
@@ -32,7 +33,6 @@ classdef Study < handle
             
             Backups.ClearBackups(app)
             
-            
             %Find if any files have user objects associated with them
             Study.FindUOsOnDisk(app)
             
@@ -44,8 +44,6 @@ classdef Study < handle
                 end
                 item = app.AvailableimagesListBox.Items{i};
                 if strcmp(item(1:2), '* ')
-                    msg = sprintf('Loading image %d of 2', loadCounter + 1);
-                    GUI.updateWaitBar(app, msg, (loadCounter + 1)/ 2)
                         
                     IOUtils.LoadNii(app, i)
                     IOUtils.LoadUserObjects(app, i);
@@ -64,7 +62,9 @@ classdef Study < handle
                     continue
                 end
                 msg = sprintf('Loading image %d of 2', loadCounter + 1);
-                GUI.updateWaitBar(app, msg, (loadCounter + 1)/ 2)
+                d.Message = msg;
+                d.Value = (loadCounter + 1)/ 2;
+                
                 IOUtils.LoadNii(app, i)
                 IOUtils.LoadUserObjects(app, i);
                 app.imagePerAxis(loadCounter + 1) = i;
@@ -76,7 +76,7 @@ classdef Study < handle
             Backups.ClearBackups(app)
             Backups.CreateBackup(app)
             Study.ToggleUnsavedProgress(app, false)
-            GUI.closeWaitBar(app)
+            close(d);
             
         end
         
