@@ -44,24 +44,25 @@ classdef Objects < handle
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
-            counter     = 0;
-            for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};
-                if obj.imageIdx ~= app.imIdx 
-                    continue
-                end
-                %Very ugly way of removing any numbers from string.
-                objName     = obj.name;
-                for i=0:9
-                    objName = strrep(objName, num2str(i), '');
-                end
-                if strcmp(objName, name)
+            names = Objects.GetAllUOsForImage(app, app.imIdx);
+            uniqueName = true;
+            counter = 0;
+            for i = 1:length(names)
+                objName = names{i};
+                
+                if contains(objName, name)
+                    if strcmp(objName, name)
+                        uniqueName = false;
+                    end
                     counter = counter + 1;
-                end              
+                end                
             end
-            if counter > 0
-                name    = strcat(name, num2str(counter));
+
+            if uniqueName
+                return
             end
+
+            name    = strcat(name, num2str(counter));
         end
 
         function names = GetAllUOsForImage(app, index)

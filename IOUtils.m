@@ -125,15 +125,15 @@ classdef IOUtils < handle
             segProperties   = {};
             msrProperties   = {};
             
-            for uObj    = app.userObjects
-                uObj    = uObj{1};
+            for i    = 1:length(app.userObjects)
+                uObj    = app.userObjects{i};
                 if uObj.imageIdx ~= imageId
                     continue
                 end
 
                 if uObj.deleted
                     %Remove all previous saved data if any
-                    delete(fullfile(fn, '*'))  
+                    delete(fullfile(fn, [uObj.name,'*']))  
                     continue
                 end
 
