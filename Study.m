@@ -19,7 +19,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
-            app.slicePerImage       = ones(1,nImages)*-1;
+            app.slicePerImage       = {};
             app.viewPerImage        = ones(1,nImages)*3;
             app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
@@ -140,7 +140,7 @@ classdef Study < handle
             %Switch to new image
             app.imIdx = index;
             
-            if app.slicePerImage(index) == -1 %Image not loaded before
+            if isempty(app.slicePerImage{index}) %Image not loaded before
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
                 app.imagePerAxis(app.current_view) = index;
@@ -177,7 +177,7 @@ classdef Study < handle
            
             imID    = app.imagePerAxis(app.current_view);
             view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage(imID);
+            slice   = app.slicePerImage{imID}{view};
             
             %Find the selection position for multiple views
             if(view == 3)

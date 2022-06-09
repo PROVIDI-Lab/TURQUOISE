@@ -16,7 +16,6 @@ classdef Backups < handle
             obj.d4PerImage          = app.d4PerImage;
             obj.viewPerImage        = app.viewPerImage;
             obj.current_view        = app.current_view;
-            obj.slicePerImage       = app.slicePerImage;
             obj.MinValue            = app.MinValue;
             obj.MaxValue            = app.MaxValue;
             obj.userObjects         = Objects.CreateObjectBackup(app);

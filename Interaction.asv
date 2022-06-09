@@ -409,11 +409,13 @@ classdef Interaction < handle
         %Switches viewAxis of the current UIAxis to the specified one
         %coronal = 1, sagittal = 2, axial = 3
             app.viewPerImage(app.imIdx) = viewAxis;
-            if isempty(app.slicePerImage{app.imIdx}{viewAxis})
-                app.slicePerImage{app.imIdx}{viewAxis} = ...
-                    round(size(app.data{app.imIdx}.img, viewAxis)/2);
-            end
+            if isempty(app.slicePerImage{app.imIdx}{view})
+                
 
+%             if(app.current_slice > size(app.data{app.imIdx}.img,3))
+%                 app.current_slice =...
+%                     round(size(app.data{app.imIdx}.img,3)/2);
+%             end
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
             GUI.UpdateAxisButtons(app)

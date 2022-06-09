@@ -181,7 +181,8 @@ classdef Objects < handle
             end
             points  = polygon.Position;
             
-            slice   = app.slicePerImage(app.imIdx);
+            view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage{app.imIdx}{view};
             slice   = ones(size(points(:,1)))*slice;
             
             points  = [points, slice];
@@ -235,7 +236,7 @@ classdef Objects < handle
             end
             
             view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage(app.imIdx);
+            slice   = app.slicePerImage{app.imIdx}{view};
             points  = [roi.Center, roi.Radius, view, slice];
             
             app.userObjects{idx}.points = points;
@@ -293,7 +294,7 @@ classdef Objects < handle
             end
             
             view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage(app.imIdx);
+            slice   = app.slicePerImage{app.imIdx}{view};
             points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
                 view, slice];
             
@@ -534,7 +535,7 @@ classdef Objects < handle
             
             imID    = app.imagePerAxis(view);
             try
-                slice   = app.slicePerImage(imID);
+                slice   = app.slicePerImage{imID}{view};
             catch
                 return
             end

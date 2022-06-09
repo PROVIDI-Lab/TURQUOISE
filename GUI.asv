@@ -188,7 +188,7 @@ classdef GUI < handle
                 GUI.ZoomAxis(app, axID, scrollCount, event);                
                 return
             end
-            view    = app.viewPerImage(imID);
+            view = app.viewPerImage(index);
             slice   = app.slicePerImage{imID}{view} - verticalScrollCount;
             Interaction.UpdateSlice(app, slice, axID);
             
@@ -196,15 +196,13 @@ classdef GUI < handle
         
         function SliceUp(app)
             imID    = app.imagePerAxis(app.current_view);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} + 1;
+            slice   = app.slicePerImage(imID) + 1;
             Interaction.UpdateSlice(app, slice, app.current_view);
         end
         
         function SliceDown(app)
             imID    = app.imagePerAxis(app.current_view);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} - 1;
+            slice   = app.slicePerImage(imID) - 1;
             Interaction.UpdateSlice(app, slice, app.current_view);
         end
         
@@ -325,8 +323,7 @@ classdef GUI < handle
             
             %Get data dimensions
             refvol  = app.data{app.imIdx}.img;
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            slice   = app.slicePerImage(app.imIdx);
             
             %Update SliceSlider
             viewAxis    = app.viewPerImage(app.imIdx);
@@ -338,7 +335,7 @@ classdef GUI < handle
             app.SliceSlider.MinorTicks = 1 : 1 : viewSize;
             if isnan(slice) || slice < 0 || slice > viewSize
                 slice = round( viewSize / 2);
-                app.slicePerImage{app.imIdx}{view} = slice;
+                app.slicePerImage(app.imIdx) = slice;
             end
             
             try

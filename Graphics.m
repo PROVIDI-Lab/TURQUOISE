@@ -20,8 +20,10 @@ classdef Graphics < handle
             end         
             if length(app.slicePerImage) < app.imagePerAxis(app.current_view)
                 return
-            end            
-            if app.slicePerImage(app.imagePerAxis(app.current_view)) == -1
+            end   
+            imID        = app.imagePerAxis(app.current_view);
+            view        = app.viewPerImage(imID);
+            if app.slicePerImage{imID}{view} == -1
                 return
             end
         
@@ -121,8 +123,9 @@ classdef Graphics < handle
                 
                 the_axis    = app.GetAxis(axID);
                 imID        = app.imagePerAxis(axID);
-                slice       = app.slicePerImage(imID);
                 view        = app.viewPerImage(imID);
+                slice       = app.slicePerImage{imID}{view};
+                
                 d4          = app.d4PerImage(imID);
                 SL = app.data{imID};
                 if(view == 3)
@@ -162,9 +165,9 @@ classdef Graphics < handle
         
             the_axis    = app.GetAxis(axID);
             imID        = app.imagePerAxis(axID);
-            slice       = app.slicePerImage(imID);
             img         = obj.data;
             view        = app.viewPerImage(imID);
+            slice       = app.slicePerImage{imID}{view};
             if(view == 3)
                 imSlice = img(:,:,slice);
             elseif(view == 2)
@@ -247,7 +250,8 @@ classdef Graphics < handle
             the_axis    = app.GetAxis(axID);
             hold(the_axis,'on');
             imID        = app.imagePerAxis(axID);
-            slice       = app.slicePerImage(imID);
+            view        = app.viewPerImage(imID);
+            slice       = app.slicePerImage{imID}{view};
             
             P1          = obj.points(1,:);
             P2          = obj.points(2,:);
@@ -314,9 +318,9 @@ classdef Graphics < handle
                 tmp = app.points{Cv};
                 
                 %only plot points on current slice
-                imID    = app.imagePerAxis(axID);
-                view    = app.viewPerImage(imID);
-                slice   = app.slicePerImage(imID);
+                imID        = app.imagePerAxis(axID);
+                view        = app.viewPerImage(imID);
+                slice       = app.slicePerImage{imID}{view};
                 
                 idx             = tmp(:, view) ~= slice;
                 tmp(idx,:)      = [];
@@ -339,7 +343,7 @@ classdef Graphics < handle
             the_axis    = app.GetAxis(axID);
             imID        = app.imagePerAxis(axID);
             view        = app.viewPerImage(imID);
-            slice       = app.slicePerImage(imID);
+            slice       = app.slicePerImage{imID}{view};
         
             for i = 1:length(app.userObjects)
                 obj     = app.userObjects{i};
@@ -378,8 +382,8 @@ classdef Graphics < handle
             %number of the current image.
             
             imID        = app.imagePerAxis(axID);
-            slice       = app.slicePerImage(imID);
             view        = app.viewPerImage(imID);
+            slice       = app.slicePerImage{imID}{view};
             maxSize     = size(app.data{imID}.img, view);
             sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
             nameString  = app.studyNames{imID};

@@ -13,8 +13,8 @@ classdef ROI < handle
             
             Cv      = app.current_view;
             imID    = app.imagePerAxis(Cv);
-            slice   = app.slicePerImage(imID);
             view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage{imID}{view};
 
             %add new point
             if(view == 3)
@@ -168,7 +168,7 @@ classdef ROI < handle
             
             %Create points & mask
             view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage(app.imIdx);
+            slice   = app.slicePerImage{app.imIdx}{view};
             points  = [roi.Center, roi.Radius, view, slice];
             mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
             
@@ -232,7 +232,7 @@ classdef ROI < handle
             
             %Create points & mask
             view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage(app.imIdx);
+            slice   = app.slicePerImage{app.imIdx}{view};
             points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
                 view, slice];
             mask    = ROI.PointsToMask(app, points, app.imIdx, 4);

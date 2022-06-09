@@ -16,8 +16,8 @@ classdef Measurements < handle
             
             Cv      = app.current_view;
             imID    = app.imagePerAxis(Cv);
-            slice   = app.slicePerImage(imID);
             view    = app.viewPerImage(imID);
+            slice   = app.slicePerImage{imID}{view};
             %Add points to list
             if(hit.Button == 1) 
                 if(view == 3)
