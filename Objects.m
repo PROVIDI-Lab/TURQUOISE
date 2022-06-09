@@ -25,7 +25,7 @@ classdef Objects < handle
                     ['uObj' num2str(length(app.userObjects))];
             else
                 obj.name    = Objects.CheckNameUnique(...
-                    app, obj.name, obj.type);
+                    app, obj.name, obj.imageIdx);
             end
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
@@ -40,11 +40,11 @@ classdef Objects < handle
             Backups.CreateBackup(app);
         end
         
-        function name = CheckNameUnique(app, name, ~)
+        function name = CheckNameUnique(app, name, idx)
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
-            names = Objects.GetAllUOsForImage(app, app.imIdx);
+            names = Objects.GetAllUOsForImage(app, idx);
             uniqueName = true;
             counter = 0;
             for i = 1:length(names)
@@ -378,7 +378,7 @@ classdef Objects < handle
             
             newName     = Interaction.PromptName(app);
             newName     = Objects.CheckNameUnique(app, newName, ...
-                app.userObjects{idx}.type);
+                app.imIdx);
             app.userObjects{idx}.name   = newName{1};
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)

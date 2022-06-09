@@ -43,15 +43,12 @@ classdef PrePrcDcm2nii < handle
 
         function convertFolder(app, name, dcm2nii)
             cmnd = dcm2nii;
-            if app.DescriptioninnameCheckBox.Value
-                cmnd = [cmnd ' -f %d '];
-            end
-
+           
             if app.SeriesinnameCheckBox.Value
                 if app.DescriptioninnameCheckBox.Value
-                    cmnd = [cmnd '_%s '];
+                    cmnd = [cmnd ' -f %d_%s '];
                 else
-                    cmnd = [cmnd '-f %s '];
+                    cmnd = [cmnd ' -f %s '];
                 end
             end
 

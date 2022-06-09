@@ -47,7 +47,6 @@ classdef PrePrcReslice < handle
                 
                 reslice_path = fullfile(app.outpath,...
                          folder, ...
-                         'rmsstudio',...
                         strrep(file.name,'.nii','.rmsstudio_reslice.nii'));
                 current_path = fullfile(file.folder, file.name);
                 PrePrcReslice.ResliceResampleNii(...
@@ -71,6 +70,11 @@ classdef PrePrcReslice < handle
             catch
                 return
             end
+
+            if ~exist(reslice_file, 'file')
+                return
+            end
+
             nii     = load_nii(reslice_file);
             nii.img = flip(nii.img,2); % maybe remove later?
             
