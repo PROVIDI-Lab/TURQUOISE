@@ -64,12 +64,13 @@ classdef UserObj < matlab.mixin.SetGet
         end
         
         function setVisible(obj, visible, ~)
-            if isempty(obj.graphics)
+            
+            try
+                obj.visible              = visible;
+                obj.graphics{1}.Visible  = visible; 
+            catch
                 return
             end
-            
-            obj.visible              = visible;
-            obj.graphics{1}.Visible  = visible; 
             
         end
         

@@ -181,7 +181,7 @@ classdef Objects < handle
             end
             points  = polygon.Position;
             
-            view    = app.viewPerImage(imID);
+            view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage{app.imIdx}{view};
             slice   = ones(size(points(:,1)))*slice;
             

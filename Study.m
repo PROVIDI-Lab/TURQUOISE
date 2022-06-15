@@ -139,6 +139,15 @@ classdef Study < handle
             
             %Switch to new image
             app.imIdx = index;
+
+            if index > length(app.slicePerImage)
+                app.slicePerImage{index} = {};
+                IOUtils.LoadNii(app, index)
+                IOUtils.LoadUserObjects(app, index)
+                app.imagePerAxis(app.current_view) = index;
+                GUI.DisplayNewImage(app, index)
+                return
+            end
             
             if isempty(app.slicePerImage{index}) %Image not loaded before
                 IOUtils.LoadNii(app, index)
