@@ -1,84 +1,10 @@
 classdef IOUtils < handle
 
-    methods (Static)
-        
-        function [nii, ratio] = ResampleNii(nii, inverse)
-            min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
-            
-            if inverse
-                [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,  ...
-                   min_vs*ones(1,3),...
-                   nii.hdr.dime.pixdim(2:4));
-            else
-                [nii.img, ratio] = MathUtils.ResampleVolume(nii.img,  ...
-                   nii.hdr.dime.pixdim(2:4), ...
-                   min_vs*ones(1,3));
-            end
-        end
-
-        %Permutes and flips the image to match Matlab's orientation of 
-        %images. Doesn't change the header, since it's only for in-app use.
-        function nii = PermuteFlip(nii)
-            nii.img = permute(nii.img,[2 1 3 4]);
-            nii.img = flip(nii.img,1);
-            nii.img = flip(nii.img,2);
-            nii.img = flip(nii.img,3);
-        end
-        
-        % Before save
-%         function [nii, ratio] = RMSStandardVolumeDetreatment(nii)        
-%             nii.img = single(nii.img);
-% %             nii.hdr.dime.dim(1) = 3;
-% %             nii.hdr.dime.dim(5) = 1;
-%             nii.img = permute(nii.img,[2 1 3]);
-%             nii.img = flip(nii.img,1);
-%             nii.img = flip(nii.img,2);
-%             nii.img = flip(nii.img,3);
-%             ratio = [1,1,1];
-% %             min_vs = min(nii.hdr.dime.pixdim(2:1+ndims(nii.img)));
-%         end 
-        
-        function ResliceResampleNii(current_file, reslice_file)
-        %Loads the rmsstudio_reslice.nii file associated with the current
-        %image. Sets the nii file as the current image.
-        %Input: 
-        %app, the RMSStudio app
-        %reslice_name, the path of the file to be resliced
-        
-            %If the file doesn't exist, reslice it now.
-            if(exist(reslice_file,'file') < 1)
-                hdr = load_untouch_header_only(current_file);
-                try
-                    reslice_nii(current_file,                       ...
-                                reslice_file,                       ...
-                                hdr.dime.pixdim(2:4));
-                catch
-                    return
-                end
-                if exist(reslice_file, 'file')
-                    nii     = load_nii(reslice_file);
-                else
-%                     nii     = load_nii(fullfile(fp,fn));
-                    return
-                end
-                
-                %Resample file
-                [nii, ratio] = IOUtils.ResampleNii(nii, false);
-                
-                %change header
-                nii.hdr.dime.dim(2:1+ndims(nii.img)) = size(nii.img);
-                nii.hdr.dime.pixdim(2:4) = nii.hdr.dime.pixdim(2:4)     ...
-                                            ./ ratio;
-                
-                %Save back to disk
-                save_nii(nii, reslice_file);
-            end
-        end   
-        
+    methods (Static)        
         %% Loading & Saving files
         
         function LoadNii(app, index)
-        %Loads the rmsstudio_reslice.nii file associated with the current
+        %Loads the .nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
         %   app, the RMSStudio app
@@ -93,19 +19,19 @@ classdef IOUtils < handle
             if strcmp(fn(1:2), '* ')
                     fn = fn(3:end);
             end
-            if ~contains(fn, '.rmsstudio_reslice.nii')
-                reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
-                if exist(reslice_name, 'file') == 0
+
+            if ~contains(fn, '.nii')
+                name = fullfile(fp,[fn '.nii']);
+                if exist(name, 'file') == 0 
                     return
                 end
             else
-                reslice_name    = fullfile(fp,fn);
+                name    = fullfile(fp,fn);
             end
+
             %Load the file
-%             reslice_name    = convertCharsToStrings(reslice_name);
-            nii     = load_nii(reslice_name);
-            nii     = IOUtils.PermuteFlip(nii);
-            nii.img = single(nii.img);
+            nii         = load_untouch_nii(name);
+            nii.img     = single(nii.img);
             
             app.data{index}         = nii;
             app.d4PerImage(index)   = 1;
@@ -118,8 +44,6 @@ classdef IOUtils < handle
         
             if ~isfolder(fn)
                 mkdir(fn);
-%             else
-%                 delete(fullfile(fn, '*'))   %Remove all previous saved data
             end
             
             segProperties   = {};
@@ -138,7 +62,9 @@ classdef IOUtils < handle
                 end
 
                 if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
-                    IOUtils.saveSegmentation(app, uObj, fn);
+
+                    %Only write .json for now
+%                     IOUtils.saveSegmentation(app, uObj, fn);
                     IOUtils.saveSegmentationPoints(uObj, fn);
                     segProperties{end+1} = uObj.prop;
                 elseif uObj.type == 2
@@ -169,7 +95,6 @@ classdef IOUtils < handle
             end
 
             nii     = IOUtils.arr2nii(app, obj);
-%             nii     = IOUtils.PermuteFlip(nii);
             try
                 save_nii(nii, outFn);
             catch err
@@ -268,7 +193,7 @@ classdef IOUtils < handle
             if(exist(fn,'file') == 0)
                 return
             end
-            nii     = load_nii(fn);
+            nii     = load_untouch_nii(fn);
 %             nii     = IOUtils.PermuteFlip(nii);
             nii.img = nii.img(:,:,:,1); 
             
@@ -324,7 +249,8 @@ classdef IOUtils < handle
         end
         
         function LoadMeasurements(app, name, idx)
-        %Load all the measurements from the disk            
+        %Load all the measurements from the disk     
+        %Todo: incorporate all measurements & ROIS in single json
             if(exist(name,'file') == 0)
                 return
             end
@@ -405,42 +331,19 @@ classdef IOUtils < handle
         end
         
         function CheckNiis(app)
-        %Goes over all nii files in the current folder. When they are 
-        %already processed (.rmsstudio_reslice.nii), adds them to the file
-        %list. If not, preprocesses them.
+        %Goes over all nii files in the current folder and add them to
+        %app.studynames
+        % TODO: add header checking!!
                         
             files = dir(fullfile(app.current_folder,...
                 '*.nii'));
             
-            app.studyNames = {};
+            app.studyNames = cell(length(files),1);
             
-            counter = 1;
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-                if contains(text, '.rmsstudio_reslice.nii')
-                    app.studyNames{counter} = ...
-                        erase(text, '.rmsstudio_reslice.nii');
-                    counter = counter + 1;
-                else
-                    %skip for now
-                    
-                    continue
-                    
-                    
-                    %if no _reslice version exists, reslice
-                    reslice_path = fullfile(app.current_folder,...
-                        strrep(text,'.nii','.rmsstudio_reslice.nii'));
-                    if exist(reslice_path,'file')
-                        continue
-                    end
-                    
-                    current_path = fullfile(app.current_folder, text);
-                    IOUtils.ResliceResampleNii(current_path, reslice_path)
-                    app.studyNames{counter} = ...
-                        erase(text, '.nii');
-                    counter = counter + 1;
-                end
-            end   
+                app.studyNames{file_id} = erase(text, '.nii');
+            end
             
             app.AvailableimagesListBox.Items = app.studyNames;
         end
@@ -489,6 +392,7 @@ classdef IOUtils < handle
         
         function nii = arr2nii(app, obj)
         %Constructs a nii object from the user object containing an ROI
+        %TODO: compress!
             
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;

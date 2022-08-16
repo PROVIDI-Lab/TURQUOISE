@@ -231,8 +231,6 @@ classdef Interaction < handle
         function MouseDraggedInImage(app, hit)
             %Triggers when the mouse moves in the image after the
             %windowbuttonmotionFCN has been set for the UIAxes elements.
-            %Calls ROI.MoveROIPoint with the new position of the cursor 
-            %relative to the top left corner with the scale of the image.
             if isempty(app.dragPoint) || isempty(app.currentDragPoint)
                 
                 GUI.MouseHover(app, hit)                
@@ -245,13 +243,6 @@ classdef Interaction < handle
             
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
-            %Edit ROI
-%             if app.drawing.mode == 2
-%                 GUI.SetDragCursor(app)
-%                 ROI.MoveROIPoint(app, [hitx, hity])
-            %Circular ROI
-%             if app.drawing.mode == 5
-%                 ROI.DrawCircularROI(app, [hitx, hity])
             if app.drawing.mode == 6
                 GUI.AdjustContrast(app, hitx, hity)
             end            
@@ -365,43 +356,6 @@ classdef Interaction < handle
                 app.zoomToggle = true;
             end            
         end
-        
-        %%
-        
-        function MouseDeleteObjectAtCoordinates(app,hitx,hity)
-            %This handles the deletion of objects when the mouse is pressed
-            %at the object location. Measurements have priority over
-            %segmentation when deleting objects. 
-            %
-            %Input: hitx - the x-coordinate of the mouse
-            %       hity - the y-coordinate of the mouse
-            
-            return
-            
-%             %Remove any previous deletion contours.
-%             if(app.selection_contour ~= -1)
-%                 delete(app.selection_contour);
-%                 app.selection_contour = -1;
-%             end
-%             
-%             %Find the object type to be deleted. Either Measurement or ROI.
-%             [delOb, ij, meas] = Study.FindObjectTypeAtPos(app, hitx, hity);
-%             
-%             %Remove the objects
-%             if(delOb == 1)
-%                 ROI.RemoveSegmentation(app, ij)
-%             elseif(delOb == 2)
-%                 Measurements.RemoveMeasurement(app, meas)
-%             end
-%             
-%             if delOb ~= 0
-%                app.should_show_selection = false;
-%             end
-%             
-%             %Create backup
-%             Backups.CreateBackup(app);
-        end       
-        
         
         %% UI buttons
         

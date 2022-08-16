@@ -78,7 +78,7 @@ classdef IOUtils < handle
         %% Loading & Saving files
         
         function LoadNii(app, index)
-        %Loads the rmsstudio_reslice.nii file associated with the current
+        %Loads the .nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
         %   app, the RMSStudio app
@@ -93,7 +93,8 @@ classdef IOUtils < handle
             if strcmp(fn(1:2), '* ')
                     fn = fn(3:end);
             end
-            if ~contains(fn, '.rmsstudio_reslice.nii')
+            
+            if ~contains(fn, '.nii')
                 reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
                 if exist(reslice_name, 'file') == 0
                     return
@@ -125,15 +126,15 @@ classdef IOUtils < handle
             segProperties   = {};
             msrProperties   = {};
             
-            for uObj    = app.userObjects
-                uObj    = uObj{1};
+            for i    = 1:length(app.userObjects)
+                uObj    = app.userObjects{i};
                 if uObj.imageIdx ~= imageId
                     continue
                 end
 
                 if uObj.deleted
                     %Remove all previous saved data if any
-                    delete(fullfile(fn, '*'))  
+                    delete(fullfile(fn, [uObj.name,'*']))  
                     continue
                 end
 
@@ -405,42 +406,19 @@ classdef IOUtils < handle
         end
         
         function CheckNiis(app)
-        %Goes over all nii files in the current folder. When they are 
-        %already processed (.rmsstudio_reslice.nii), adds them to the file
-        %list. If not, preprocesses them.
+        %Goes over all nii files in the current folder and add them to
+        %app.studynames
+        % TODO: add header checking!!
                         
             files = dir(fullfile(app.current_folder,...
                 '*.nii'));
             
-            app.studyNames = {};
+            app.studyNames = cell(lenght(files),1);
             
-            counter = 1;
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-                if contains(text, '.rmsstudio_reslice.nii')
-                    app.studyNames{counter} = ...
-                        erase(text, '.rmsstudio_reslice.nii');
-                    counter = counter + 1;
-                else
-                    %skip for now
-                    
-                    continue
-                    
-                    
-                    %if no _reslice version exists, reslice
-                    reslice_path = fullfile(app.current_folder,...
-                        strrep(text,'.nii','.rmsstudio_reslice.nii'));
-                    if exist(reslice_path,'file')
-                        continue
-                    end
-                    
-                    current_path = fullfile(app.current_folder, text);
-                    IOUtils.ResliceResampleNii(current_path, reslice_path)
-                    app.studyNames{counter} = ...
-                        erase(text, '.nii');
-                    counter = counter + 1;
-                end
-            end   
+                app.studyNames{counter} = erase(text, '.nii');
+            end
             
             app.AvailableimagesListBox.Items = app.studyNames;
         end
@@ -489,6 +467,7 @@ classdef IOUtils < handle
         
         function nii = arr2nii(app, obj)
         %Constructs a nii object from the user object containing an ROI
+        %TODO: compress!
             
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;
@@ -533,11 +512,26 @@ classdef IOUtils < handle
         function segList = FindAllSegmentationsForImage(app, i)
             
             segList = {};
-            files = fullfile(app.current_folder,              ...
-                        app.studyNames{app.imIdx},   ...
-                         app.user_profile)
+            files = dir(fullfile(app.current_folder,              ...
+                        app.studyNames{i},   ...
+                         app.user_profile));
 
+            for i = 1:length(files)
+                file = files(i);
+                if file.isdir
+                    continue
+                end
 
+                [~, name, ext] = fileparts(...
+                    fullfile(file.folder, file.name));
+                name = strrep(name,'-segmentation', '');
+
+                if ~strcmp(ext, '.json')
+                    continue
+                end
+
+                segList{end+1} = name;
+            end
         end
         
     end

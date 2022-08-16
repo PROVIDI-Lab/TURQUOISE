@@ -187,6 +187,8 @@ classdef Study < handle
                 or  = NiftiUtils.FindOrientation(tm);
                 app.viewPerImage(i) = ...
                     strfind('sca',or(5)); %1 = sag, 2=cor, 3=axial
+                disp(fn)
+                disp(viewPerImage(i))
 
                 refs(:,i) =...
                     NiftiUtils.GetRefHalfway(hdr);

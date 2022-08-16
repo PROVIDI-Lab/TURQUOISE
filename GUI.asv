@@ -73,12 +73,11 @@ classdef GUI < handle
             %default values.
 %             app.view_axis                        = 3;
             app.slicePerImage       = {};
-            Study.FindRealWorldReference(app);  %restore axis
+            app.viewPerImage        = ones(1,length(app.viewPerImage))*3;
             app.current_view        = 1;
 %             app.imagePerAxis        = [1,1];
             app.Align               = '';
-
-            
+           
             GUI.UpdateAxisInfo(app);
 %             GUI.UpdateViewButtons(app);
             GUI.UpdateAlignButtons(app);
@@ -111,10 +110,10 @@ classdef GUI < handle
                 [view, slice]   = Objects.GetUOViewAndSlice(uo);
                 app.viewPerImage(index) = view;
                 app.slicePerImage{index}{view} = slice;
-            else
-                view = app.viewPerImage(index);
-                app.slicePerImage{index}{view}    = round(size(...
+            else            
+                app.slicePerImage{index}{3}    = round(size(...
                                             app.data{index}.img,3)/2);
+                app.viewPerImage(index) = 3;
             end
             
             %Set axis limits
@@ -481,9 +480,25 @@ classdef GUI < handle
         
         
         %% Update buttons
-                
+        
+%         function UpdateViewButtons(app)
+%             %Updates the view buttons to display the correct one.
+%             view    = app.current_view;
+%             
+%             %Reset the values
+%             app.View1Button.BackgroundColor     = [.96 .96 .96];
+%             app.View2Button.BackgroundColor     = [.96 .96 .96];
+%             
+%             if     view == 1
+%                 app.View1Button.BackgroundColor = [.96 .96 0];
+%             elseif view == 2
+%                 app.View2Button.BackgroundColor = [.96 .96 0];
+%             end
+%         end
+        
         function UpdateAxisInfo(app)
             %Updates the axisview buttons to display the correct one.
+            %Additionally fills in the axis direction labels
             imID    = app.imagePerAxis(app.current_view);
             
             axInfo  = NiftiUtils.FindOrientation(...
@@ -502,25 +517,8 @@ classdef GUI < handle
                 app.AxialButton.BackgroundColor     = [.96 .96 0];
             end
 
-        end
+            
 
-        function UpdateAxisButtons(app)
-            %Updates the axisview buttons to display the correct one.
-            imID    = app.imagePerAxis(app.current_view);
-            view    = app.viewPerImage(imID);
-            
-            %Reset the values
-            app.AxialButton.BackgroundColor         = [.96 .96 .96];
-            app.SagittalButton.BackgroundColor      = [.96 .96 .96];
-            app.CoronalButton.BackgroundColor       = [.96 .96 .96];
-            
-            if     view == 2
-                app.CoronalButton.BackgroundColor   = [.96 .96 0];
-            elseif view == 1
-                app.SagittalButton.BackgroundColor  = [.96 .96 0];
-            elseif view == 3
-                app.AxialButton.BackgroundColor     = [.96 .96 0];
-            end
         end
         
         function UpdateAlignButtons(app)

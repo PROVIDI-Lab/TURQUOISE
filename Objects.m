@@ -512,7 +512,9 @@ classdef Objects < handle
 %         end
         
         function UOId = FindUOUnderMouse(app, hit, varargin)
-           
+        %Checks all UOs to see which of them matches with the current
+        %cursor position, view, slice etc. Returns the corresponding ID.
+        
             UOId = -1;
             
             hitx = round(hit.IntersectionPoint(1));
