@@ -108,7 +108,7 @@ classdef Interaction < handle
             
             %Save current zoom. Used to store any changes made througout
             %the standard UI instead of ctrl+scroll.
-            GUI.StoreZoomLevel(app)
+%             GUI.StoreZoomLevel(app)
             
             app.current_view    = new_view_idx;
                        
@@ -363,15 +363,21 @@ classdef Interaction < handle
         %Switches viewAxis of the current UIAxis to the specified one
         %coronal = 1, sagittal = 2, axial = 3
             app.viewPerImage(app.imIdx) = viewAxis;
-            if isempty(app.slicePerImage{app.imIdx}{viewAxis})
+            try
+                if isempty(app.slicePerImage{app.imIdx}{viewAxis})
+                    app.slicePerImage{app.imIdx}{viewAxis} = ...
+                        round(size(app.data{app.imIdx}.img, viewAxis)/2);
+                end
+            catch
                 app.slicePerImage{app.imIdx}{viewAxis} = ...
-                    round(size(app.data{app.imIdx}.img, viewAxis)/2);
+                        round(size(app.data{app.imIdx}.img, viewAxis)/2);
             end
+
 
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
             GUI.UpdateAxisButtons(app)
-            GUI.ResetAxisZoom(app)
+%             GUI.ResetAxisZoom(app)
         end
         
         function ResetStudy(app)

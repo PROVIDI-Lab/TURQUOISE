@@ -3,6 +3,57 @@
 classdef NiftiUtils < handle
     
     methods (Static)
+
+        function nii = PermuteFlip(nii)
+            %Permutes and flips the image oriantation to match Matlab's
+            %preferred way of showing images (y,x,z)
+
+            img = nii.img;
+            order = 1:length(size(img));
+            order(1) = 2;
+            order(2) = 1;
+            img = permute(img, order);
+            img = flip(img, 1);
+            nii.img = img;
+
+%             %hdr
+%             srow_x = nii.hdr.hist.srow_x;
+%             srow_y = nii.hdr.hist.srow_y;
+%             nii.hdr.hist.srow_x = -srow_y;
+% %             nii.hdr.hist.srow_x = srow_y;
+%             nii.hdr.hist.srow_y = srow_x;
+% 
+%             dimx    = nii.hdr.dime.dim(2);
+%             dimy    = nii.hdr.dime.dim(3);
+%             nii.hdr.dime.dim(2) = dimy;
+%             nii.hdr.dime.dim(3) = dimx;
+
+        end
+
+        function nii = FlipPermute(nii)
+            %Permutes and flips the image oriantation back to the normal
+            %way. Used when saving images.
+
+            img = nii.img;
+            img = flip(img, 1);
+            img = permute(img, [2,1,3]);
+            nii.img = img;
+
+%             %hdr
+%             srow_x = nii.hdr.hist.srow_x;
+%             srow_y = nii.hdr.hist.srow_y;
+%             nii.hdr.hist.srow_x = srow_y;
+%             nii.hdr.hist.srow_y = -srow_x;
+% %             nii.hdr.hist.srow_y = srow_x;
+% 
+%             dimx    = nii.hdr.dime.dim(2);
+%             dimy    = nii.hdr.dime.dim(3);
+%             nii.hdr.dime.dim(2) = dimy;
+%             nii.hdr.dime.dim(3) = dimx;
+
+        end
+
+
         
         function tm = getTransformationMatrix(hdr)
             srow_x = hdr.hist.srow_x;
@@ -82,16 +133,16 @@ classdef NiftiUtils < handle
             [~,jOrr] = max(abs(tm(:,2)));
             jSign = sign(tm(jOrr,2));
 
-            orr_vec = {'LR', 'AP', 'IS'};
+            orr_vec = {'LR', 'AP', 'SI'};
 
             iOrrString = orr_vec{iOrr};
-            if ~iSign
-                iOrrString = reverse(iOrr);
+            if iSign == -1
+                iOrrString = reverse(iOrrString);
             end
 
             jOrrString = orr_vec{jOrr};
-            if ~jSign
-                jOrrString = reverse(jOrr);
+            if jSign == -1
+                jOrrString = reverse(jOrrString);
             end
 
             if iOrr == 1 && jOrr == 2
@@ -131,16 +182,18 @@ classdef NiftiUtils < handle
             imageOr     = strfind('sca', or(5)); 
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);    %final projection
+            slice       = app.slicePerImage{imID}{viewAxis};
 
             %Make grid spacing based on image dimensions
             hdr     = app.data{imID}.hdr;
             dim     = [hdr.dime.dim(2);...
                         hdr.dime.dim(3);...
                         hdr.dime.dim(4)];
+            slice = slice - dim(view)/2;
 
             dim(view)   = [];
-            dimx        = dim(1);
-            dimy        = dim(2);
+            dimx        = max(dim);
+            dimy        = max(dim);
 
             if view == 1 
                 [xq, yq, zq] = meshgrid(1, ...
@@ -177,25 +230,25 @@ classdef NiftiUtils < handle
 
             params  = app.viewingParams;
             tm      = NiftiUtils.AdaptTransMat(...
-                            tm, hdr, dimx, dimy, ...
+                            tm, hdr, dimx, dimy, slice, ...
                             view, imageOr, params);
 
             %Transform grid to get sampling locations
             grid    = tm * grid;
 
 %             %visualize
-%             xq       = reshape(grid(1,:), gridDim);
-%             yq       = reshape(grid(2,:), gridDim);
-%             zq       = reshape(grid(3,:), gridDim);
-%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
-%             scatter3(x(1:200:end), y(1:200:end),z(1:200:end), 10)
-%             hold on
-%             scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
-%             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5)
-%             xlabel('x')
-%             ylabel('y')
-%             zlabel('z')
-%             hold off
+            xq       = reshape(grid(1,:), gridDim);
+            yq       = reshape(grid(2,:), gridDim);
+            zq       = reshape(grid(3,:), gridDim);
+            [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+            scatter3(x(1:200:end), y(1:200:end),z(1:200:end), 10)
+            hold on
+            scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
+%             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
+            xlabel('x')
+            ylabel('y')
+            zlabel('z')
+            hold off
 
             %Lastly, use the inverse of the original image 
             % transformation matrix to get ijk coordinate sampling 
@@ -210,7 +263,8 @@ classdef NiftiUtils < handle
 
         end
 
-        function tm = AdaptTransMat(tm, hdr, resx, resy, view, or, params)
+        function tm = AdaptTransMat(tm, hdr, resx, resy, slice, ...
+                view, or, params)
         %Makes the following changes to the transformation matrix:
         %   Applies scaling and translation as defined by
         %user input. Scaling = zooming, translation is scrolling.
@@ -225,6 +279,7 @@ classdef NiftiUtils < handle
             imAxes(view)        = [];
             halfPoint           = ones(4,1);
             halfPoint([imAxes]) = [resx/2,resy/2];
+            halfPoint(view)     = slice;
             halfPointDist       = tm * halfPoint;
             deltaCenter         = params(1:3)' - halfPointDist(1:3);
             tm(1:3,4)           = tm(1:3,4) + deltaCenter;
@@ -233,6 +288,62 @@ classdef NiftiUtils < handle
 
             
 
+
+        end
+
+        function view = GetIJKView(app)
+            %returns the view of the image relative to the image
+            %coordinates.
+            %We can find this from the viewing axis, and the image 
+            % orientation as follows:
+            %                           viewing axis
+            %                   sag         cor         ax
+            %im Orr     sag     k           i           j
+            %           cor     i           k           j
+            %           ax      i           j           k
+
+            viewAxis    = app.viewPerImage(app.imIdx); 
+            tm          = app.transMatPerImage{app.imIdx};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);    %final projection
+        end
+
+        function showGrid(app, axID, xq, yq, zq)
+
+            imID        = app.imagePerAxis(axID);
+            d4          = app.d4PerImage(imID);
+            imData      = app.data{imID}.img(:,:,:,d4);
+
+            [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+            grid        = [reshape(x, 1, []);...
+                           reshape(y, 1, []);...
+                           reshape(z, 1, []);
+                           ones(1,numel(x))];
+
+            %Transform to get positions of voxels
+            tm          = app.transMatPerImage{imID};
+            gridk    = tm \ grid;
+
+            %Reshape to usable arrays.
+            dim = size(imData);
+            xk       = reshape(gridk(1,:), dim);
+            yk       = reshape(gridk(2,:), dim);
+            zk       = reshape(gridk(3,:), dim);
+% 
+            %plot
+            scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
+            xlabel('i')
+            ylabel('j')
+            zlabel('k')
+            hold on
+            [sx,sy,sz] = size(imData);
+            scatter3([0,sx,0,0,sx,sx,0,sx], [0,0,sy,0,sy,0,sy,sy],...
+                [0,0,0,sz,0,sz,sz,sz])
+            hold on 
+            scatter3(xk(1:200:end), yk(1:200:end),zk(1:200:end), 10)
+            hold off
 
         end
         

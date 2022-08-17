@@ -117,11 +117,13 @@ classdef GUI < handle
                                             app.data{index}.img,3)/2);
             end
             
-            %Set axis limits
-            ax      = app.GetAxis(app.current_view);
-            imSize  = size(app.data{index}.img);
-            ax.XLim = [0, imSize(2)];
-            ax.YLim = [0, imSize(1)];
+%             %Set axis limits
+%             ax      = app.GetAxis(app.current_view);
+%             imSize  = size(app.data{index}.img);
+%             viewAx  = NiftiUtils.GetIJKView(app);
+%             imSize(viewAx) = [];
+%             ax.XLim = [0, imSize(2)];
+%             ax.YLim = [0, imSize(1)];
             
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -142,16 +144,16 @@ classdef GUI < handle
             app.zoomToggle      = false;
             
             %Set axis limits
-            ax      = app.GetAxis(app.current_view);
-            if isempty(app.zoomPerImage{index})
-                imSize  = size(app.data{index}.img);
-                ax.XLim = [0, imSize(2)];
-                ax.YLim = [0, imSize(1)];
-                app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
-            else
-                ax.XLim = app.zoomPerImage{index}(1,:);
-                ax.YLim = app.zoomPerImage{index}(2,:);
-            end
+%             ax      = app.GetAxis(app.current_view);
+%             if isempty(app.zoomPerImage{index})
+%                 imSize  = size(app.data{index}.img);
+%                 ax.XLim = [0, imSize(2)];
+%                 ax.YLim = [0, imSize(1)];
+%                 app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
+%             else
+%                 ax.XLim = app.zoomPerImage{index}(1,:);
+%                 ax.YLim = app.zoomPerImage{index}(2,:);
+%             end
                         
                         
             %Update all GUI elements
@@ -241,71 +243,71 @@ classdef GUI < handle
            return
         end
         
-        function ZoomAxis(app, axID, scrollCount, event)
-            
-            the_axis        = app.GetAxis(axID);
-            zoomAmount      = scrollCount * 0.02; 
-            imID            = app.imagePerAxis(axID);
-            
-            %Zoom in x direction            
-            xDelta           = the_axis.XLim(2) - the_axis.XLim(1);
-            if xDelta == Inf
-                xDelta   = size(app.data{imID}.img, 1);
-            end
-            
-            xMinAxis        = the_axis.Position(1);
-            xPos            = event.Source.CurrentPoint(1) - xMinAxis;
-            xPos            = xPos / the_axis.Position(3) * ...
-                                xDelta + the_axis.XLim(1);                            
-            xDelta          = xDelta * (1 + zoomAmount); %Add minimum change?
-            [xMin, xMax]    = MathUtils.GetNewRange(xDelta, xPos, ...
-                                    the_axis.XLim(1), the_axis.XLim(2));                                
-            the_axis.XLim   = [xMin, xMax];
-            
-            %Zoom in y direction            
-            yDelta           = the_axis.YLim(2) - the_axis.YLim(1);
-            if yDelta == Inf
-                yDelta   = size(app.data{imID}.img, 1);
-            end
-            
-            yPos        = the_axis.Position(2) + the_axis.Position(4) -...
-                            event.Source.CurrentPoint(2);
-            yPos            = yPos / the_axis.Position(4) * ...
-                    yDelta + the_axis.YLim(1);
-            yDelta          = yDelta * (1 + zoomAmount);
-            [yMin, yMax]    = MathUtils.GetNewRange(yDelta, yPos, ...
-                                    the_axis.YLim(1), the_axis.YLim(2));                
-                                
-            the_axis.YLim   = [yMin, yMax];
-            
-            GUI.StoreZoomLevel(app)
-        end
+%         function ZoomAxis(app, axID, scrollCount, event)
+%             
+%             the_axis        = app.GetAxis(axID);
+%             zoomAmount      = scrollCount * 0.02; 
+%             imID            = app.imagePerAxis(axID);
+%             
+%             %Zoom in x direction            
+%             xDelta           = the_axis.XLim(2) - the_axis.XLim(1);
+%             if xDelta == Inf
+%                 xDelta   = size(app.data{imID}.img, 1);
+%             end
+%             
+%             xMinAxis        = the_axis.Position(1);
+%             xPos            = event.Source.CurrentPoint(1) - xMinAxis;
+%             xPos            = xPos / the_axis.Position(3) * ...
+%                                 xDelta + the_axis.XLim(1);                            
+%             xDelta          = xDelta * (1 + zoomAmount); %Add minimum change?
+%             [xMin, xMax]    = MathUtils.GetNewRange(xDelta, xPos, ...
+%                                     the_axis.XLim(1), the_axis.XLim(2));                                
+%             the_axis.XLim   = [xMin, xMax];
+%             
+%             %Zoom in y direction            
+%             yDelta           = the_axis.YLim(2) - the_axis.YLim(1);
+%             if yDelta == Inf
+%                 yDelta   = size(app.data{imID}.img, 1);
+%             end
+%             
+%             yPos        = the_axis.Position(2) + the_axis.Position(4) -...
+%                             event.Source.CurrentPoint(2);
+%             yPos            = yPos / the_axis.Position(4) * ...
+%                     yDelta + the_axis.YLim(1);
+%             yDelta          = yDelta * (1 + zoomAmount);
+%             [yMin, yMax]    = MathUtils.GetNewRange(yDelta, yPos, ...
+%                                     the_axis.YLim(1), the_axis.YLim(2));                
+%                                 
+%             the_axis.YLim   = [yMin, yMax];
+%             
+%             GUI.StoreZoomLevel(app)
+%         end
         
-        function ResetAxisZoom(app)
-            
-            ax      = app.GetAxis(app.current_view);
-            imIdx   = app.imagePerAxis(app.current_view);
-            imSize  = size(app.data{imIdx}.img);
-            imSize(app.viewPerImage(imIdx)) = []; %Correct for view
-            
-            if app.viewPerImage(imIdx) == 3
-                ax.XLim = [0, imSize(2)];
-                ax.YLim = [0, imSize(1)];
-            else
-                ax.XLim = [0, imSize(1)];
-                ax.YLim = [0, imSize(2)];
-            end
-            
-            GUI.StoreZoomLevel(app)            
-        end
-        
-        function StoreZoomLevel(app)
-            %Stores the current XLim and YLim 
-            ax      = app.GetAxis(app.current_view);
-            index   = app.imIdx;
-
-            app.zoomPerImage{index} = [ax.XLim; ax.YLim];
-        end
+%         function ResetAxisZoom(app)
+%             
+%             ax      = app.GetAxis(app.current_view);
+%             imIdx   = app.imagePerAxis(app.current_view);
+%             imSize  = size(app.data{imIdx}.img);
+%             imSize(app.viewPerImage(imIdx)) = []; %Correct for view
+%             
+%             if app.viewPerImage(imIdx) == 3
+%                 ax.XLim = [0, imSize(2)];
+%                 ax.YLim = [0, imSize(1)];
+%             else
+%                 ax.XLim = [0, imSize(1)];
+%                 ax.YLim = [0, imSize(2)];
+%             end
+%             
+%             GUI.StoreZoomLevel(app)            
+%         end
+%         
+%         function StoreZoomLevel(app)
+%             %Stores the current XLim and YLim 
+%             ax      = app.GetAxis(app.current_view);
+%             index   = app.imIdx;
+% 
+%             app.zoomPerImage{index} = [ax.XLim; ax.YLim];
+%         end
         
         
     %% Sliders && UI elements
@@ -320,18 +322,17 @@ classdef GUI < handle
         
         function UpdateSliceSlider(app)
         % Sets the limits and current value of the slice slider
-            if(isempty(app.data{app.current_view}))
+            if(isempty(app.data{app.imIdx}))
                 return
             end
             
             %Get data dimensions
-            refvol  = app.data{app.imIdx}.img;
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage{app.imIdx}{view};
             
             %Update SliceSlider
-            viewAxis    = app.viewPerImage(app.imIdx);
-            viewSize    = size(refvol, viewAxis);
+            viewAxis    = NiftiUtils.GetIJKView(app);
+            viewSize    = size(app.data{app.imIdx}.img, viewAxis);
             app.SliceSlider.Limits = [1 viewSize];
             max_ticks = 4;
             step = round(viewSize / (max_ticks-1));

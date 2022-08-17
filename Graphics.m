@@ -132,6 +132,8 @@ classdef Graphics < handle
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
                 
                 h = imagesc(the_axis, imSlice);
+                the_axis.XLim = [0, size(imSlice, 1)];
+                the_axis.YLim = [0, size(imSlice, 2)];
                 
                 %Adjust scaling
                 if isempty(app.cScalePerImage{imID})
@@ -152,9 +154,9 @@ classdef Graphics < handle
                     'Color', 'Yellow', 'FontSize', 15);
                 text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
                     'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(3),...
+                text(the_axis, round(axisSizeX/2), 5, orr(3),...
                     'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), 5, orr(4),...
+                text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
                     'Color', 'Yellow', 'FontSize', 15);
 
                 %set signals
@@ -170,37 +172,11 @@ classdef Graphics < handle
             %Create meshgrid for view
             [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
 
-%             [x,y,z] = NiftiUtils.GetMeshgridF romHeader(app.data{imID}.hdr);
-%             grid        = [reshape(x, 1, []);...
-%                            reshape(y, 1, []);...
-%                            reshape(z, 1, []);
-%                            ones(1,numel(x))];
-% 
-%             %Transform to get positions of voxels
-%             tm          = app.transMatPerImage{imID};
-%             gridk    = tm \ grid;
-% 
-%             %Reshape to usable arrays.
-%             dim = size(imData);
-%             xk       = reshape(gridk(1,:), dim);
-%             yk       = reshape(gridk(2,:), dim);
-%             zk       = reshape(gridk(3,:), dim);
-% % 
-%             %plot
-%             scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
-%             xlabel('i')
-%             ylabel('j')
-%             zlabel('k')
-%             hold on
-%             [sx,sy,sz] = size(imData);
-%             scatter3([0,sx,0,0,sx,sx,0,sx], [0,0,sy,0,sy,0,sy,sy],...
-%                 [0,0,0,sz,0,sz,sz,sz])
-%             hold on 
-%             scatter3(xk(1:200:end), yk(1:200:end),zk(1:200:end), 10)
-%             hold off
+%             NiftiUtils.showGrid(app, axID, xq, yq, zq)
 
             slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
-
+%             figure
+%             imshow(slice,[])
         end
         
         %% Individual User Object draw methods
@@ -427,9 +403,10 @@ classdef Graphics < handle
             %number of the current image.
             
             imID        = app.imagePerAxis(axID);
-            view        = app.viewPerImage(imID);
+            view        = app.viewPerImage(imID);   %sag, cor, ax
+            ijkView     = NiftiUtils.GetIJKView(app);
             slice       = app.slicePerImage{imID}{view};
-            maxSize     = size(app.data{imID}.img, view);
+            maxSize     = size(app.data{imID}.img, ijkView);
             sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
             nameString  = app.studyNames{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);

@@ -32,6 +32,9 @@ classdef IOUtils < handle
             %Load the file
             nii         = load_untouch_nii(name);
             nii.img     = single(nii.img);
+
+            %correct orientation for display in matlab
+            nii         = NiftiUtils.PermuteFlip(nii);
             
             app.data{index}         = nii;
             app.d4PerImage(index)   = 1;

@@ -19,6 +19,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
+            app.imagePerAxis        = [];
             app.slicePerImage       = {};
             app.viewPerImage        = ones(1,nImages);
             app.d4PerImage          = ones(1,nImages);
@@ -136,7 +137,7 @@ classdef Study < handle
             app.imIdx = index;
 
             if index > length(app.slicePerImage)
-                app.slicePerImage{index} = {};
+                app.slicePerImage{index} = {[],[],[]};
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
                 app.imagePerAxis(app.current_view) = index;
