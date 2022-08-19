@@ -73,11 +73,12 @@ classdef GUI < handle
             %default values.
 %             app.view_axis                        = 3;
             app.slicePerImage       = {};
-            app.viewPerImage        = ones(1,length(app.viewPerImage))*3;
+            Study.FindRealWorldReference(app);  %restore axis
             app.current_view        = 1;
 %             app.imagePerAxis        = [1,1];
             app.Align               = '';
-           
+
+            
             GUI.UpdateAxisInfo(app);
 %             GUI.UpdateViewButtons(app);
             GUI.UpdateAlignButtons(app);
@@ -110,17 +111,19 @@ classdef GUI < handle
                 [view, slice]   = Objects.GetUOViewAndSlice(uo);
                 app.viewPerImage(index) = view;
                 app.slicePerImage{index}{view} = slice;
-            else            
-                app.slicePerImage{index}{3}    = round(size(...
+            else
+                view = app.viewPerImage(index);
+                app.slicePerImage{index}{view}    = round(size(...
                                             app.data{index}.img,3)/2);
-                app.viewPerImage(index) = 3;
             end
             
-            %Set axis limits
-            ax      = app.GetAxis(app.current_view);
-            imSize  = size(app.data{index}.img);
-            ax.XLim = [0, imSize(2)];
-            ax.YLim = [0, imSize(1)];
+%             %Set axis limits
+%             ax      = app.GetAxis(app.current_view);
+%             imSize  = size(app.data{index}.img);
+%             viewAx  = NiftiUtils.GetIJKView(app);
+%             imSize(viewAx) = [];
+%             ax.XLim = [0, imSize(2)];
+%             ax.YLim = [0, imSize(1)];
             
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
@@ -141,16 +144,16 @@ classdef GUI < handle
             app.zoomToggle      = false;
             
             %Set axis limits
-            ax      = app.GetAxis(app.current_view);
-            if isempty(app.zoomPerImage{index})
-                imSize  = size(app.data{index}.img);
-                ax.XLim = [0, imSize(2)];
-                ax.YLim = [0, imSize(1)];
-                app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
-            else
-                ax.XLim = app.zoomPerImage{index}(1,:);
-                ax.YLim = app.zoomPerImage{index}(2,:);
-            end
+%             ax      = app.GetAxis(app.current_view);
+%             if isempty(app.zoomPerImage{index})
+%                 imSize  = size(app.data{index}.img);
+%                 ax.XLim = [0, imSize(2)];
+%                 ax.YLim = [0, imSize(1)];
+%                 app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
+%             else
+%                 ax.XLim = app.zoomPerImage{index}(1,:);
+%                 ax.YLim = app.zoomPerImage{index}(2,:);
+%             end
                         
                         
             %Update all GUI elements
@@ -241,70 +244,88 @@ classdef GUI < handle
         end
         
         function ZoomAxis(app, axID, scrollCount, event)
+            %Zooms the image, additionally translates the current viewpoint
+            %to keep the cursor mostly centered during zooming
             
-            the_axis        = app.GetAxis(axID);
-            zoomAmount      = scrollCount * 0.02; 
+            zoomAmount      = 1 + scrollCount * 0.05; 
+            zoomFactor      = app.viewingParams(4);
+
+            zoomFactor      = zoomFactor * zoomAmount;
+            zoomFactor      = min(zoomFactor, 3);
+            zoomFactor      = max(zoomFactor, 0.2);
+            
+            app.viewingParams(4) = zoomFactor;
+
+            %Keep the cursor in (roughly) the same spot
+            %formula for the new center is:
+            %   x + 0.5*zoom*(old_range - 2x)
+            %   where x is cursor position (in pixel coordinates)
+            %   zoom is zoom level as a fraction
+            %   old_range is pixel dimensions before zooming
+
+            %   calculate x and y in pixel coordinates
+            %   First get cursor location in main screen
+            %   Next, calculate relative distance to axis object
+            %   lastly, translate relative distance to pixel coordinate
+
+            ax              = app.GetAxis(axID);
+            deltaX          = ax.XLim(2) - ax.XLim(1);
+            xPos            = event.Source.CurrentPoint(1);
+            xPos            = (xPos - ax.Position(1)) / ...
+                                (ax.Position(3) - ax.Position(1));
+            xPos            = xPos * deltaX;
+
+            yPos            = event.Source.CurrentPoint(2);
+            yPos            = (yPos - ax.Position(2)) / ...
+                                (ax.Position(4) - ax.Position(2));
+            yPos            = yPos * (ax.YLim(2) - ax.YLim(1));
+
+            %Next, calculate xCenter and yCenter
+
+            
+            %find and correct the zPos for centering
             imID            = app.imagePerAxis(axID);
+            viewAxis        = app.viewPerImage(imID); 
+            zPos            = app.slicePerImage{imID}{viewAxis};
+            ijkView     = NiftiUtils.GetIJKView(app);
+            dim         = size(app.data{imID}.img, ijkView);
+            zPos        = zPos - dim/2;
             
-            %Zoom in x direction            
-            xDelta           = the_axis.XLim(2) - the_axis.XLim(1);
-            if xDelta == Inf
-                xDelta   = size(app.data{imID}.img, 1);
-            end
-            
-            xMinAxis        = the_axis.Position(1);
-            xPos            = event.Source.CurrentPoint(1) - xMinAxis;
-            xPos            = xPos / the_axis.Position(3) * ...
-                                xDelta + the_axis.XLim(1);                            
-            xDelta          = xDelta * (1 + zoomAmount); %Add minimum change?
-            [xMin, xMax]    = MathUtils.GetNewRange(xDelta, xPos, ...
-                                    the_axis.XLim(1), the_axis.XLim(2));                                
-            the_axis.XLim   = [xMin, xMax];
-            
-            %Zoom in y direction            
-            yDelta           = the_axis.YLim(2) - the_axis.YLim(1);
-            if yDelta == Inf
-                yDelta   = size(app.data{imID}.img, 1);
-            end
-            
-            yPos        = the_axis.Position(2) + the_axis.Position(4) -...
-                            event.Source.CurrentPoint(2);
-            yPos            = yPos / the_axis.Position(4) * ...
-                    yDelta + the_axis.YLim(1);
-            yDelta          = yDelta * (1 + zoomAmount);
-            [yMin, yMax]    = MathUtils.GetNewRange(yDelta, yPos, ...
-                                    the_axis.YLim(1), the_axis.YLim(2));                
-                                
-            the_axis.YLim   = [yMin, yMax];
-            
-            GUI.StoreZoomLevel(app)
+            app.viewingParams(5:7) = [xPos, yPos, zPos];
+
+            Graphics.UpdateImageForAxis(app, axID);
+
         end
         
         function ResetAxisZoom(app)
+
+            app.viewingParams(4) = 1;
+            app.viewingParams(5:7) = [-1, -1, -1];
+            Graphics.UpdateImageForAxis(app, app.current_view);
             
-            ax      = app.GetAxis(app.current_view);
-            imIdx   = app.imagePerAxis(app.current_view);
-            imSize  = size(app.data{imIdx}.img);
-            imSize(app.viewPerImage(imIdx)) = []; %Correct for view
-            
-            if app.viewPerImage(imIdx) == 3
-                ax.XLim = [0, imSize(2)];
-                ax.YLim = [0, imSize(1)];
-            else
-                ax.XLim = [0, imSize(1)];
-                ax.YLim = [0, imSize(2)];
-            end
-            
-            GUI.StoreZoomLevel(app)            
+%             ax      = app.GetAxis(app.current_view);
+%             imIdx   = app.imagePerAxis(app.current_view);
+%             imSize  = size(app.data{imIdx}.img);
+%             imSize(app.viewPerImage(imIdx)) = []; %Correct for view
+%             
+%             if app.viewPerImage(imIdx) == 3
+%                 ax.XLim = [0, imSize(2)];
+%                 ax.YLim = [0, imSize(1)];
+%             else
+%                 ax.XLim = [0, imSize(1)];
+%                 ax.YLim = [0, imSize(2)];
+%             end
+%             
+%             GUI.StoreZoomLevel(app)            
         end
         
-        function StoreZoomLevel(app)
-            %Stores the current XLim and YLim 
-            ax      = app.GetAxis(app.current_view);
-            index   = app.imIdx;
-
-            app.zoomPerImage{index} = [ax.XLim; ax.YLim];
-        end
+%         function StoreZoomLevel(app)
+%             %Stores the current XLim and YLim 
+%             ax      = app.GetAxis(app.current_view);
+%             index   = app.imIdx;
+% 
+%             app.zoomPerImage{index} = [ax.XLim; ax.YLim];
+%         end
         
         
     %% Sliders && UI elements
@@ -319,18 +340,17 @@ classdef GUI < handle
         
         function UpdateSliceSlider(app)
         % Sets the limits and current value of the slice slider
-            if(isempty(app.data{app.current_view}))
+            if(isempty(app.data{app.imIdx}))
                 return
             end
             
             %Get data dimensions
-            refvol  = app.data{app.imIdx}.img;
             view    = app.viewPerImage(app.imIdx);
             slice   = app.slicePerImage{app.imIdx}{view};
             
             %Update SliceSlider
-            viewAxis    = app.viewPerImage(app.imIdx);
-            viewSize    = size(refvol, viewAxis);
+            viewAxis    = NiftiUtils.GetIJKView(app);
+            viewSize    = size(app.data{app.imIdx}.img, viewAxis);
             app.SliceSlider.Limits = [1 viewSize];
             max_ticks = 4;
             step = round(viewSize / (max_ticks-1));
@@ -480,25 +500,9 @@ classdef GUI < handle
         
         
         %% Update buttons
-        
-%         function UpdateViewButtons(app)
-%             %Updates the view buttons to display the correct one.
-%             view    = app.current_view;
-%             
-%             %Reset the values
-%             app.View1Button.BackgroundColor     = [.96 .96 .96];
-%             app.View2Button.BackgroundColor     = [.96 .96 .96];
-%             
-%             if     view == 1
-%                 app.View1Button.BackgroundColor = [.96 .96 0];
-%             elseif view == 2
-%                 app.View2Button.BackgroundColor = [.96 .96 0];
-%             end
-%         end
-        
+                
         function UpdateAxisInfo(app)
             %Updates the axisview buttons to display the correct one.
-            %Additionally fills in the axis direction labels
             imID    = app.imagePerAxis(app.current_view);
             
             axInfo  = NiftiUtils.FindOrientation(...
@@ -517,8 +521,25 @@ classdef GUI < handle
                 app.AxialButton.BackgroundColor     = [.96 .96 0];
             end
 
-            
+        end
 
+        function UpdateAxisButtons(app)
+            %Updates the axisview buttons to display the correct one.
+            imID    = app.imagePerAxis(app.current_view);
+            view    = app.viewPerImage(imID);
+            
+            %Reset the values
+            app.AxialButton.BackgroundColor         = [.96 .96 .96];
+            app.SagittalButton.BackgroundColor      = [.96 .96 .96];
+            app.CoronalButton.BackgroundColor       = [.96 .96 .96];
+            
+            if     view == 2
+                app.CoronalButton.BackgroundColor   = [.96 .96 0];
+            elseif view == 1
+                app.SagittalButton.BackgroundColor  = [.96 .96 0];
+            elseif view == 3
+                app.AxialButton.BackgroundColor     = [.96 .96 0];
+            end
         end
         
         function UpdateAlignButtons(app)

@@ -123,10 +123,10 @@ classdef Graphics < handle
                 
                 the_axis    = app.GetAxis(axID);
                 imID        = app.imagePerAxis(axID);
-                view        = app.viewPerImage(imID);
-                slice       = app.slicePerImage{imID}{view};
-                d4          = app.d4PerImage(imID);
-                imData      = app.data{imID}.img;
+%                 view        = app.viewPerImage(imID);
+%                 slice       = app.slicePerImage{imID}{view};
+%                 d4          = app.d4PerImage(imID);
+%                 imData      = app.data{imID}.img;
 
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
@@ -175,7 +175,6 @@ classdef Graphics < handle
 %             NiftiUtils.showGrid(app, axID, xq, yq, zq)
 
             slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
-%             figure
 %             imshow(slice,[])
         end
         

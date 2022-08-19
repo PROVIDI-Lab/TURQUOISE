@@ -243,48 +243,69 @@ classdef GUI < handle
            return
         end
         
-%         function ZoomAxis(app, axID, scrollCount, event)
-%             
-%             the_axis        = app.GetAxis(axID);
-%             zoomAmount      = scrollCount * 0.02; 
-%             imID            = app.imagePerAxis(axID);
-%             
-%             %Zoom in x direction            
-%             xDelta           = the_axis.XLim(2) - the_axis.XLim(1);
-%             if xDelta == Inf
-%                 xDelta   = size(app.data{imID}.img, 1);
-%             end
-%             
-%             xMinAxis        = the_axis.Position(1);
-%             xPos            = event.Source.CurrentPoint(1) - xMinAxis;
-%             xPos            = xPos / the_axis.Position(3) * ...
-%                                 xDelta + the_axis.XLim(1);                            
-%             xDelta          = xDelta * (1 + zoomAmount); %Add minimum change?
-%             [xMin, xMax]    = MathUtils.GetNewRange(xDelta, xPos, ...
-%                                     the_axis.XLim(1), the_axis.XLim(2));                                
-%             the_axis.XLim   = [xMin, xMax];
-%             
-%             %Zoom in y direction            
-%             yDelta           = the_axis.YLim(2) - the_axis.YLim(1);
-%             if yDelta == Inf
-%                 yDelta   = size(app.data{imID}.img, 1);
-%             end
-%             
-%             yPos        = the_axis.Position(2) + the_axis.Position(4) -...
-%                             event.Source.CurrentPoint(2);
-%             yPos            = yPos / the_axis.Position(4) * ...
-%                     yDelta + the_axis.YLim(1);
-%             yDelta          = yDelta * (1 + zoomAmount);
-%             [yMin, yMax]    = MathUtils.GetNewRange(yDelta, yPos, ...
-%                                     the_axis.YLim(1), the_axis.YLim(2));                
-%                                 
-%             the_axis.YLim   = [yMin, yMax];
-%             
-%             GUI.StoreZoomLevel(app)
-%         end
+        function ZoomAxis(app, axID, scrollCount, event)
+            %Zooms the image, additionally translates the current viewpoint
+            %to keep the cursor mostly centered during zooming
+            
+            zoomAmount      = 1 + scrollCount * 0.1; 
+            zoomFactor      = app.viewingParams(4);
+
+            zoomFactor      = zoomFactor * zoomAmount;
+            zoomFactor      = min(zoomFactor, 3);
+            zoomFactor      = max(zoomFactor, 0.2);
+            
+            app.viewingParams(4) = zoomFactor;
+
+            %Keep the cursor in (roughly) the same spot
+            %formula for the new center is:
+            %   x + 0.5*zoom*(old_range - 2x)
+            %   where x is cursor position (in pixel coordinates)
+            %   zoom is zoom level as a fraction
+            %   old_range is pixel dimensions before zooming
+
+            %   calculate x and y in pixel coordinates
+            %   First get cursor location in main screen
+            %   Next, calculate relative distance to axis object
+            %   lastly, translate relative distance to pixel coordinate
+
+            %TODO: zooming not perfect yet :(
+
+            ax              = app.GetAxis(axID);
+            deltaX          = ax.XLim(2) - ax.XLim(1);
+            xPos            = event.Source.CurrentPoint(1);
+            xPos            = (xPos - ax.Position(1)) / ax.Position(3);
+            xPos            = xPos * deltaX;
+
+            deltaY          = ax.YLim(2) - ax.YLim(1);
+            yPos            = event.Source.CurrentPoint(2);
+            yPos            = (yPos - ax.Position(2)) / ax.Position(4);
+            yPos            = deltaY - ( yPos * deltaY);
+
+            %Next, calculate xCenter and yCenter
+            xCenter         = xPos + 0.5 * zoomFactor * (deltaX - 2*xPos);
+            yCenter         = yPos + 0.5 * zoomFactor * (deltaY - 2*yPos);
+
+            
+            %find and correct the zPos for centering
+            imID            = app.imagePerAxis(axID);
+            viewAxis        = app.viewPerImage(imID); 
+            zPos            = app.slicePerImage{imID}{viewAxis};
+            ijkView     = NiftiUtils.GetIJKView(app);
+            dim         = size(app.data{imID}.img, ijkView);
+            zPos        = zPos - dim/2;
+            
+            app.viewingParams(5:7) = [xCenter, yCenter, 1];
+
+            Graphics.UpdateImageForAxis(app, axID);
+
+        end
         
-%         function ResetAxisZoom(app)
-%             
+        function ResetAxisZoom(app)
+
+            app.viewingParams(4) = 1;
+            app.viewingParams(5:7) = [-1, -1, -1];
+            Graphics.UpdateImageForAxis(app, app.current_view);
+            
 %             ax      = app.GetAxis(app.current_view);
 %             imIdx   = app.imagePerAxis(app.current_view);
 %             imSize  = size(app.data{imIdx}.img);
@@ -299,8 +320,8 @@ classdef GUI < handle
 %             end
 %             
 %             GUI.StoreZoomLevel(app)            
-%         end
-%         
+        end
+        
 %         function StoreZoomLevel(app)
 %             %Stores the current XLim and YLim 
 %             ax      = app.GetAxis(app.current_view);

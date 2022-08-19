@@ -230,25 +230,26 @@ classdef NiftiUtils < handle
 
             params  = app.viewingParams;
             tm      = NiftiUtils.AdaptTransMat(...
-                            tm, hdr, dimx, dimy, slice, ...
+                            tm, max(dim), ...
+                            dim(1), dim(2), slice, ...
                             view, imageOr, params);
 
             %Transform grid to get sampling locations
             grid    = tm * grid;
 
 %             %visualize
-            xq       = reshape(grid(1,:), gridDim);
-            yq       = reshape(grid(2,:), gridDim);
-            zq       = reshape(grid(3,:), gridDim);
-            [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
-            scatter3(x(1:200:end), y(1:200:end),z(1:200:end), 10)
-            hold on
-            scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
-%             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
-            xlabel('x')
-            ylabel('y')
-            zlabel('z')
-            hold off
+%             xq       = reshape(grid(1,:), gridDim);
+%             yq       = reshape(grid(2,:), gridDim);
+%             zq       = reshape(grid(3,:), gridDim);
+%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+%             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
+%             hold on
+%             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
+% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
+%             xlabel('x')
+%             ylabel('y')
+%             zlabel('z')
+%             hold off
 
             %Lastly, use the inverse of the original image 
             % transformation matrix to get ijk coordinate sampling 
@@ -263,32 +264,60 @@ classdef NiftiUtils < handle
 
         end
 
-        function tm = AdaptTransMat(tm, hdr, resx, resy, slice, ...
-                view, or, params)
+        function tm = AdaptTransMat(tm, resGrid, resx, resy, slice, ...
+                view, imageOr, params)
         %Makes the following changes to the transformation matrix:
         %   Applies scaling and translation as defined by
         %user input. Scaling = zooming, translation is scrolling.
         %   Non-viewing axes are centered around the reference.
 
+        %Input:
+        %   tm      - transformation matrix before any changes are made
+        %   resGrid - size of the (square) sampling grid
+        %   resx    - image dimension in the x axis
+        %   resy    - image dimension in the y axis
+        %   slice   - offset in viewing axis (for scrolling)
+        %   view    - index to go from ijk to desired projection
+        %   params  - other offsets and scale factors to be used
+
+            %scale for off-axis views
+            xScale      = resx / resGrid;
+            yScale      = resy / resGrid;
+            scale       = min(xScale, yScale);
+            if scale ~= 1
+                scale = scale * 2;
+            end
+            tm(imageOr, 1:3) = tm(imageOr, 1:3) * scale;
+%             tm(viewIdx(2), 1:3) = tm(viewIdx(2), 1:3) * yScale;
+            
+        
+            %Zoom in image plane
+            zoomFactor  = params(4);
+            zoomTm      = tm(1:3,1:3);
+            zoomTm      = zoomTm * zoomFactor;
+            tm(1:3,1:3) = zoomTm;
+
             %translation
             delta = params(1:3);
             tm(view,4) = delta(view);   %Center view halfway the scan
 
-            %overlay centres
-            imAxes              = [1,2,3];
-            imAxes(view)        = [];
-            halfPoint           = ones(4,1);
-            halfPoint([imAxes]) = [resx/2,resy/2];
-            halfPoint(view)     = slice;
+            %overlay centres & scroll
+            %If ijk coordinates to center are provided, use those. If not,
+            %center halfway the image (including view-axis slice).
+            if all(params(5:7) ~= -1)
+                halfPoint = [params(5:7),1]';
+                halfPoint(view)     = slice;    %scroll through view axis
+            else
+                imAxes              = [1,2,3];
+                imAxes(view)        = [];
+                halfPoint           = ones(4,1);
+                halfPoint([imAxes]) = [resGrid/2, resGrid/2];
+                halfPoint(view)     = slice;    %scroll through view axis
+            end
+
             halfPointDist       = tm * halfPoint;
             deltaCenter         = params(1:3)' - halfPointDist(1:3);
             tm(1:3,4)           = tm(1:3,4) + deltaCenter;
-
-            %Scolling through image
-
-            
-
-
         end
 
         function view = GetIJKView(app)
@@ -344,6 +373,34 @@ classdef NiftiUtils < handle
             hold on 
             scatter3(xk(1:200:end), yk(1:200:end),zk(1:200:end), 10)
             hold off
+
+        end
+
+        function ijkToxyz(tm, ijk)
+
+            vec = tm .* [ijk, 1];
+
+        end
+
+        function hitToXYZ(app, hit)
+
+            hitx = hit.IntersectionPoint(1);
+            hity = hit.IntersectionPoint(2);
+            imID            = app.imagePerAxis(app.current_view);
+            viewAxis        = app.viewPerImage(imID); 
+            zPos            = app.slicePerImage{imID}{viewAxis};
+            ijkView         = NiftiUtils.GetIJKView(app);
+
+            if ijkView == 1
+                ijk = [zPos, hitx, hity];
+            elseif ijkView == 2
+                ijk = [hitx, zPos, hity];
+            else
+                ijk = [hitx, hity, zPos];
+            end
+
+            tm          = app.transMatPerImage{imID};
+            
 
         end
         

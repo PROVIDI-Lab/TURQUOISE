@@ -126,7 +126,7 @@ classdef Interaction < handle
 
 
             %for testing only
-            NiftiUtils.hitToXYZ(app, hit)
+            NiftiUtils.hitTo
 
 
             if isempty(app.data)

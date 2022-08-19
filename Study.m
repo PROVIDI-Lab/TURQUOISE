@@ -27,7 +27,7 @@ classdef Study < handle
             app.data                = cell(nImages, 1);
             app.unsavedProgress     = false;
             app.zoomPerImage        = cell(nImages, 1);
-            app.viewingParams       = [1,1,1,1];
+            app.viewingParams       = [1,1,1,1, -1,-1,-1];
             
             if isempty(app.user_profile)
                 app.user_profile = '';
