@@ -96,7 +96,10 @@ classdef IOUtils < handle
             if ~contains(fn, '.rmsstudio_reslice.nii')
                 reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
                 if exist(reslice_name, 'file') == 0
-                    return
+                    reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii.gz']);
+                    if exist(reslice_name, 'file') == 0
+                        return
+                    end
                 end
             else
                 reslice_name    = fullfile(fp,fn);
@@ -411,13 +414,22 @@ classdef IOUtils < handle
                         
             files = dir(fullfile(app.current_folder,...
                 '*.nii'));
+
+            cfiles = dir(fullfile(app.current_folder,...
+                '*.nii.gz'));
+
+            files = [files; cfiles];
             
             app.studyNames = {};
             
             counter = 1;
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-                if contains(text, '.rmsstudio_reslice.nii')
+                if contains(text, '.rmsstudio_reslice.nii.gz')
+                    app.studyNames{counter} = ...
+                        erase(text, '.rmsstudio_reslice.nii.gz');
+                    counter = counter + 1;
+                elseif contains(text, '.rmsstudio_reslice.nii')
                     app.studyNames{counter} = ...
                         erase(text, '.rmsstudio_reslice.nii');
                     counter = counter + 1;
@@ -456,7 +468,7 @@ classdef IOUtils < handle
                 if isempty(dcm2nii)
                     return
                 end
-                cmd = [dcm2nii ' -f %d_%s -o "'                     ...
+                cmd = [dcm2nii ' -f %d_%s -z y -o "'                     ...
                         app.current_folder '" "'  app.filepath '"'];
                 system(cmd);
             end

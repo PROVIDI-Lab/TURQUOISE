@@ -751,7 +751,7 @@ classdef Interaction < handle
                                 'Necrosis';...
                                 'Cyste';...
                                 'Hemorrhage';...
-                                'Circle';...
+                                'Muscle';...
                                 'Circle small';...
                                 'Other'},...
                    'Callback',@popup_callback);
@@ -1026,6 +1026,8 @@ classdef Interaction < handle
 
             %apply mask tot ADC
             adc_list = Interaction.overlayMask(img, total_mask);
+
+            disp(mean(adc_list))
             
             z = cell2mat(names.values);
             z = z(strcmp(names.keys, 'Whole Tumor'));
@@ -1051,7 +1053,7 @@ classdef Interaction < handle
             newMask = mask(1:minx, 1:miny, :);
             newIm   = im(1:minx, 1:miny, :);
             
-            values = newIm(newMask == 1);            
+            values = newIm(find(newMask));            
         end
         
         function HideAllTooltips(app)

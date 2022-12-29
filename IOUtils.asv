@@ -125,15 +125,15 @@ classdef IOUtils < handle
             segProperties   = {};
             msrProperties   = {};
             
-            for uObj    = app.userObjects
-                uObj    = uObj{1};
+            for i    = 1:length(app.userObjects)
+                uObj    = app.userObjects{i};
                 if uObj.imageIdx ~= imageId
                     continue
                 end
 
                 if uObj.deleted
                     %Remove all previous saved data if any
-                    delete(fullfile(fn, '*'))  
+                    delete(fullfile(fn, [uObj.name,'*']))  
                     continue
                 end
 
@@ -411,6 +411,11 @@ classdef IOUtils < handle
                         
             files = dir(fullfile(app.current_folder,...
                 '*.nii'));
+
+            cFiles = dir(fullfile(app.current_folder,...
+                '*.nii.gz'));
+
+            
             
             app.studyNames = {};
             
@@ -533,11 +538,26 @@ classdef IOUtils < handle
         function segList = FindAllSegmentationsForImage(app, i)
             
             segList = {};
-            files = fullfile(app.current_folder,              ...
-                        app.studyNames{app.imIdx},   ...
-                         app.user_profile)
+            files = dir(fullfile(app.current_folder,              ...
+                        app.studyNames{i},   ...
+                         app.user_profile));
 
+            for i = 1:length(files)
+                file = files(i);
+                if file.isdir
+                    continue
+                end
 
+                [~, name, ext] = fileparts(...
+                    fullfile(file.folder, file.name));
+                name = strrep(name,'-segmentation', '');
+
+                if ~strcmp(ext, '.json')
+                    continue
+                end
+
+                segList{end+1} = name;
+            end
         end
         
     end
