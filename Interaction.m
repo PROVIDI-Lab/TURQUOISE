@@ -32,7 +32,7 @@ classdef Interaction < handle
             
             %Save current zoom. Used to store any changes made througout
             %the standard UI instead of ctrl+scroll.
-            GUI.StoreZoomLevel(app)
+%             GUI.StoreZoomLevel(app)
             
             %Update app
             Study.SwitchImage(app, index)

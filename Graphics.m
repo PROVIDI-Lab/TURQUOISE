@@ -123,18 +123,23 @@ classdef Graphics < handle
                 
                 the_axis    = app.GetAxis(axID);
                 imID        = app.imagePerAxis(axID);
-%                 view        = app.viewPerImage(imID);
+                view        = app.viewPerImage(imID);
 %                 slice       = app.slicePerImage{imID}{view};
 %                 d4          = app.d4PerImage(imID);
 %                 imData      = app.data{imID}.img;
 
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
-                
+%                 figure
+%                 imagesc(imSlice)
+%                 axis image
+
                 h = imagesc(the_axis, imSlice);
-                the_axis.XLim = [0, size(imSlice, 1)];
-                the_axis.YLim = [0, size(imSlice, 2)];
-                
+                the_axis.XLim = [0, size(imSlice, 2)];
+                the_axis.YLim = [0, size(imSlice, 1)];
+                pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
+                pixdim(view) = [];
+                daspect(the_axis,[flip(pixdim) 1])
                 %Adjust scaling
                 if isempty(app.cScalePerImage{imID})
                     app.cScalePerImage{imID} = [0 10];
@@ -169,13 +174,30 @@ classdef Graphics < handle
             d4          = app.d4PerImage(imID);
             imData      = app.data{imID}.img(:,:,:,d4);
 
+            viewAxis    = app.viewPerImage(imID); 
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5)); 
+
             %Create meshgrid for view
-            [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+            try
+                [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+            catch err
+                disp('Unexpected interpolation error');
+            end
 
 %             NiftiUtils.showGrid(app, axID, xq, yq, zq)
 
-            slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            try
+                slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            catch err
+                disp('Unexpected interpolation error');
+            end
 %             imshow(slice,[])
+            if(viewAxis ~= imageOr)
+                slice = rot90(slice);
+            end
+
         end
         
         %% Individual User Object draw methods

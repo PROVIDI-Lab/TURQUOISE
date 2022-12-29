@@ -354,6 +354,9 @@ classdef GUI < handle
             %Update SliceSlider
             viewAxis    = NiftiUtils.GetIJKView(app);
             viewSize    = size(app.data{app.imIdx}.img, viewAxis);
+            if(viewSize == 1) % workaround when only 1 slice is available
+                viewSize = 2;
+            end
             app.SliceSlider.Limits = [1 viewSize];
             max_ticks = 4;
             step = round(viewSize / (max_ticks-1));

@@ -23,7 +23,8 @@ classdef IOUtils < handle
             if ~contains(fn, '.nii')
                 name = fullfile(fp,[fn '.nii']);
                 if exist(name, 'file') == 0 
-                    return
+                    name = [name '.gz'];
+                    %return
                 end
             else
                 name    = fullfile(fp,fn);
@@ -339,16 +340,25 @@ classdef IOUtils < handle
         % TODO: add header checking!!
                         
             files = dir(fullfile(app.current_folder,...
-                '*.nii'));
+                '*.nii*'));
             
             app.studyNames = cell(length(files),1);
             
+            files2keep = true(length(files),1);
+
             for file_id=1:length(files)
                 text        = files(file_id).name; 
+                hdr = load_untouch_header_only(fullfile(app.current_folder,text));
+                if(hdr.dime.dim(4) == 1) % Only 1 slice
+                    files2keep(file_id) = false;
+                end
+
+                text = erase(text, '.nii.gz');
                 app.studyNames{file_id} = erase(text, '.nii');
             end
             
-            app.AvailableimagesListBox.Items = app.studyNames;
+            app.AvailableimagesListBox.Items = app.studyNames(files2keep);
+            app.studyNames = app.studyNames(files2keep);
         end
         
         function convertToNii(app)
@@ -433,6 +443,7 @@ classdef IOUtils < handle
             %Doesn't exist, make the folder
             if isempty(app.current_folder)
                 mkdir(fullfile(fp,'rmsstudio'))
+                app.current_folder = fullfile(fp,'rmsstudio');
             end
             
         end

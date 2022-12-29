@@ -182,7 +182,14 @@ classdef Study < handle
             for i = 1:length(app.studyNames)
                 fn = app.studyNames{i};
 
-                hdr =  load_nii_hdr(fullfile(fp,[fn '.nii']));
+                if(exist(fullfile(fp,[fn '.nii']),'file') > 0)
+                    ext = '.nii';
+                elseif(exist(fullfile(fp,[fn '.nii.gz']),'file') > 0)
+                    ext = '.nii.gz';
+                else
+                    error('Cannot find the specified file.');
+                end
+                hdr =  load_untouch_header_only(fullfile(fp,[fn ext]));
                 tm  = NiftiUtils.getTransformationMatrix(hdr);
                 app.transMatPerImage{i} = tm;
                 or  = NiftiUtils.FindOrientation(tm);
