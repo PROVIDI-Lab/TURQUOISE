@@ -134,7 +134,17 @@ classdef Graphics < handle
 %                 imagesc(imSlice)
 %                 axis image
 
-                h = imagesc(the_axis, imSlice);
+                first_time_set = false;
+                if(isempty(app.imageRenderer))
+                    app.imageRenderer = imagesc(the_axis, imSlice);
+                    first_time_set = true;
+                else
+                    set(app.imageRenderer,'CData',imSlice);
+                end
+                h = app.imageRenderer;
+
+%                 if(first_time_set)
+                % BLOCK -> execute only once when selecting a new image
                 the_axis.XLim = [0, size(imSlice, 2)];
                 the_axis.YLim = [0, size(imSlice, 1)];
                 pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
@@ -150,22 +160,26 @@ classdef Graphics < handle
                     set(the_axis, 'CLim', [0,10]);
                 end
 
-                %Write axis info
-                axisSizeX = the_axis.XLim(2);
-                axisSizeY = the_axis.YLim(2);
-                orr = NiftiUtils.FindOrientation(...
-                    app.transMatPerImage{imID});
-                text(the_axis, 5, round(axisSizeY/2), orr(1),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), 5, orr(3),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
-                    'Color', 'Yellow', 'FontSize', 15);
-
-                %set signals
-                set(h,'ButtonDownFcn', @app.MouseClickedInImage);
+                % END BLOCK
+%                 end
+                if(first_time_set)
+                    %Write axis info
+                    axisSizeX = the_axis.XLim(2);
+                    axisSizeY = the_axis.YLim(2);
+                    orr = NiftiUtils.FindOrientation(...
+                        app.transMatPerImage{imID});
+                    text(the_axis, 5, round(axisSizeY/2), orr(1),...
+                        'Color', 'Yellow', 'FontSize', 15);
+                    text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+                        'Color', 'Yellow', 'FontSize', 15);
+                    text(the_axis, round(axisSizeX/2), 5, orr(3),...
+                        'Color', 'Yellow', 'FontSize', 15);
+                    text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+                        'Color', 'Yellow', 'FontSize', 15);
+    
+                    %set signals
+                    set(h,'ButtonDownFcn', @app.MouseClickedInImage);
+                end
             end          
         end
         

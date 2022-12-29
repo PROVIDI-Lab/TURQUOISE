@@ -217,10 +217,10 @@ classdef NiftiUtils < handle
                            reshape(zq, 1, []);
                            ones(1,numel(xq))];
 
-            gridO       = tm * grid;
-            xqO       = reshape(gridO(1,:), gridDim);
-            yqO       = reshape(gridO(2,:), gridDim);
-            zqO       = reshape(gridO(3,:), gridDim);
+%             gridO       = tm * grid;
+%             xqO       = reshape(gridO(1,:), gridDim);
+%             yqO       = reshape(gridO(2,:), gridDim);
+%             zqO       = reshape(gridO(3,:), gridDim);
             
             %Create transformation matrix used to go from image plane to
             %scanner coordinates.
@@ -240,18 +240,18 @@ classdef NiftiUtils < handle
             grid    = tm * grid;
 
 %             %visualize
-            xq       = reshape(grid(1,:), gridDim);
-            yq       = reshape(grid(2,:), gridDim);
-            zq       = reshape(grid(3,:), gridDim);
-            [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
-            scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
-            hold on
-            scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
-%             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
-            xlabel('x')
-            ylabel('y')
-            zlabel('z')
-            hold off
+%             xq       = reshape(grid(1,:), gridDim);
+%             yq       = reshape(grid(2,:), gridDim);
+%             zq       = reshape(grid(3,:), gridDim);
+%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+%             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
+%             hold on
+%             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
+% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
+%             xlabel('x')
+%             ylabel('y')
+%             zlabel('z')
+%             hold off
 
             %Lastly, use the inverse of the original image 
             % transformation matrix to get ijk coordinate sampling 
