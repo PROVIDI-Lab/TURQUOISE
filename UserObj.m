@@ -3,12 +3,14 @@ classdef UserObj < matlab.mixin.SetGet
     properties (Access = public)
        imageIdx,                %Image on which obj is drawn
        type,                    %ROI = 1, measurement = 2, ...
+       additive     = true,     %Additive or subtractive ROI
        graphics,                %Graphics of the object
        changed      = true,     %Stores whether to redraw
        visible      = true,     %Stores whether to display
        boxVisible   = false,    %Stores whether to display infobox
        data,                    %Seg, other
        points,                  %ROIPoints, drawing points
+       worldCoords,             %ROIPoints, stored as world coordinates
        name,                    %Name of the object
        prop,                    %Other properties
        ID,                      %Which userObj is this
@@ -18,6 +20,12 @@ classdef UserObj < matlab.mixin.SetGet
     
     methods        
         function obj = makeProperties(obj, app)
+
+            %get world coordinates
+            tm  = app.transMatPerImage{obj.imageIdx};
+            ijk = [obj.points, ones(length(obj.points),1)];
+            xyz = tm * ijk';
+            obj.worldCoords = xyz(1:3, :)';
             
             if obj.type == 1 || obj.type == 3 || obj.type == 4
                 axis4D      = app.d4PerImage(obj.imageIdx);

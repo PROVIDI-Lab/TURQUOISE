@@ -159,6 +159,60 @@ classdef NiftiUtils < handle
 
         end
 
+        function or = FindOrientationWithAxis(tm, viewingAxis)
+            %Finds the orientation of the nifti image based on the header
+            %info. Returns the results as:
+            %   [positive i direction, negative i direction, 
+            %    positive j direction, negative j direction, 
+            %    [cor/sag/ax]]
+            
+            [~,iOrr] = max(abs(tm(:,1)));
+            iSign = sign(tm(iOrr,1));
+
+            [~,jOrr] = max(abs(tm(:,2)));
+            jSign = sign(tm(jOrr,2));
+
+            [~,kOrr] = max(abs(tm(:,3)));
+            kSign = sign(tm(kOrr,3));
+
+            orr_vec = {'LR', 'AP', 'SI'};
+
+            iOrrString = orr_vec{iOrr};
+            if iSign == -1
+                iOrrString = reverse(iOrrString);
+            end
+
+            jOrrString = orr_vec{jOrr};
+            if jSign == -1
+                jOrrString = reverse(jOrrString);
+            end
+
+            kOrrString = orr_vec{kOrr};
+            if kSign == -1
+                kOrrString = reverse(kOrrString);
+            end
+
+            if iOrr == 1 && jOrr == 2
+                orrCode = 'a'; %axial
+            elseif iOrr == 1 && jOrr == 3
+                orrCode = 'c'; %coronal
+            elseif iOrr == 2 && jOrr == 3
+                orrCode =  's'; %sagittal
+            else
+                orrCode = 'a'; %If orientation is unclear, try axial
+            end
+
+            imageOr     = strfind('sca', orrCode); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewingAxis);
+
+            strings     = [iOrrString, jOrrString, kOrrString];
+            strings(2*view-1:2*view) = [];
+
+            or = [strings, orrCode];            
+        
+        end
+
         function [xq,yq,zq] = GetDisplayGrid(app, axID)
             %In order to find the display grid, we take the current
             %reference r_m and create a grid in the plane of the selected
@@ -379,13 +433,39 @@ classdef NiftiUtils < handle
 
         end
 
-        function ijkToxyz(tm, ijk)
+        function xyz = ijk2xyz(tm, ijk)
+            %Converts image coordinates to world coordinates with the help
+            %of the image transformation matrix.
 
-            vec = tm .* [ijk, 1];
+            if length(ijk) == 3
+                ijk(end+1) = 1;
+            end
 
+            if size(ijk, 2) > size(ijk, 1)
+                ijk = ijk';
+            end
+
+            xyz = tm * ijk;
+            xyz = xyz(1:3);
         end
 
-        function hitToXYZ(app, hit)
+        function ijk = xyz2ijk(tm, xyz)
+            %Converts world coordinates to image coordinates with the help
+            %of the image transformation matrix.
+
+            if length(xyz) == 3
+                xyz(end+1) = 1;
+            end
+
+            if size(xyz, 2) > size(xyz, 1)
+                xyz = xyz';
+            end
+
+            ijk = tm \ xyz;
+            ijk = ijk(1:3);
+        end
+
+        function xyz = hitToXYZ(app, hit)
 
             hitx = hit.IntersectionPoint(1);
             hity = hit.IntersectionPoint(2);
@@ -403,7 +483,7 @@ classdef NiftiUtils < handle
             end
 
             tm          = app.transMatPerImage{imID};
-            
+            xyz         = NiftiUtils.ijk2xyz(tm, ijk);            
 
         end
         

@@ -124,11 +124,6 @@ classdef Interaction < handle
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
 
-
-            %for testing only
-            NiftiUtils.hitToXYZ(app, hit)
-
-
             if isempty(app.data)
                 return
             end
@@ -168,8 +163,11 @@ classdef Interaction < handle
                 % Here we are manually drawing an ROI
                 if hit.Button == 1
                     ROI.AddPointToPolygon(app,hitx,hity);
-                elseif hit.Button == 3
-                    ROI.ValidateDrawingPoints(app);
+                elseif hit.Button == 3  %right mouse button, finish drawing
+                    if(size(app.points{app.current_view},1) <= 3)
+                        return
+                    end
+                    Interaction.PromptName(app);
                     app.drawing.mode                        = 0;
                     app.DrawPolygonButton.BackgroundColor   = ...
                                             [.96 .96 .96];
@@ -202,6 +200,33 @@ classdef Interaction < handle
             end
             
             Graphics.UpdateUserInteractions(app)
+
+            %             %for testing only
+            xyz = NiftiUtils.hitToXYZ(app, hit);
+
+            %draw poitns..
+            %ax1
+            im          = app.imagePerAxis(1);
+            tm          = app.transMatPerImage{im};
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(im);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+            ijk(view)   = [];
+            Graphics.DrawTestPointInAxis(app, 1, ijk)
+%             %ax2
+            im          = app.imagePerAxis(2);
+            tm          = app.transMatPerImage{im};
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(im);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+            ijk(view)   = [];
+            Graphics.DrawTestPointInAxis(app, 2, ijk)
             
         end
         
@@ -383,7 +408,7 @@ classdef Interaction < handle
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
             GUI.UpdateAxisButtons(app)
-%             GUI.ResetAxisZoom(app)
+            Graphics.UpdateAxisParams(app, app.current_view);
         end
         
         function ResetStudy(app)
@@ -694,68 +719,20 @@ classdef Interaction < handle
         end
         %% Prompts
         
-        function choice = PromptName(app)
+        function PromptName(app)
             %Called when the user finishes drawing an ROI or measurement.
-            %Prompts them for a name that is either in the selection box or
-            %a custom one.
+    
+            %Deactivate program until input is received
+            GUI.DisableControlsStatus(app);
+            drawnow;
             
-            C = get(app.UIFigure, 'CurrentPoint');
-            P0 = app.UIFigure.Position;
-            x = C(1) + P0(1);
-            y = round(P0(4)/2);
-            
-            d = dialog('Position',[x y 250 150],'Name','Select One');
-            txt = uicontrol('Parent',d,...
-                   'Style','text',...
-                   'Position',[20 80 210 40],...
-                   'String','Name of the measurement / ROI');
-
-            popup = uicontrol('Parent',d,...
-                   'Style','popup',...
-                   'Position',[75 70 100 25],...
-                   'String',{   'Whole Tumor';...
-                                'Viable Tumor';...
-                                'Necrosis';...
-                                'Cyste';...
-                                'Hemorrhage';...
-                                'Circle';...
-                                'Circle small';...
-                                'Other'},...
-                   'Callback',@popup_callback);
-
-            btn = uicontrol('Parent',d,...
-                   'Position',[89 20 70 25],...
-                   'String','Select',...
-                   'Callback',@select);
-            
-            %Default
-            choice = {};
-               
-            % Wait for d to close before running to completion
-            uiwait(d);
-
-                function popup_callback(popup,event)
-                   idx = popup.Value;
-                   popup_items = popup.String;
-                   res = char(popup_items(idx,:));
-                  
-                   if strcmp(res, 'Other') == 1
-                       choice = inputdlg("Enter measurement / ROI name");
-                       delete(gcf)
-                   else
-                       choice = {res};
-                   end
-                end
-               
-                function select(btn, event)
-                   popupItem  = btn.Parent.Children(2);
-                   idx  = popupItem.Value;
-                   res  = char(popupItem.String(idx,:));
-
-                   choice = {res};
-                   delete(gcf);
-
-                end
+            imID    = app.imagePerAxis(app.current_view);
+        
+            ROIPrompt(app, ...
+                Objects.GetAllUOsForImage(app, imID), ...
+                getpref('rmsstudio', 'ROILst'));
+         
+            return
         end
         
         function PromptProfile(app, varargin)
@@ -775,55 +752,6 @@ classdef Interaction < handle
             
             profile = '';
             
-%             if nargin() == 2
-%                 file    = fullfile(varargin, 'profiles.txt');
-%                 file    = file{1};
-%                 if exist(file, 'file') == 2
-%                     fileID  = fopen(file,    'r');
-%                     names   = {};
-%                     name    = fgetl(fileID);
-%                     while name ~= -1
-%                         names{end+1}    = name;
-%                         name    = fgetl(fileID);
-%                     end
-%                     fclose(fileID);
-%                     names{end+1}        = 'Other';
-%                     
-%                     d = dialog('Position',[300 300 250 150],'Name',     ...
-%                         'Select One');
-%                     txt = uicontrol('Parent',d,...
-%                            'Style','text',...
-%                            'Position',[20 80 210 40],...
-%                            'String','Choose profile name');
-% 
-%                     popup = uicontrol('Parent',d,...
-%                            'Style','popup',...
-%                            'Position',[75 70 100 25],...
-%                            'String',names,    ...
-%                            'Callback',@popup_callback);
-% 
-%                     btn = uicontrol('Parent',d,...
-%                            'Position',[89 20 70 25],...
-%                            'String','Select',...
-%                            'Callback','delete(gcf)');
-% 
-%                    %Default
-%                     profile = names{1};
-%                     
-%                     uiwait(d);
-% 
-%                 else
-%                     %A path is specified but not file exists.
-%                     
-%                     %prompt for profile and write to file.
-%                     profile = inputdlg("Enter profile name");
-% %                     profile = upper(profile);      
-%                     fid     = fopen(file, 'wt');
-%                     fprintf(fid, strcat(profile{1}, '\n'));
-%                     fclose(fid);
-%                     
-%                 end
-%             else
             %If no filepath is given, prompt for the profile and don't do
             %anything else.
             profile = inputdlg(['Enter profile name.' newline       ...
@@ -847,29 +775,6 @@ classdef Interaction < handle
             
             %Reload everything
             Study.InitStudy(app)
-            
-            
-%             %When the file exists, but 'other' is chosen, prompt for new
-%             %profile name and add it to the file.
-%             function popup_callback(popup, event)
-%                 idx = popup.Value;
-%                 popup_items = popup.String;
-%                 res = char(popup_items(idx,:));
-% 
-%                 if strcmp(res, 'Other') == 1
-%                   profile = inputdlg("Enter profile name");
-%                   profile  = upper(profile);
-%                   
-%                   fid   = fopen(file, 'a+');
-%                   fprintf(fid, strcat(profile{1}, '\n'));
-%                   fclose(fid);
-%                   
-%                   delete(gcf)
-%                   
-%                 else
-%                   profile = {res};
-%                 end
-%             end
         end
         
         

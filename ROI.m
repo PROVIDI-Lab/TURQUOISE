@@ -26,31 +26,32 @@ classdef ROI < handle
             end
         end
         
-        function ValidateDrawingPoints(app)
+        function ValidateDrawingPoints(app, ROIName)
         % When at least 3 points are specified in app.drawing.points, a
         % segmentation is constructed and added to the app.
         %   
             Cv  = app.current_view;
-            if(size(app.points{Cv},1) <= 3)
-                return
-            end
-            
-            %Prompt user for name
-            name    = Interaction.PromptName(app);
-            if isempty(name)
+            if isempty(ROIName) || size(app.points{Cv},1) <= 3
                	return
             end
-%             app.points{Cv}  = [app.points{Cv}; app.points{Cv}(1,:)];
+
             app.points{Cv}  = ROI.ValidatePoints(app, app.points{Cv});
-            GUI.DisableControlsStatus(app);
-            drawnow;
+
+            %Check if the UO already exists
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                if strcmp(obj.name, ROIName)
+                    Objects.AddToUO(app, obj.ID)
+                    return
+                end
+            end
 
             %Construct the segmentation from the drawing.points.
-            ROI.CreateSegmentation(app, name{1})
+            ROI.CreateSegmentation(app, ROIName)
 %             ROI.StoreROIPoints(app)
             
             app.points{Cv} = [];
-            GUI.RevertControlsStatus(app);
+            
         end
         
         function CreateSegmentation(app, name)

@@ -47,7 +47,7 @@ classdef Graphics < handle
         function UpdateUserObjectsForAxis(app, axID)
         %Called when the image isn't updated, but the UOs are. Doesn't 
         %redraw everything. Should be a lot quicker this way.
-            Graphics.DrawChangedUserObjects(app, axID);
+            Graphics.DrawUserObjects(app, axID);
             Graphics.DrawPointsInAxis(app, axID);
         end
         
@@ -64,11 +64,17 @@ classdef Graphics < handle
             end
         end
         
+        
         function DrawUserObjects(app, axID)
         %Redraw all visible UserObjects.
         
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
+
+                %First, reset the alpha of all UOs
+                set(app.UORenderer{axID}{obj.ID},'AlphaData', 0);
+
+                %Next, draw it again, if necessary
                 if obj.imageIdx ~= app.imagePerAxis(axID)...
                         || ~obj.visible || obj.deleted
                     continue
@@ -92,8 +98,16 @@ classdef Graphics < handle
         function DrawChangedUserObjects(app, axID)
         %Draws any UserObj in app.userObjects that is both changed and 
         %visible.
+
+        %Retired, tbd
+
+            return
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
+
+                %First, reset the alpha of all UOs
+                set(app.UORenderer{axID}{obj.ID},'AlphaData', 0);
+
                 if obj.imageIdx ~= app.imagePerAxis(axID)...
                         || ~obj.changed ...
                         || ~obj.visible
@@ -121,66 +135,58 @@ classdef Graphics < handle
         % This draws the image slice
             if(isprop(app,'data'))
                 
-                the_axis    = app.GetAxis(axID);
-                imID        = app.imagePerAxis(axID);
-                view        = app.viewPerImage(imID);
-%                 slice       = app.slicePerImage{imID}{view};
-%                 d4          = app.d4PerImage(imID);
-%                 imData      = app.data{imID}.img;
-
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
-%                 figure
-%                 imagesc(imSlice)
-%                 axis image
 
-                first_time_set = false;
-                if(isempty(app.imageRenderer))
-                    app.imageRenderer = imagesc(the_axis, imSlice);
-                    first_time_set = true;
-                else
-                    set(app.imageRenderer,'CData',imSlice);
-                end
-                h = app.imageRenderer;
-
-%                 if(first_time_set)
-                % BLOCK -> execute only once when selecting a new image
-                the_axis.XLim = [0, size(imSlice, 2)];
-                the_axis.YLim = [0, size(imSlice, 1)];
-                pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
-                pixdim(view) = [];
-                daspect(the_axis,[flip(pixdim) 1])
-                %Adjust scaling
-                if isempty(app.cScalePerImage{imID})
-                    app.cScalePerImage{imID} = [0 10];
-                end
-                try
-                    set(the_axis, 'CLim', app.cScalePerImage{imID});
-                catch
-                    set(the_axis, 'CLim', [0,10]);
-                end
-
-                % END BLOCK
-%                 end
-                if(first_time_set)
-                    %Write axis info
-                    axisSizeX = the_axis.XLim(2);
-                    axisSizeY = the_axis.YLim(2);
-                    orr = NiftiUtils.FindOrientation(...
-                        app.transMatPerImage{imID});
-                    text(the_axis, 5, round(axisSizeY/2), orr(1),...
-                        'Color', 'Yellow', 'FontSize', 15);
-                    text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
-                        'Color', 'Yellow', 'FontSize', 15);
-                    text(the_axis, round(axisSizeX/2), 5, orr(3),...
-                        'Color', 'Yellow', 'FontSize', 15);
-                    text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
-                        'Color', 'Yellow', 'FontSize', 15);
-    
-                    %set signals
-                    set(h,'ButtonDownFcn', @app.MouseClickedInImage);
-                end
+                set(app.imageRenderer{axID},'CData',imSlice);
             end          
+        end
+
+        function UpdateAxisParams(app, axID)
+            %Update parameters of the axis, such as the limits, aspect
+            %ratios, contrast scaling.
+            %Adds letter showing the image orientation
+
+            %To be called when either a new image is loaded, or a new
+            %viewing axis is used.
+
+            the_axis    = app.GetAxis(axID);
+            imID        = app.imagePerAxis(axID);
+            view        = app.viewPerImage(imID);
+
+            the_axis.XLim = [0, size(app.imageRenderer{axID}.CData, 2)];
+            the_axis.YLim = [0, size(app.imageRenderer{axID}.CData, 1)];
+            pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
+            pixdim(view) = [];
+            daspect(the_axis,[flip(pixdim) 1])
+
+            %Adjust scaling
+            if isempty(app.cScalePerImage{imID})
+                app.cScalePerImage{imID} = [0 10];
+            end
+            try
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            catch
+                set(the_axis, 'CLim', [0,10]);
+            end
+
+            %Write axis info
+            delete(app.textRenderer{axID})
+            axisSizeX = the_axis.XLim(2);
+            axisSizeY = the_axis.YLim(2);
+            orr = NiftiUtils.FindOrientationWithAxis(...
+                app.transMatPerImage{imID}, view);
+            t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+                'Color', 'Yellow', 'FontSize', 15);
+
+            app.textRenderer{axID} = [t1, t2, t3, t4];
+
         end
         
         function slice = InterpolateImSlice(app, axID)
@@ -231,7 +237,17 @@ classdef Graphics < handle
             elseif(view == 1)
                 imSlice = squeeze(img(slice,:,:));
             end
-                    
+
+
+            col = app.colors_list(obj.ID,:)*255;
+            CData  = cat(3, ones(size(imSlice)) * col(1),...
+                             ones(size(imSlice)) * col(1),...
+                             ones(size(imSlice)) * col(1));
+            set(app.UORenderer{axID}{obj.ID},'CData', CData);
+            set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.8);
+            
+            return
+
 %             imSlice = permute(imSlice,[2 1]);
             if(~isempty(find(imSlice,1)))
                 hold(the_axis,'on');
@@ -428,6 +444,20 @@ classdef Graphics < handle
                 hold(the_axis,'off');
                 app.tempDrawings = [app.tempDrawings; h2];
             end
+        end
+
+        function DrawTestPointInAxis(app, axID, ijk)
+        %Plot app.roiPoints
+            the_axis    = app.GetAxis(axID);            
+        
+            hold(the_axis,'on');
+            h2  = plot(the_axis, ijk(1), ijk(2), '*r',          ...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage);
+            hold(the_axis,'off');
+            app.tempDrawings = [app.tempDrawings; h2];
         end
         
 

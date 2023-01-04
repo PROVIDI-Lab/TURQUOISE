@@ -6,31 +6,32 @@ classdef Database < handle
            
            GUI.DisableControlsStatus(app)
 
-           if nargin == 3
-               app.datasetPath      = varargin{1};
-               app.user_profile     = varargin{2};
-
-           elseif nargin == 2
-               app.datasetPath      = varargin{1};
-               Interaction.PromptProfile(app)
-
-           else
-               %Prompt for a database location
-               fp = uigetdir('Select a folder');
-               if(isnumeric(fp) && fp == 0)
-                   return
-               end
-               app.datasetPath  = fp;
-               Interaction.PromptProfile(app, fp)
+           if length(nargin) == 2:
+               fp = varargin{1};
+               
+           
+           %Prompt for a database location
+           fp = uigetdir('Select a folder');
+           if(isnumeric(fp) && fp == 0)
+               return
            end
+           
+           app.datasetPath  = fp;
+           
+           %Prompt for a profile
+           Interaction.PromptProfile(app, fp)
            
            %Create a list of subfolders with the studies
            app.dataset     = [];
-           Database.FindStudies(app, app.datasetPath)
-           Database.AddStudies(app, app.datasetPath)
+           Database.FindStudies(app, fp)
+           Database.AddStudies(app, fp)
            
            IOUtils.PrepareStudy(app, app.dataset{1})
            GUI.RevertControlsStatus(app)
+        end
+
+        function PrepareDatabase(app, profile, fp)
+
         end
         
         function FindStudies(app, fp)

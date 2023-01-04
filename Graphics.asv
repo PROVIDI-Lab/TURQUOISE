@@ -121,45 +121,58 @@ classdef Graphics < handle
         % This draws the image slice
             if(isprop(app,'data'))
                 
-                the_axis    = app.GetAxis(axID);
-                imID        = app.imagePerAxis(axID);
-                view        = app.viewPerImage(imID);
-                slice       = app.slicePerImage{imID}{view};
-                d4          = app.d4PerImage(imID);
-                imData      = app.data{imID}.img;
-
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
-                
-                h = imagesc(the_axis, imSlice);
-                
-                %Adjust scaling
-                if isempty(app.cScalePerImage{imID})
-                    app.cScalePerImage{imID} = [0 10];
-                end
-                try
-                    set(the_axis, 'CLim', app.cScalePerImage{imID});
-                catch
-                    set(the_axis, 'CLim', [0,10]);
-                end
 
-                %Write axis info
-                axisSizeX = the_axis.XLim(2);
-                axisSizeY = the_axis.YLim(2);
-                orr = NiftiUtils.FindOrientation(...
-                    app.transMatPerImage{imID});
-                text(the_axis, 5, round(axisSizeY/2), orr(1),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), 5, orr(3),...
-                    'Color', 'Yellow', 'FontSize', 15);
-                text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
-                    'Color', 'Yellow', 'FontSize', 15);
-
-                %set signals
-                set(h,'ButtonDownFcn', @app.MouseClickedInImage);
+                set(app.imageRenderer{axID},'CData',imSlice);
             end          
+        end
+
+        function UpdateAxisParams(app, axID)
+            %Update parameters of the axis, such as the limits, aspect
+            %ratios, contrast scaling.
+            %Adds letter showing the image orientation
+
+            %To be called when either a new image is loaded, or a new
+            %viewing axis is used.
+
+            the_axis    = app.GetAxis(axID);
+            imID        = app.imagePerAxis(axID);
+            view        = app.viewPerImage(imID);
+
+            the_axis.XLim = [0, size(app.imageRenderer{axID}.CData, 2)];
+            the_axis.YLim = [0, size(app.imageRenderer{axID}.CData, 1)];
+            pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
+            pixdim(view) = [];
+            daspect(the_axis,[flip(pixdim) 1])
+
+            %Adjust scaling
+            if isempty(app.cScalePerImage{imID})
+                app.cScalePerImage{imID} = [0 10];
+            end
+            try
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            catch
+                set(the_axis, 'CLim', [0,10]);
+            end
+
+            %Write axis info
+            delete(app.textRenderer{axID})
+            axisSizeX = the_axis.XLim(2);
+            axisSizeY = the_axis.YLim(2);
+            orr = NiftiUtils.FindOrientationWithAxis(...
+                app.transMatPerImage{imID}, view);
+            t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
+                'Color', 'Yellow', 'FontSize', 15);
+            t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+                'Color', 'Yellow', 'FontSize', 15);
+
+            app.textRenderer{axID} = [t1, t2, t3, t4];
+
         end
         
         function slice = InterpolateImSlice(app, axID)
@@ -167,12 +180,30 @@ classdef Graphics < handle
             d4          = app.d4PerImage(imID);
             imData      = app.data{imID}.img(:,:,:,d4);
 
+            viewAxis    = app.viewPerImage(imID); 
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5)); 
+
             %Create meshgrid for view
-            [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+            try
+                [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+            catch err
+                disp('Unexpected interpolation error');
+            end
 
 %             NiftiUtils.showGrid(app, axID, xq, yq, zq)
 
-            slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            try
+                slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            catch err
+                disp('Unexpected interpolation error');
+            end
+%             imshow(slice,[])
+            if(viewAxis ~= imageOr)
+                slice = rot90(slice);
+            end
+
         end
         
         %% Individual User Object draw methods
@@ -192,7 +223,11 @@ classdef Graphics < handle
             elseif(view == 1)
                 imSlice = squeeze(img(slice,:,:));
             end
-                    
+
+
+            
+            
+
 %             imSlice = permute(imSlice,[2 1]);
             if(~isempty(find(imSlice,1)))
                 hold(the_axis,'on');
@@ -390,6 +425,20 @@ classdef Graphics < handle
                 app.tempDrawings = [app.tempDrawings; h2];
             end
         end
+
+        function DrawTestPointInAxis(app, axID, ijk)
+        %Plot app.roiPoints
+            the_axis    = app.GetAxis(axID);            
+        
+            hold(the_axis,'on');
+            h2  = plot(the_axis, ijk(1), ijk(2), '*r',          ...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage);
+            hold(the_axis,'off');
+            app.tempDrawings = [app.tempDrawings; h2];
+        end
         
 
 %% Other
@@ -399,9 +448,10 @@ classdef Graphics < handle
             %number of the current image.
             
             imID        = app.imagePerAxis(axID);
-            view        = app.viewPerImage(imID);   %sag, cor
+            view        = app.viewPerImage(imID);   %sag, cor, ax
+            ijkView     = NiftiUtils.GetIJKView(app);
             slice       = app.slicePerImage{imID}{view};
-            maxSize     = size(app.data{imID}.img, view);
+            maxSize     = size(app.data{imID}.img, ijkView);
             sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
             nameString  = app.studyNames{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);

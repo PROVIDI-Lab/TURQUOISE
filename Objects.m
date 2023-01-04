@@ -23,9 +23,6 @@ classdef Objects < handle
             if isempty(obj.name)
                 obj.name        = ...
                     ['uObj' num2str(length(app.userObjects))];
-            else
-                obj.name    = Objects.CheckNameUnique(...
-                    app, obj.name, obj.imageIdx);
             end
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
@@ -36,33 +33,34 @@ classdef Objects < handle
             %Add to list            
             app.userObjects{end+1}  = obj;
             GUI.UpdateUOBox(app);
+            GUI.AddUOLayer(app, 1, obj.ID)      %TOOD: don't hardcode axes
+            GUI.AddUOLayer(app, 2, obj.ID)  
             Graphics.UpdateUserObjects(app);
             Backups.CreateBackup(app);
         end
-        
-        function name = CheckNameUnique(app, name, idx)
-            %Compares names between new object and existing objects.
-            %In the case of identical names, adds a number to the end.           
+
+        function AddToUO(app, ID)
+            Cv          = app.current_view;
+            obj         = app.userObjects{ID};
+            obj.points  = [obj.points; app.points{Cv}];
+            obj.data    = obj.data + ROI.PointsToMask(...
+                app, app.points{Cv}, app.imagePerAxis(Cv), 1);
+            obj.makeProperties(app);
             
-            names = Objects.GetAllUOsForImage(app, idx);
-            uniqueName = true;
-            counter = 0;
-            for i = 1:length(names)
-                objName = names{i};
-                
-                if contains(objName, name)
-                    if strcmp(objName, name)
-                        uniqueName = false;
-                    end
-                    counter = counter + 1;
-                end                
-            end
+            GUI.UpdateUOBox(app);
+            Graphics.UpdateUserObjects(app);
+            Backups.CreateBackup(app);
+        end
 
-            if uniqueName
-                return
-            end
+        function ChangeName(app, ID, name)
+        %Renames any UO named 'tmp' to the actual name
 
-            name    = strcat(name, num2str(counter));
+            obj = app.userObjects{ID};
+            obj.name = name;
+            obj.changed = true;
+
+            GUI.UpdateUOBox(app)
+            Graphics.UpdateUserObjects(app)
         end
 
         function names = GetAllUOsForImage(app, index)
@@ -75,7 +73,7 @@ classdef Objects < handle
                 names{end+1} = obj.name;
             end
         end
-        
+
         function idx = findUOIndex(app, index)
             %Returns the index of the uo where ID == index
             idx = -1;
@@ -334,7 +332,10 @@ classdef Objects < handle
         
         
         
-        %%
+        %% From contextmenu
+
+
+
         function DeleteUO(app, varargin)
             %When the deletemenu in he UOBox contextmenu is called.
             
@@ -376,14 +377,10 @@ classdef Objects < handle
             if idx == -1
                 return
             end
+
+            app.userObjects{idx}.name   = '_tmp_';            
+            Interaction.PromptName(app);
             
-            newName     = Interaction.PromptName(app);
-            newName     = Objects.CheckNameUnique(app, newName, ...
-                app.imIdx);
-            app.userObjects{idx}.name   = newName{1};
-            GUI.UpdateUOBox(app)
-            Graphics.UpdateUserObjects(app)
-            Backups.CreateBackup(app); 
         end
         
         function CopyUOTo(app)
@@ -401,25 +398,44 @@ classdef Objects < handle
             if obj.type == 2
                 return %Don't copy measurements
             end
-            currentIdx  = app.userObjects{idx}.imageIdx;
+            
             targetIdx   = Interaction.PromptTarget(app);
             
-            newMask     = Align.AlignMask(app.data{targetIdx},...
-                            app.data{currentIdx},...
-                            obj.data);                
-            
-            newMask( newMask >= 0.5) = 1;
-            newMask( newMask < 0.5) = 0;
+            %find new points from world coordinates
+            tm  = app.transMatPerImage{targetIdx};
+            xyz = [obj.worldCoords, ones(length(obj.points),1)];
+            ijk = tm \ xyz';
+            points = round(ijk(1:3, :))';
+            %create mask
+            newMask = ROI.PointsToMask(app, points, targetIdx, obj.type);
                         
             Objects.AddNewUserObj(app,...
                     "type", obj.type, ...
                     "data", newMask,...
-                    "points", [], ... %TODO, copy points
+                    "points", points, ... 
+                    "worldCoords", obj.worldCoords, ...
                     "name", obj.name,...
                     "imageIdx", targetIdx)
                 
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
+            Backups.CreateBackup(app); 
+        end
+
+        function ChangeUOAdditiveSubtractive(app)
+            %When the switch additive/subtractive in he UOBox conextmenu 
+            % is called.
+            idx     = app.UOBox.Value;
+            if isempty(idx)
+                return
+            end
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+            
+            additiveQ     = Interaction.PromptAdditiveSubtractive(app);
+            app.userObjects{idx}.additive = strcmp(additiveQ, 'additive');
             Backups.CreateBackup(app); 
         end
         

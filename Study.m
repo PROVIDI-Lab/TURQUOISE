@@ -8,6 +8,9 @@ classdef Study < handle
         function InitStudy(app)
             %Initialises all objects that are used when working with a
             %study. Called after PrepareStudy.
+
+            %First, remove everything from the screen
+            GUI.ResetViews(app);
             
             nImages     = length(app.studyNames);
             if nImages == 0

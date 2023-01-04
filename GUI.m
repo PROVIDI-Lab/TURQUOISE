@@ -11,8 +11,6 @@ classdef GUI < handle
             app.DrawMenu.Enable     = 'on';
             app.SegmentMenu.Enable  = 'on';
 
-            GUI.ResetViews(app);
-
             d = uiprogressdlg(app.UIFigure, 'Title',...
                 'New Patient');
             
@@ -57,38 +55,58 @@ classdef GUI < handle
             close(d);
         end
         
-        function h = SetupAxis(the_ax)
+        function SetupAxis(app, the_ax, axID)
         %Constructs the UIAxes
             rect = get(the_ax,'OuterPosition');
             bg = zeros(rect([4 3]));
             bg(round(end/2),round(end/2)) = 1;
-            h = imagesc(the_ax,bg);
+            app.imageRenderer{axID} = imagesc(the_ax, bg);
             colormap(the_ax,'gray');
             axis(the_ax,'off');
             the_ax.BackgroundColor = 'k';
+        end
+
+        function AddUOLayer(app, axID, objID)
+            %Creates new imagesc with UO color and transparency 0
+
+            the_ax  = app.GetAxis(axID);
+            rect = round(get(the_ax,'OuterPosition'));
+            col = app.colors_list(objID,:);
+            im  = cat(3, ones(rect([4 3])) * col(1),...
+                         ones(rect([4 3])) * col(1),...
+                         ones(rect([4 3])) * col(1));
+
+            hold(the_ax, 'on')
+            app.UORenderer{axID}{objID} = imshow(im, 'Parent', the_ax);
+            set(app.UORenderer{axID}{objID},'AlphaData', 0);
+            hold(the_ax, 'off')
+
+            set(app.UORenderer{axID}{objID},...
+                'ButtonDownFcn',@app.MouseClickedInImage);
         end
         
         function ResetViews(app)
             %Resets both views and switches all displaying options to their
             %default values.
-%             app.view_axis                        = 3;
             app.slicePerImage       = {};
             Study.FindRealWorldReference(app);  %restore axis
             app.current_view        = 1;
-%             app.imagePerAxis        = [1,1];
-            app.Align               = '';
-
+%             app.Align               = '';
             
             GUI.UpdateAxisInfo(app);
-%             GUI.UpdateViewButtons(app);
             GUI.UpdateAlignButtons(app);
            
-            h = imagesc(app.UIAxes1, zeros(100));
-            set(h,'ButtonDownFcn',@app.MouseClickedInImage);
-           
-            h2 = imagesc(app.UIAxes2, zeros(100));
-            set(h2,'ButtonDownFcn',@app.MouseClickedInImage);
-            
+            set(app.imageRenderer{1},'CData', zeros(100));
+            set(app.imageRenderer{2},'CData', zeros(100));
+
+            %Remove any objects drawn on the screen
+            for idx = 1:length(app.userObjects)
+                obj     = app.userObjects{idx};
+                delete(app.UORenderer{1}{obj.ID})
+                delete(app.UORenderer{2}{obj.ID})
+            end
+            app.UORenderer      = {{},{}};  %TODO: don't hardcode ndum Axes
+                        
         end
         
         function DisplayNewImage(app, index)
@@ -117,20 +135,14 @@ classdef GUI < handle
                                             app.data{index}.img,3)/2);
             end
             
-%             %Set axis limits
-%             ax      = app.GetAxis(app.current_view);
-%             imSize  = size(app.data{index}.img);
-%             viewAx  = NiftiUtils.GetIJKView(app);
-%             imSize(viewAx) = [];
-%             ax.XLim = [0, imSize(2)];
-%             ax.YLim = [0, imSize(1)];
-            
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
             GUI.UpdateUOBox(app);
             
-            Graphics.UpdateImage(app);            
+            %Draw the new image
+            Graphics.UpdateImage(app);   
+            Graphics.UpdateAxisParams(app, app.current_view);
         end  
         
         function SwitchImage(app, index)
@@ -143,25 +155,13 @@ classdef GUI < handle
             GUI.UpdateAxisInfo(app)
             app.zoomToggle      = false;
             
-            %Set axis limits
-%             ax      = app.GetAxis(app.current_view);
-%             if isempty(app.zoomPerImage{index})
-%                 imSize  = size(app.data{index}.img);
-%                 ax.XLim = [0, imSize(2)];
-%                 ax.YLim = [0, imSize(1)];
-%                 app.zoomPerImage{index} = [[0, imSize(2)]; [0, imSize(1)]];
-%             else
-%                 ax.XLim = app.zoomPerImage{index}(1,:);
-%                 ax.YLim = app.zoomPerImage{index}(2,:);
-%             end
-                        
-                        
             %Update all GUI elements
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
             GUI.UpdateUOBox(app);
             
             Graphics.UpdateImage(app);
+            Graphics.UpdateAxisParams(app, app.current_view);
         end
         
         function DisplayError(app)
@@ -305,31 +305,7 @@ classdef GUI < handle
             app.viewingParams(4) = 1;
             app.viewingParams(5:7) = [-1, -1, -1];
             Graphics.UpdateImageForAxis(app, app.current_view);
-            
-%             ax      = app.GetAxis(app.current_view);
-%             imIdx   = app.imagePerAxis(app.current_view);
-%             imSize  = size(app.data{imIdx}.img);
-%             imSize(app.viewPerImage(imIdx)) = []; %Correct for view
-%             
-%             if app.viewPerImage(imIdx) == 3
-%                 ax.XLim = [0, imSize(2)];
-%                 ax.YLim = [0, imSize(1)];
-%             else
-%                 ax.XLim = [0, imSize(1)];
-%                 ax.YLim = [0, imSize(2)];
-%             end
-%             
-%             GUI.StoreZoomLevel(app)            
-        end
-        
-%         function StoreZoomLevel(app)
-%             %Stores the current XLim and YLim 
-%             ax      = app.GetAxis(app.current_view);
-%             index   = app.imIdx;
-% 
-%             app.zoomPerImage{index} = [ax.XLim; ax.YLim];
-%         end
-        
+        end        
         
     %% Sliders && UI elements
 
