@@ -23,6 +23,9 @@ classdef Objects < handle
             if isempty(obj.name)
                 obj.name        = ...
                     ['uObj' num2str(length(app.userObjects))];
+            else
+                obj.name    = Objects.CheckNameUnique(...
+                    app, obj.name, obj.imageIdx);
             end
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
@@ -39,7 +42,45 @@ classdef Objects < handle
             Backups.CreateBackup(app);
         end
 
-        function AddToUO(app, )
+        function name = CheckNameUnique(app, name, idx)
+            %Compares names between new object and existing objects.
+            %In the case of identical names, adds a number to the end.           
+            
+            names = Objects.GetAllUOsForImage(app, idx);
+            uniqueName = true;
+            counter = 0;
+            for i = 1:length(names)
+                objName = names{i};
+                
+                if contains(objName, name)
+                    if strcmp(objName, name)
+                        uniqueName = false;
+                    end
+                    counter = counter + 1;
+                end                
+            end
+
+            if uniqueName
+                return
+            end
+
+            %name not unique, add number before mode signifier
+
+            name    = strcat(name, num2str(counter));
+        end
+
+        function AddToUO(app, ID)
+            Cv          = app.current_view;
+            obj         = app.userObjects{ID};
+            obj.points  = [obj.points; app.points{Cv}];
+            obj.data    = obj.data + ROI.PointsToMask(...
+                app, app.points{Cv}, app.imagePerAxis(Cv), 1);
+            obj.makeProperties(app);
+            
+            GUI.UpdateUOBox(app);
+            Graphics.UpdateUserObjects(app);
+            Backups.CreateBackup(app);
+        end
 
         function ChangeName(app, ID, name)
         %Renames any UO named 'tmp' to the actual name

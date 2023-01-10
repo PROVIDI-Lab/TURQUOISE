@@ -37,22 +37,24 @@ classdef ROI < handle
 
             app.points{Cv}  = ROI.ValidatePoints(app, app.points{Cv});
 
-            %Check if a new ROI should be made
+            imID = app.imagePerAxis(Cv);
+            %Check if the UO already exists
             if newROI
                 ROI.CreateSegmentation(app, ROIName)
-                app.points{Cv} = [];
-                return
-            end
-            
-            %If not, add to existing ROI
-            imID = app.imagePerAxis(Cv);
-            for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};
-                if strcmp(obj.name, ROIName) && obj.imageIdx == imID
-                    Objects.AddToUO(app, obj.ID)
-                    break
+            else
+                for i = 1:length(app.userObjects)
+                    obj = app.userObjects{i};
+                    if strcmp(obj.name, ROIName) && obj.imageIdx == imID
+                        Objects.AddToUO(app, obj.ID)
+                        return
+                    end
                 end
             end
+
+            %Construct the segmentation from the drawing.points.
+            
+%             ROI.StoreROIPoints(app)
+            
             app.points{Cv} = [];
             
         end

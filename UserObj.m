@@ -15,6 +15,7 @@ classdef UserObj < matlab.mixin.SetGet
        prop,                    %Other properties
        ID,                      %Which userObj is this
        deleted      = false,    %Stores if the userObj has been deleted
+       renaming     = false     %Stores whether the object is to be renamed
        
     end
     

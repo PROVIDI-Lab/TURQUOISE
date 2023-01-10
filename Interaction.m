@@ -18,22 +18,17 @@ classdef Interaction < handle
             %functions to update the app acoordingly. 
             
             value = app.AvailableimagesListBox.Value;
-            index = -1;
-            for ij = 1:length(app.AvailableimagesListBox.Items)
-                if(strcmp(app.AvailableimagesListBox.Items{ij},value) > 0)
-                    index = ij;
-                    break;
-                end
-            end
-            
-            if(index == -1)
+            [~, index] = ismember(value, ...
+                app.AvailableimagesListBox.Items);
+                        
+            %if index matches the index of any of the other axes, ignore
+            cv =     app.current_view;
+            otherView = [1,2];
+            otherView(cv) = [];
+            if app.imagePerAxis(otherView) == index
                 return
             end
-            
-            %Save current zoom. Used to store any changes made througout
-            %the standard UI instead of ctrl+scroll.
-%             GUI.StoreZoomLevel(app)
-            
+
             %Update app
             Study.SwitchImage(app, index)
         end
@@ -57,9 +52,9 @@ classdef Interaction < handle
             end
             
             %Switch slice and view       
-            obj                             = app.userObjects{index};
-            [view, slice]                   = Objects.GetUOViewAndSlice(obj);    
-            app.viewPerImage(app.imIdx)     = view;
+            obj                         = app.userObjects{index};
+            [view, slice]               = Objects.GetUOViewAndSlice(obj);
+            app.viewPerImage(app.imIdx) = view;
             app.slicePerImage{app.imIdx}{view}    = slice;
             
             GUI.UpdateSliceSlider(app)
@@ -154,11 +149,7 @@ classdef Interaction < handle
             
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
-            
-%             if(app.should_show_selection == true)
-%                 % Here we want to delete something by clicking
-%                 Interaction.MouseDeleteObjectAtCoordinates(app,hitx,hity);
-                
+                           
             if(app.drawing.mode == 1)
                 % Here we are manually drawing an ROI
                 if hit.Button == 1
@@ -192,41 +183,20 @@ classdef Interaction < handle
                 
             elseif hit.Button == 3
                 %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOUnderMouse(app, hit, app.current_view);                
+                id = Objects.FindUOUnderMouse(app, hit, app.current_view);
+
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
                     GUI.UOContextMenu(app, id, C) 
                 end
+            else
+                %If not doing anything else, move the cursor and other
+                %panels around
+                GUI.ButtonDown(app, hit)
+                GUI.MoveCrosshair(app, hit)
             end
             
             Graphics.UpdateUserInteractions(app)
-
-            %             %for testing only
-            xyz = NiftiUtils.hitToXYZ(app, hit);
-
-            %draw poitns..
-            %ax1
-            im          = app.imagePerAxis(1);
-            tm          = app.transMatPerImage{im};
-            or          = NiftiUtils.FindOrientation(tm);
-            viewAxis    = app.viewPerImage(im);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
-            ijk(view)   = [];
-            Graphics.DrawTestPointInAxis(app, 1, ijk)
-%             %ax2
-            im          = app.imagePerAxis(2);
-            tm          = app.transMatPerImage{im};
-            or          = NiftiUtils.FindOrientation(tm);
-            viewAxis    = app.viewPerImage(im);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
-            ijk(view)   = [];
-            Graphics.DrawTestPointInAxis(app, 2, ijk)
             
         end
         
@@ -236,11 +206,13 @@ classdef Interaction < handle
             if app.busyStatus   %Don't do anything if the app is busy
                 return
             end
+
+            %Dragging the crosshair
+            if app.buttonDown
+                app.buttonDown = false;
+                return
+            end
         
-%             if app.drawing.mode == 2
-%                 %Change segmentation
-%                 ROI.ValidateModifiedROIPoints(app)
-%                 GUI.ResetCursor(app)
             if app.drawing.mode == 5
                 ROI.FinishDrawingCircular(app)
             elseif app.drawing.mode == 6
@@ -409,6 +381,7 @@ classdef Interaction < handle
             Graphics.UpdateImage(app)
             GUI.UpdateAxisButtons(app)
             Graphics.UpdateAxisParams(app, app.current_view);
+            GUI.InitCrosshair(app)
         end
         
         function ResetStudy(app)
@@ -669,7 +642,7 @@ classdef Interaction < handle
         end
         
         function UpdateSlice(app, value, axID)
-        %Sets the current_slice to the new value, then updates the GUI
+        %Updates the slice to the new value, then updates the GUI
         %Input:
         %   value - new value for current_slice
             slice = round(value);
@@ -719,9 +692,14 @@ classdef Interaction < handle
         end
         %% Prompts
         
-        function PromptName(app)
+        function PromptName(app, varargin)
             %Called when the user finishes drawing an ROI or measurement.
     
+            renameQ = false;
+            if nargin == 2
+                renameQ = varargin{1};
+            end
+
             %Deactivate program until input is received
             GUI.DisableControlsStatus(app);
             drawnow;
@@ -730,54 +708,12 @@ classdef Interaction < handle
         
             ROIPrompt(app, ...
                 Objects.GetAllUOsForImage(app, imID), ...
-                getpref('rmsstudio', 'ROILst'));
+                getpref('rmsstudio', 'ROILst'),...
+                renameQ);
          
             return
         end
-        
-        function PromptProfile(app, varargin)
-            %Called when the user launches the app for the first time. Asks
-            %them for a profile name to be used in separating the
-            %segmentations.
-            
-            %If a filepath is given, first check if a list with profile
-            %names already exists.
-            
-            if app.unsavedProgress
-               proceed = Interaction.PromptSave(app);
-               if ~proceed
-                   return
-               end
-            end
-            
-            profile = '';
-            
-            %If no filepath is given, prompt for the profile and don't do
-            %anything else.
-            profile = inputdlg(['Enter profile name.' newline       ...
-            '(We suggest the first three letters of your name']);
-            if isempty(profile)
-                profile = '';
-            else
-                profile = profile{1};
-            end
-%             end
-            
-            %Add the profile to the app
-            profile  = upper(profile);
-            
-            %Add to app
-            if strcmp(app.user_profile, profile)
-                return
-            end
-            app.user_profile    = profile;
-            app.backup_list     = [];
-            
-            %Reload everything
-            Study.InitStudy(app)
-        end
-        
-        
+                
         function choice = PromptTarget(app)
             %Called when the user copies a UserObject. The user is prompted
             %to which image the object should be copied. 
@@ -873,7 +809,7 @@ classdef Interaction < handle
                    miny = min(size(tmp_mask,2), size(total_mask,2)); 
                    
                    tmp_mask = zeros(size(total_mask));
-                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny, :);
+                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny,:);
                end
 
                if contains(uo.name, 'Whole Tumor')
@@ -882,7 +818,7 @@ classdef Interaction < handle
                    total_mask = total_mask - tmp_mask;
                end
                
-               [~,~,z] = ind2sub(size(uo.data), find(uo.data));                
+               [~,~,z] = ind2sub(size(uo.data), find(uo.data));
                names(uo.name) = mode(z);
             end
 

@@ -48,6 +48,8 @@ classdef GUI < handle
                 GUI.DisplayNewImage(app, idx)
                 
             end
+
+            GUI.InitCrosshair(app)
             
             GUI.RevertControlsStatus(app);
             app.UIFigure.Visible = 'off';
@@ -73,8 +75,8 @@ classdef GUI < handle
             rect = round(get(the_ax,'OuterPosition'));
             col = app.colors_list(objID,:);
             im  = cat(3, ones(rect([4 3])) * col(1),...
-                         ones(rect([4 3])) * col(1),...
-                         ones(rect([4 3])) * col(1));
+                         ones(rect([4 3])) * col(2),...
+                         ones(rect([4 3])) * col(3));
 
             hold(the_ax, 'on')
             app.UORenderer{axID}{objID} = imshow(im, 'Parent', the_ax);
@@ -143,6 +145,7 @@ classdef GUI < handle
             %Draw the new image
             Graphics.UpdateImage(app);   
             Graphics.UpdateAxisParams(app, app.current_view);
+            GUI.InitCrosshair(app)
         end  
         
         function SwitchImage(app, index)
@@ -162,6 +165,7 @@ classdef GUI < handle
             
             Graphics.UpdateImage(app);
             Graphics.UpdateAxisParams(app, app.current_view);
+            GUI.InitCrosshair(app)
         end
         
         function DisplayError(app)
@@ -179,7 +183,7 @@ classdef GUI < handle
             if isempty(app.data) || isempty(app.studyNames)
                 return
             end
-            verticalScrollCount     = event.VerticalScrollCount;                                    
+            verticalScrollCount     = event.VerticalScrollCount;
             axID    = GUI.FindAxisUnderCursor(app, event);
             if axID == -1
                 return
@@ -188,12 +192,17 @@ classdef GUI < handle
             
             if app.ctrl %Zoom instead of scrolling
                 scrollCount     = verticalScrollCount;
-                GUI.ZoomAxis(app, axID, scrollCount, event);                
+                GUI.ZoomAxis(app, axID, scrollCount, event);
                 return
             end
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view} - verticalScrollCount;
             Interaction.UpdateSlice(app, slice, axID);
+
+            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+            i       = hit(1);
+            j       = hit(2);
+            GUI.MoveCrosshair(app, i, j, axID)
             
         end
         
@@ -263,23 +272,9 @@ classdef GUI < handle
             %   zoom is zoom level as a fraction
             %   old_range is pixel dimensions before zooming
 
-            %   calculate x and y in pixel coordinates
-            %   First get cursor location in main screen
-            %   Next, calculate relative distance to axis object
-            %   lastly, translate relative distance to pixel coordinate
-
-            %TODO: zooming not perfect yet :(
-
-            ax              = app.GetAxis(axID);
-            deltaX          = ax.XLim(2) - ax.XLim(1);
-            xPos            = event.Source.CurrentPoint(1);
-            xPos            = (xPos - ax.Position(1)) / ax.Position(3);
-            xPos            = xPos * deltaX;
-
-            deltaY          = ax.YLim(2) - ax.YLim(1);
-            yPos            = event.Source.CurrentPoint(2);
-            yPos            = (yPos - ax.Position(2)) / ax.Position(4);
-            yPos            = deltaY - ( yPos * deltaY);
+            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+            xPos    = hit(1);
+            yPos    = hit(2);
 
             %Next, calculate xCenter and yCenter
             xCenter         = xPos + 0.5 * zoomFactor * (deltaX - 2*xPos);
@@ -307,6 +302,26 @@ classdef GUI < handle
             Graphics.UpdateImageForAxis(app, app.current_view);
         end        
         
+
+        function hit = GetHitFromCurrentPoint(app, axID, event)
+        %Find i,j position of mouseevent that only gives cursor position
+            ax              = app.GetAxis(axID);
+            deltaX          = ax.XLim(2) - ax.XLim(1);
+            xPos            = event.Source.CurrentPoint(1);
+            xPos            = (xPos - ax.InnerPosition(1)) / ...
+                ax.InnerPosition(3);
+            xPos            = xPos * deltaX;
+
+            deltaY          = ax.YLim(2) - ax.YLim(1);
+            yPos            = event.Source.CurrentPoint(2);
+            yPos            = (yPos - ax.InnerPosition(2)) /...
+                ax.InnerPosition(4);
+            yPos            = deltaY - ( yPos * deltaY);
+            
+            hit = [xPos, yPos];
+
+        end
+
     %% Sliders && UI elements
 
         function SensitivitySlider(app)
@@ -405,20 +420,20 @@ classdef GUI < handle
                 app.dragPoint   = [hitx, 0, hity, 0];
                 app.drawing.mode = 6;
                 
-                set(hit.Source.Parent.Parent.Parent,                                  ...
-                    'WindowButtonMotionFcn',                            ...
+                set(hit.Source.Parent.Parent.Parent,...
+                    'WindowButtonMotionFcn',...
                     @app.MouseDraggedInImage);
 
-                set(hit.Source.Parent.Parent.Parent,                                  ...
-                    'WindowButtonUpFcn',                                ...
+                set(hit.Source.Parent.Parent.Parent,...
+                    'WindowButtonUpFcn',...
                     @app.MouseReleasedInImage);
         end
         
         function AdjustContrast(app, hitx, hity)
             %Compares hitx and hity with the previous cursor position to
             %determine the new min and max display values.
-            %X influences the min value & Y influences the max value            
-            
+            %X influences the min value & Y influences the max value
+
             dX              = (hitx - app.dragPoint(1));
             dY              = (hity - app.dragPoint(3));
             if isnan(dX)
@@ -691,8 +706,12 @@ classdef GUI < handle
             %Additionally displays the value of the image underneath the
             %cursor in the HoverLabel
 
-            GUI.DisplayHoverValue(app, hit);            
+            GUI.DisplayHoverValue(app, hit)
             UOId = Objects.FindUOUnderMouse(app, hit);
+
+            if app.buttonDown
+                GUI.MoveCrosshair(app, hit)
+            end
 
             if UOId == -1
                 if app.prevUOTextShown ~= 0
@@ -754,6 +773,112 @@ classdef GUI < handle
 
 
         end
+
+        %% Crosshair
+
+        function InitCrosshair(app)
+        %Finds the middle point of the image in the first UIAxes.
+        %Initializes the renderer and moves it to that position.
+
+        %Find middle of first image
+        imID        = app.imagePerAxis(app.current_view);  
+        sz          = size(app.data{imID}.img);
+        viewAxis    = app.viewPerImage(imID);
+        sz(viewAxis)    = [];
+        i               = round(sz(1)/2);
+        j               = round(sz(2)/2);
+        
+        %Convert to world coordinates
+        xyz         = NiftiUtils.hitToXYZ(app, i, j);
+
+
+        %Draw crosshair for each axis   -TODO: don't hardcode axes
+        GUI.CrosshairPerImage(app, 1, xyz)
+        GUI.CrosshairPerImage(app, 2, xyz)
+        end
+
+
+        function MoveCrosshair(app, varargin)
+        %Moves the crosshair to the new position. Scrolls the images on the
+        %other ax(i/e)s along with the position.
+
+            if nargin == 2     %hit
+                hit = varargin{1};
+
+                %return when hit is wrong
+                if any(isnan(hit.IntersectionPoint))
+                    return
+                end
+    
+                %Find xyz position of hit
+                i           = hit.IntersectionPoint(1);
+                j           = hit.IntersectionPoint(2);
+                xyz         = NiftiUtils.hitToXYZ(app, i, j);
+            elseif nargin == 4
+                i           = varargin{1};
+                j           = varargin{2};
+                axID        = varargin{3};
+                xyz         = NiftiUtils.hitToXYZ(app, i, j, axID);
+            end
+
+            %Draw crosshair for each axis   -TODO: don't hardcode axes
+            GUI.CrosshairPerImage(app, 1, xyz)
+            GUI.CrosshairPerImage(app, 2, xyz)
+
+        end
+
+        function CrosshairPerImage(app, axID, xyz)
+        %Finds the image position of world coordinate xyz for image imID.
+        %Also calculates endpoints of the crosshair and calls the rendering
+        %function
+        %If the xyz position doesn't match the current slice, scroll
+        
+            %Find ijk
+            imID        = app.imagePerAxis(axID);
+            tm          = app.transMatPerImage{imID};
+            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+
+            %Remove relative viewing axis
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+            slice       = ijk(view);
+            ijk(view)   = [];
+
+            %Scroll if needed
+            if ~isempty(app.slicePerImage{imID})
+                if slice ~= app.slicePerImage{imID}{viewAxis}
+                    Interaction.UpdateSlice(app, slice, axID)
+                end
+            end
+
+            %find size of image
+            sz          = size(app.data{imID}.img);
+            sz(viewAxis)= [];
+            
+            %Draw
+            Graphics.DrawCrosshairInAxis(app, axID, ijk, sz)
+            
+
+        end
+
+        function ButtonDown(app, hit)
+            %toggles app.buttonDown and sets up a callback for dragging and
+            %releasing the mouse.
+
+            try
+                set(hit.Source.Parent.Parent.Parent,...
+                'WindowButtonUpFcn',...
+                @app.MouseReleasedInImage);
+            catch
+                return
+            end
+
+            app.buttonDown = true;
+        end
+
         
         %% Context menus
         
@@ -792,7 +917,7 @@ classdef GUI < handle
         
         function SetButtonDownFcn(app)
            %Sets the button down function on all the tempDrawings objects.
-           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);       
+           set(app.tempDrawings, 'ButtonDownFcn',@app.MouseClickedInImage);
         end
         
         function RemoveButtonDownFcn(app)
@@ -803,7 +928,6 @@ classdef GUI < handle
         function RevertControlsStatus(app)
             %Re-ables user interaction with the different menus, buttons,
             %UI elements and more.
-            
             %Buttons
             app.DrawPolygonButton.Enable            = 'on';
             app.AlignLRButton.Enable                = 'on';
@@ -811,7 +935,7 @@ classdef GUI < handle
             app.VisibleSlider.Enable                = 'on';
             app.SliceDecreaseButton.Enable          = 'on';
             app.SliceIncreaseButton.Enable          = 'on';
-             app.CoronalButton.Enable               = 'on';
+            app.CoronalButton.Enable                = 'on';
             app.SagittalButton.Enable               = 'on';
             app.AxialButton.Enable                  = 'on';
 

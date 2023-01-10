@@ -297,11 +297,13 @@ classdef NiftiUtils < handle
 %             xq       = reshape(grid(1,:), gridDim);
 %             yq       = reshape(grid(2,:), gridDim);
 %             zq       = reshape(grid(3,:), gridDim);
-%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(...
+% app.data{imID}.hdr);
 %             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
 %             hold on
 %             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
-% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end), 5, 'red')
+% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end),...
+% 5, 'red')
 %             xlabel('x')
 %             ylabel('y')
 %             zlabel('z')
@@ -377,7 +379,7 @@ classdef NiftiUtils < handle
             tm(1:3,4)           = tm(1:3,4) + deltaCenter;
         end
 
-        function view = GetIJKView(app)
+        function view = GetIJKView(app, varargin)
             %returns the view of the image relative to the image
             %coordinates.
             %We can find this from the viewing axis, and the image 
@@ -388,8 +390,14 @@ classdef NiftiUtils < handle
             %           cor     i           k           j
             %           ax      i           j           k
 
-            viewAxis    = app.viewPerImage(app.imIdx); 
-            tm          = app.transMatPerImage{app.imIdx};
+            if nargin == 2
+                imID    = varargin{1};
+            else
+                imID    = app.imIdx;
+            end
+
+            viewAxis    = app.viewPerImage(imID); 
+            tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
             imageOr     = strfind('sca', or(5)); 
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
@@ -465,21 +473,25 @@ classdef NiftiUtils < handle
             ijk = ijk(1:3);
         end
 
-        function xyz = hitToXYZ(app, hit)
+        function xyz = hitToXYZ(app, i,j, varargin)
 
-            hitx = hit.IntersectionPoint(1);
-            hity = hit.IntersectionPoint(2);
-            imID            = app.imagePerAxis(app.current_view);
+            if nargin == 4
+                axID    = varargin{1};
+            else
+                axID    = app.current_view;
+            end
+
+            imID            = app.imagePerAxis(axID);
             viewAxis        = app.viewPerImage(imID); 
-            zPos            = app.slicePerImage{imID}{viewAxis};
-            ijkView         = NiftiUtils.GetIJKView(app);
+            k               = app.slicePerImage{imID}{viewAxis};
+            ijkView         = NiftiUtils.GetIJKView(app, imID);
 
             if ijkView == 1
-                ijk = [zPos, hitx, hity];
+                ijk = [k, i, j];
             elseif ijkView == 2
-                ijk = [hitx, zPos, hity];
+                ijk = [i, k, j];
             else
-                ijk = [hitx, hity, zPos];
+                ijk = [i, j, k];
             end
 
             tm          = app.transMatPerImage{imID};

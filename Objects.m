@@ -23,6 +23,9 @@ classdef Objects < handle
             if isempty(obj.name)
                 obj.name        = ...
                     ['uObj' num2str(length(app.userObjects))];
+            else
+                obj.name    = Objects.CheckNameUnique(...
+                    app, obj.name, obj.imageIdx);
             end
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
@@ -39,7 +42,36 @@ classdef Objects < handle
             Backups.CreateBackup(app);
         end
 
+        function name = CheckNameUnique(app, name, idx)
+            %Compares names between new object and existing objects.
+            %In the case of identical names, adds a number to the end.           
+            
+            names = Objects.GetAllUOsForImage(app, idx);
+            uniqueName = true;
+            counter = 0;
+            for i = 1:length(names)
+                objName = names{i};
+                
+                if contains(objName, name)
+                    if strcmp(objName, name)
+                        uniqueName = false;
+                    end
+                    counter = counter + 1;
+                end                
+            end
+
+            if uniqueName
+                return
+            end
+
+            %name not unique, add number before mode signifier
+            baseName   = name(1:end-2);
+            modeSig    = name(end-1:end);
+            name    = strcat(baseName, num2str(counter), modeSig);
+        end
+
         function AddToUO(app, ID)
+            %Adds points & data to existing ROI. 
             Cv          = app.current_view;
             obj         = app.userObjects{ID};
             obj.points  = [obj.points; app.points{Cv}];
@@ -55,9 +87,15 @@ classdef Objects < handle
         function ChangeName(app, ID, name)
         %Renames any UO named 'tmp' to the actual name
 
-            obj = app.userObjects{ID};
-            obj.name = name;
-            obj.changed = true;
+            obj             = app.userObjects{ID};
+            obj.renaming    = false;
+
+            if isempty(name)
+                return
+            end
+            
+            obj.name        = name;
+            obj.changed     = true;
 
             GUI.UpdateUOBox(app)
             Graphics.UpdateUserObjects(app)
@@ -378,8 +416,8 @@ classdef Objects < handle
                 return
             end
 
-            app.userObjects{idx}.name   = '_tmp_';            
-            Interaction.PromptName(app);
+            app.userObjects{idx}.renaming   = true;
+            Interaction.PromptName(app, true);
             
         end
         

@@ -239,10 +239,10 @@ classdef Graphics < handle
             end
 
 
-            col = app.colors_list(obj.ID,:)*255;
+            col = app.colors_list(obj.ID,:);
             CData  = cat(3, ones(size(imSlice)) * col(1),...
-                             ones(size(imSlice)) * col(1),...
-                             ones(size(imSlice)) * col(1));
+                             ones(size(imSlice)) * col(2),...
+                             ones(size(imSlice)) * col(3));
             set(app.UORenderer{axID}{obj.ID},'CData', CData);
             set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.8);
             
@@ -446,18 +446,30 @@ classdef Graphics < handle
             end
         end
 
-        function DrawTestPointInAxis(app, axID, ijk)
-        %Plot app.roiPoints
-            the_axis    = app.GetAxis(axID);            
-        
+        function DrawCrosshairInAxis(app, axID, ijk, sz)
+            %First, remove the previous drawing
+            delete(app.crosshairRenderer{axID});
+            
+            the_axis    = app.GetAxis(axID);    
             hold(the_axis,'on');
-            h2  = plot(the_axis, ijk(1), ijk(2), '*r',          ...
+
+            %Draw two lines
+            l1  = plot(the_axis, ...
+                [1, sz(1)], [ijk(2), ijk(2)], '--c',...
                 'HitTest',                              ...
                 'on',                                   ...
                 'ButtonDownFcn',                        ...
                 @app.MouseClickedInImage);
+        
+            l2  = plot(the_axis, ...
+                [ijk(1), ijk(1)], [1, sz(2)], '--c',...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage);
+
             hold(the_axis,'off');
-            app.tempDrawings = [app.tempDrawings; h2];
+            app.crosshairRenderer{axID} = [l1, l2];
         end
         
 
