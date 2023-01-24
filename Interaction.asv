@@ -149,8 +149,6 @@ classdef Interaction < handle
             
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
-            disp([hitx, hity])
-            disp(NiftiUtils.hitToXYZ(ap))
                            
             if(app.drawing.mode == 1)
                 % Here we are manually drawing an ROI
@@ -212,6 +210,9 @@ classdef Interaction < handle
             %Dragging the crosshair
             if app.buttonDown
                 app.buttonDown = false;
+                %TODO: don't hardcode axes
+                Graphics.DrawCrosshairInAxis(app, 1, [], [])
+                Graphics.DrawCrosshairInAxis(app, 2, [], [])
                 return
             end
         

@@ -24,6 +24,7 @@ classdef ROI < handle
             elseif(view == 1)
                 app.points{Cv} = [app.points{Cv}; slice hitx hity];
             end
+
         end
         
         function ValidateDrawingPoints(app, ROIName, newROI)
@@ -88,6 +89,39 @@ classdef ROI < handle
             elseif type ~= 1
                 return
             end
+
+            %Get world-coordinate points
+            tm  = app.transMatPerImage{imID};
+            ijk = [points, ones(length(points),1)];
+            xyz = tm * ijk';
+            worldCoords = xyz(1:3, :)';
+
+            %find relative viewing axis
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+            slice       = app.slicePerImage{imID}{viewAxis};
+
+            %Get xref and yref, limits of the image in world-coordinates
+            [xref, yref]    = NiftiUtils.GetSliceBoundary(...
+                app, app.current_view, view, slice);
+
+            worldCoords(:,view) = [];
+            xi              = worldCoords(:,1);
+            yi              = worldCoords(:,2);
+
+            maskSz          = size(app.data{imID}.img);
+            maskSz(view)    = [];
+            maskSlc         = zeros(maskSz(1), maskSz(2));
+
+            maskSlc         = roipoly(xref, yref, maskSlc, xi, yi);
+            mask            = ROI.AddSliceToMask(...
+                mask, maskSlc, view, slice);
+
+            return
+
             
             points  = round(points);
             [view, ~]   = ROI.GetViewAndSlice(points);                        
@@ -97,6 +131,7 @@ classdef ROI < handle
             %todo: Index in position 2 exceeds array bounds.
             for ii = idx'
                 tmpPoints   = points( points(:, view) == ii,:);
+                tmpPoints(:,view) = [];
                 maskDim     = size(mask);
                 maskDim(view) = [];
                 maskSlc = ones(maskDim);
@@ -117,8 +152,7 @@ classdef ROI < handle
 
         function points = ValidatePoints(app, points)
         %Makes sure that all points are valid.
-        
-        %TODO: Index in position 2 exceeds array bounds.
+       
             sz  = size(...
                 app.data{app.imIdx}.img(:,:,:,...
                 app.d4PerImage(app.imIdx)));

@@ -188,6 +188,7 @@ classdef Interaction < handle
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
                     GUI.UOContextMenu(app, id, C) 
+                    return
                 end
             else
                 %If not doing anything else, move the cursor and other
@@ -210,6 +211,9 @@ classdef Interaction < handle
             %Dragging the crosshair
             if app.buttonDown
                 app.buttonDown = false;
+                %TODO: don't hardcode axes
+                Graphics.DrawCrosshairInAxis(app, 1, [], [])
+                Graphics.DrawCrosshairInAxis(app, 2, [], [])
                 return
             end
         
@@ -705,11 +709,10 @@ classdef Interaction < handle
             drawnow;
             
             imID    = app.imagePerAxis(app.current_view);
-        
-            ROIPrompt(app, ...
-                Objects.GetAllUOsForImage(app, imID), ...
-                getpref('rmsstudio', 'ROILst'),...
-                renameQ);
+
+            objs    = Objects.GetAllUOsForImage(app, imID);
+            nameLst = getpref('rmsstudio', 'ROILst');
+            app.ROIPrompt.Show(objs, nameLst, renameQ)
          
             return
         end

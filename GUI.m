@@ -251,6 +251,41 @@ classdef GUI < handle
            axID = -1;
            return
         end
+
+        function axID = FindAxisAtPosition(app, position)
+           %Returns the axisID of the axis currently under the cursor.
+           
+           xpos     = position(1);
+           ypos     = position(2);
+           
+           %Go over all axes
+           %UIAxes 1
+           pos  = app.UIAxes1.Position;
+           xMin     = pos(1);
+           xMax     = pos(1) + pos(3);
+           yMin     = pos(2);
+           yMax     = pos(2) + pos(4);
+           if xMin < xpos && xpos < xMax && yMin < ypos && ypos < yMax
+               axID = 1;
+               return
+           end
+           
+           %UIAxes 2
+           pos  = app.UIAxes2.Position;
+           xMin     = pos(1);
+           xMax     = pos(1) + pos(3);
+           yMin     = pos(2);
+           yMax     = pos(2) + pos(4);
+           if xMin < xpos && xpos < xMax && yMin < ypos && ypos < yMax
+               axID = 2;
+               return
+           end
+            
+           axID = -1;
+           return
+        end
+
+
         
         function ZoomAxis(app, axID, scrollCount, event)
             %Zooms the image, additionally translates the current viewpoint
@@ -277,8 +312,8 @@ classdef GUI < handle
             yPos    = hit(2);
 
             %Next, calculate xCenter and yCenter
-            xCenter         = xPos + 0.5 * zoomFactor * (deltaX - 2*xPos);
-            yCenter         = yPos + 0.5 * zoomFactor * (deltaY - 2*yPos);
+            xCenter         = xPos;% + 0.5 * zoomFactor * (deltaX - 2*xPos);
+            yCenter         = yPos;% + 0.5 * zoomFactor * (deltaY - 2*yPos);
 
             
             %find and correct the zPos for centering
@@ -564,7 +599,7 @@ classdef GUI < handle
             
             %Clear items
             app.UOBox.Items     = {};
-            app.UOBox.ItemsData = [];
+            app.UOBox.ItemsData = [];   
             %Add ROIs
             counter     = 1;
             for idx     = 1:length(app.userObjects)
@@ -701,39 +736,27 @@ classdef GUI < handle
         
         function MouseHover(app, hit)
             %Called by Interaction.MouseDraggedInImage. Checks which UO is
-            %underneath the cursor (if any). Toggles the UOInfoBox of the
-            %respective UO.
+            %underneath the cursor (if any). Displays UO info in UOlabel.
             %Additionally displays the value of the image underneath the
             %cursor in the HoverLabel
 
+            if isempty(app.data)
+                return
+            end
+
             GUI.DisplayHoverValue(app, hit)
             UOId = Objects.FindUOUnderMouse(app, hit);
-
+            
             if app.buttonDown
                 GUI.MoveCrosshair(app, hit)
             end
 
             if UOId == -1
-                if app.prevUOTextShown ~= 0
-                    Objects.ToggleVisibleUOInfoBox(app,...
-                        app.prevUOTextShown)
-                    app.prevUOTextShown = 0;
-                end
+                app.UOHoverLabel.Text = "";
                 return
             end
 
-            if app.userObjects{...
-                    Objects.findUOIndex(app, UOId)}.boxVisible
-                return
-            end
-
-            if app.prevUOTextShown ~= UOId
-                Objects.ToggleVisibleUOInfoBox(app,...
-                        app.prevUOTextShown)
-            end
-
-            Objects.ToggleVisibleUOInfoBox(app, UOId)
-            app.prevUOTextShown = UOId;
+            GUI.DisplayUOText(app, UOId)
         end
 
         function DisplayHoverValue(app, hit)
@@ -772,6 +795,28 @@ classdef GUI < handle
             app.HoverLabel.Text = num2str(res);
 
 
+        end
+
+        function DisplayUOText(app, UOId)
+
+            idx     = Objects.findUOIndex(app, UOId);
+            obj     = app.userObjects{idx};
+
+            if isempty(obj.prop)
+                obj.prop.volume = 0;
+                obj.prop.mean   = 0;
+            end
+
+            Name     = obj.name;
+            Volume   = obj.prop.volume;
+            MeanSig  = obj.prop.mean;
+
+            String   = strcat(Name,                 ...
+                        '\tVolume:%.2f mm^3 \tMean: %.2f');
+            String   = sprintf(String,              ...               
+                               Volume,              ...
+                               MeanSig);
+            app.UOHoverLabel.Text = String;
         end
 
         %% Crosshair
@@ -884,6 +929,14 @@ classdef GUI < handle
         
         function UOContextMenu(app, id, pos)
             %Creates a contextmenu where the user clicked
+            %Input: 
+            %   app - the app
+            %   id  - id of the userobject
+            %   pos - cursor position
+
+            %Find axis
+            axID    = GUI.FindAxisAtPosition(app, pos);
+            axis    = app.GetAxis(axID);
             
             cm = uicontextmenu(app.UIFigure);
             
@@ -891,15 +944,22 @@ classdef GUI < handle
             m2 = uimenu(cm,'Text','Rename');
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
+
+            drawnow     %Necessary to display the cm
             
             m1.MenuSelectedFcn = ...
                 {@Objects.DeleteUO, app, id};
-            
-            set(app.UIFigure.ContextMenu,'uicontextmenu',cm);
-            
-            open(cm, pos(1), pos(2));
-            disp('test')
-           
+            m2.MenuSelectedFcn = ...
+                {@Objects.RenameUO, app, id};
+            m3.MenuSelectedFcn = ...
+                {@Objects.CopyUOTo, app, id};
+            m4.MenuSelectedFcn = ...
+                {@Objects.ToggleVisibleUO, app, id};
+
+            cm.Position   = [pos(1), pos(2)];
+            cm.Visible    = 'on';
+
+            axis.ContextMenu = cm;           
            return           
         end
         %% UI text elements

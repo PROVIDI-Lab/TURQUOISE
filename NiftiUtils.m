@@ -87,6 +87,34 @@ classdef NiftiUtils < handle
             ref = r0 + M*dim / 2;
         end
 
+        function [xref, yref] = GetSliceBoundary(app, axID, view, slice)
+
+            imID        = app.imagePerAxis(axID);
+            tm          = app.transMatPerImage{imID};
+            sz          = size(app.data{imID}.img);
+
+            if view == 1
+                minRef = [slice, 0, 0, 1];
+                maxRef = [slice, sz(2), sz(3), 1];
+            elseif view == 2
+                minRef = [0, slice, 0, 1];
+                maxRef = [sz(1), slice, sz(3), 1];
+            else
+                minRef = [0, 0, slice, 1];
+                maxRef = [sz(1), sz(2), slice, 1];
+            end
+
+            minRef = tm * minRef';
+            maxRef = tm * maxRef';
+
+            minRef(view) = [];
+            maxRef(view) = [];
+
+            xref = [minRef(1), maxRef(1)];
+            yref = [minRef(2), maxRef(2)];
+
+        end
+
         function [x,y,z] = GetMeshgridFromHeader(hdr)
             %Calculates a grid for the image in real world coordinates. To
             %be used in interpolation

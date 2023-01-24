@@ -4,10 +4,10 @@ classdef UserObj < matlab.mixin.SetGet
        imageIdx,                %Image on which obj is drawn
        type,                    %ROI = 1, measurement = 2, ...
        additive     = true,     %Additive or subtractive ROI
-       graphics,                %Graphics of the object
+%        graphics,                %Graphics of the object
        changed      = true,     %Stores whether to redraw
        visible      = true,     %Stores whether to display
-       boxVisible   = false,    %Stores whether to display infobox
+%        boxVisible   = false,    %Stores whether to display infobox
        data,                    %Seg, other
        points,                  %ROIPoints, drawing points
        worldCoords,             %ROIPoints, stored as world coordinates
@@ -76,30 +76,30 @@ classdef UserObj < matlab.mixin.SetGet
             
             try
                 obj.visible              = visible;
-                obj.graphics{1}.Visible  = visible; 
+%                 obj.graphics{1}.Visible  = visible; 
             catch
                 return
             end
             
         end
         
-        function setBoxVisible(obj, boxVisible)
-            if isempty(obj.graphics)
-                return
-            end
-            
-            for i = 1:length(obj.graphics)
-                %if text..
-                if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
-                    obj.boxVisible           = boxVisible;
-                    if ~isvalid(obj.graphics{i})
-                        continue
-                    end
-                    obj.graphics{i}.Visible  = boxVisible; 
-                end
-            end
-            
-        end
+%         function setBoxVisible(obj, boxVisible)
+%             if isempty(obj.graphics)
+%                 return
+%             end
+%             
+%             for i = 1:length(obj.graphics)
+%                 %if text..
+%                 if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
+%                     obj.boxVisible           = boxVisible;
+%                     if ~isvalid(obj.graphics{i})
+%                         continue
+%                     end
+%                     obj.graphics{i}.Visible  = boxVisible; 
+%                 end
+%             end
+%             
+%         end
         
         
         

@@ -77,6 +77,7 @@ classdef Objects < handle
             obj.points  = [obj.points; app.points{Cv}];
             obj.data    = obj.data + ROI.PointsToMask(...
                 app, app.points{Cv}, app.imagePerAxis(Cv), 1);
+            obj.data(obj.data > 1) = 1;
             obj.makeProperties(app);
             
             GUI.UpdateUOBox(app);
@@ -105,7 +106,7 @@ classdef Objects < handle
             names = {};
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if obj.imageIdx ~= index 
+                if obj.imageIdx ~= index || obj.deleted
                     continue
                 end
                 names{end+1} = obj.name;
@@ -231,7 +232,6 @@ classdef Objects < handle
             
             %turn contour back on
             app.userObjects{idx}.setVisible(true)
-%             delete('app.userObjects{idx}.graphics')
             
             %Remove polygon
             delete(polygon)
@@ -394,7 +394,6 @@ classdef Objects < handle
             
             %delete / change properties
             app.userObjects{idx}.deleted = true;
-            app.userObjects{idx}.graphics = [];
             app.userObjects{idx}.data = [];
             app.userObjects{idx}.points = [];
             app.userObjects{idx}.prop = [];
@@ -405,11 +404,17 @@ classdef Objects < handle
         end
         
         
-        function RenameUO(app)
+        function RenameUO(app, varargin)
             %When the renamemenu in he UOBox conextmenu is called.
-            idx     = app.UOBox.Value;
-            if isempty(idx)
-                return
+
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
             end
             idx = Objects.findUOIndex(app, idx);
             if idx == -1
@@ -421,11 +426,16 @@ classdef Objects < handle
             
         end
         
-        function CopyUOTo(app)
-            %When the copytoMenu in the UOBox contextmenu is called.
-            idx         = app.UOBox.Value;
-            if isempty(idx)
-                return
+        function CopyUOTo(app, varargin)
+            %When the copytoMenu in a contextmenu is called.
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
             end
             idx = Objects.findUOIndex(app, idx);
             if idx == -1
@@ -531,70 +541,46 @@ classdef Objects < handle
             visible = app.userObjects{idx}.visible;
             app.userObjects{idx}.setVisible(~visible)
         end
-        
-        function ToggleVisibleUOInfoBox(app, varargin)
-            %Toggles the visible status of the infobox of the object
-            
-            if nargin == 1
-                idx     = app.UOBox.Value;
-            else
-                idx   = varargin{1};
-            end
-            
-            idx = Objects.findUOIndex(app, idx);
-            
-            if idx == -1    %UO has been deleted since
-                return
-            end
-            
-            boxVisible = app.userObjects{idx}.boxVisible;
-            app.userObjects{idx}.setBoxVisible(~boxVisible)             
-        end        
-        
-%         function UOId = FindUOClicked(app, hit)
-%            %Called when the user right-clicks a UO. Tries to determine
-%            %which is clicked.
-%            
-%            %TODO: add line
-%            if isa(hit.Source, 'matlab.graphics.primitive.Text')
-%                UOId = Objects.FindTextUO(app, hit);
-%            elseif isa(hit.Source, 'matlab.graphics.chart.primitive.Contour')
-%                UOId = Objects.FindContourUO(app, hit);
-%            else
-%                UOId = -1;
-%            end
-%         end
-        
+                
         function UOId = FindUOUnderMouse(app, hit, varargin)
         %Checks all UOs to see which of them matches with the current
         %cursor position, view, slice etc. Returns the corresponding ID.
         
             UOId = -1;
             
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
+            hity = round(hit.IntersectionPoint(1));
+            hitx = round(hit.IntersectionPoint(2));
             
             if isnan(hitx) || isnan(hity)
                 return
             end
-            
-            if nargin == 2
+
+            if nargin == 2  %Find UIaxes
                 x   = round(hit.Point(1));
                 if x <= hit.Source.Position(3)/2
-                    view = 1;
+                    axID = 1;
                 else
-                    view = 2;
+                    axID = 2;
                 end
             else
-                view = varargin{1};
+                axID = varargin{1};
             end
             
-            imID    = app.imagePerAxis(view);
-            try
-                slice   = app.slicePerImage{imID}{view};
-            catch
-                return
-            end
+
+            xyz     = NiftiUtils.hitToXYZ(app, hitx, hity, axID);
+            imID    = app.imagePerAxis(axID);
+            tm      = app.transMatPerImage{imID};
+            ijk     = NiftiUtils.xyz2ijk(tm, xyz);
+
+            %Remove relative viewing axis
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+            slice       = ijk(view);
+            ijk(view)   = [];
+
              
             %Go over all UOs in reverse order
             for i = flip(1:length(app.userObjects))
@@ -603,19 +589,31 @@ classdef Objects < handle
                 if obj.imageIdx ~= imID
                     continue
                 end
-                if ~obj.visible
+                if ~obj.visible || obj.deleted
                     continue
                 end
                 
                 if obj.type == 1 || obj.type == 3 || obj.type == 4
+                    
+                    if(view == 3)
+                        maskSlc = obj.data(:,:,slice);
+                    elseif(view == 2)
+                        maskSlc = obj.data(:,slice,:);
+                        maskSlc = permute(squeeze(maskSlc),[2,1]);
+                    elseif(view == 1)
+                        maskSlc = obj.data(slice,:,:);
+                        maskSlc = permute(squeeze(maskSlc),[2,1]);
+                    end
+
                     try
-                        if obj.data(hity,hitx,slice)
-                          UOId = obj.ID; 
-                          return
+                        if maskSlc(ijk(1), ijk(2))
+                            UOId = obj.ID; 
+                            return
                         end
                     catch
-                        return
+                        continue
                     end
+
                 elseif obj.type == 2
                     
                     d = MathUtils.CalcDistancePointLine([hitx, hity], ...
@@ -630,59 +628,6 @@ classdef Objects < handle
             end
             
         end
-        
-%         function UOId = FindTextUO(app, hit)
-%             %Finds a userobject with a text graphics object.
-%             UOId = -1;
-%             name = hit.Source.String{1};
-%             
-%             for i = 1:length(app.userObjects)
-%                 obj = app.userObjects{i};               
-%                 if strcmp(obj.name, name)
-%                    UOId = obj.ID; 
-%                 end
-%             end            
-%         end
-%         
-%         function UOId = FindContourUO(app, hit)
-%             %Finds a userobject with a contour graphics object.
-%             UOId = -1;
-%             contour = hit.Source.ContourMatrix;
-%             
-%             
-%             %For each point in obj.points, check if it exists in the 
-%             %contourmatrix. if so, that's the object. 
-%             for i = 1:length(app.userObjects)
-%                 obj = app.userObjects{i};   
-%                 
-%                 %if the obj doesn't have the right imageID, skip it
-%                 Cv      = app.current_view;
-%                 imID    = app.imagePerAxis(Cv);
-%                 if obj.imageIdx ~= imID
-%                     continue
-%                 end
-%                 
-%                 %Compare points
-%                 points = obj.points;
-%                 hits = 0;
-%                 for pointId = 1:size(points, 1)
-%                     x = points(pointId, 1);
-%                     y = points(pointId, 2);
-%                     res = ...
-%                         sum(sum(contour == x, 1) .* sum(contour == y, 1));
-%                     if res == 0
-%                         break
-%                     else
-%                         hits = hits + 1;
-%                     end
-%                 end
-%                 
-%                 if hits == size(points, 1)
-%                     UOId = obj.ID;
-%                 end                
-%             end 
-%         end
-%         
         
     end
 end

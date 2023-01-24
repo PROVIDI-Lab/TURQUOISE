@@ -138,6 +138,22 @@ classdef Graphics < handle
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
 
+%                 imID            = app.imagePerAxis(axID);
+%                 viewAxis        = app.viewPerImage(imID); 
+%                 k               = app.slicePerImage{imID}{viewAxis};
+%                 if viewAxis     == 1
+%                     imSlice2 = app.data{imID}.img(k,:,:,1);
+%                 elseif viewAxis == 2
+%                     imSlice2 = app.data{imID}.img(:,k,:,1);
+%                 else
+%                     imSlice2 = app.data{imID}.img(:,:,k,1);
+%                 end
+% 
+%                 imSlice2 = squeeze(imSlice2);
+%                 imSlice2 = rot90(imSlice2);
+% 
+%                 imshowpair(imSlice, imSlice2, 'montage')
+
                 set(app.imageRenderer{axID},'CData',imSlice);
             end          
         end
@@ -199,21 +215,23 @@ classdef Graphics < handle
             or          = NiftiUtils.FindOrientation(tm);
             imageOr     = strfind('sca', or(5)); 
 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
+
+            %Basically, sag, cor, ax, is a fucked up system. 
+            %Not only does the viewing axis change, but dimensions are
+            %sometimes mirrored
+            %This should probably be done in GetDisplayGrid
+            %TODO, check for images that aren't axial to start with
+            if view == 2            %really fucked way to do it
+                imData  = flip(imData, 1);
+            end
+
             %Create meshgrid for view
-            try
-                [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
-            catch err
-                disp('Unexpected interpolation error');
-            end
-
-%             NiftiUtils.showGrid(app, axID, xq, yq, zq)
-
-            try
-                slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
-            catch err
-                disp('Unexpected interpolation error');
-            end
-%             imshow(slice,[])
+            [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+            %interpolate slice
+            slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            
             if(viewAxis ~= imageOr)
                 slice = rot90(slice);
             end
@@ -224,19 +242,9 @@ classdef Graphics < handle
         function DrawROIInAxis(app, axID, obj)          
         %This draws the countour of a visible segmentation stored in obj.
         %TODO: split function
-        
-            the_axis    = app.GetAxis(axID);
-            imID        = app.imagePerAxis(axID);
-            img         = obj.data;
-            view        = app.viewPerImage(imID);
-            slice       = app.slicePerImage{imID}{view};
-            if(view == 3)
-                imSlice = img(:,:,slice);
-            elseif(view == 2)
-                imSlice = squeeze(img(:,slice,:));
-            elseif(view == 1)
-                imSlice = squeeze(img(slice,:,:));
-            end
+
+            %TODO: interpolate this in the same manner as the slice
+            imSlice = Graphics.InterpolateROI(app, axID, obj);
 
 
             col = app.colors_list(obj.ID,:);
@@ -244,77 +252,56 @@ classdef Graphics < handle
                              ones(size(imSlice)) * col(2),...
                              ones(size(imSlice)) * col(3));
             set(app.UORenderer{axID}{obj.ID},'CData', CData);
-            set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.8);
-            
-            return
+            set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.4);
+        end
 
-%             imSlice = permute(imSlice,[2 1]);
-            if(~isempty(find(imSlice,1)))
-                hold(the_axis,'on');
-                %First draw the contours
-                if(app.should_show_selection == true)
-                    [~,c]   = contour(the_axis,             ...
-                    imSlice,                                     ...
-                    'r',                                    ...
-                    'HitTest',                              ...
-                    'on',                                   ...
-                    'ButtonDownFcn',                        ...
-                    @app.MouseClickedInImage);
-                else
-                    [~,c]   = contour(the_axis,             ...
-                    imSlice,                                     ...
-                    'LineWidth',                            ...
-                    2,                                      ...
-                    'Color',                                ...
-                    app.colors_list(obj.ID,:),              ...
-                    'HitTest',                              ...
-                    'on',                                   ...
-                    'ButtonDownFcn',                        ...
-                    @app.MouseClickedInImage);
+        function maskSlc = InterpolateROI(app, axID, obj)
+            imID        = app.imagePerAxis(axID);
 
-                    % Now draw the annotations
-                    
-                    if isempty(obj.prop)
-                        obj.prop.volume = 0;
-                        obj.prop.mean   = 0;
-                    end
-                    VS       = min(app.data{imID}.hdr.dime.pixdim(2:4));
-                    Area     = length(find(imSlice))*VS^2;
-                    Name     = obj.name;
-                    Volume   = obj.prop.volume;
-                    MeanSig  = obj.prop.mean;
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
 
-                    String   = strcat(Name,                 ...
-                                '\nArea: %.2fmm^2\nVolume:',...
-                                '%.2fmm^3\nMean: %.2f');
-                    String   = sprintf(String,              ...
-                                       Area,                ...
-                                       Volume,              ...
-                                       MeanSig);
+            slice       = app.slicePerImage{imID}{viewAxis};
 
-                    [~,~,MX,MY] =                         ...
-                            MathUtils.WeightedCenterOfROI(imSlice);
-
-                    %Add label to image
-                    t = text(the_axis,                      ...
-                        MY,                                 ...
-                        MX,                                 ...
-                        String,                             ...
-                        'Color',                            ...
-                        app.colors_list(obj.ID,:),          ...
-                        'HitTest',                          ...
-                        'on',                               ...
-                        'ButtonDownFcn',                    ...
-                        @app.MouseClickedInImage,           ...
-                        'BackgroundColor',                  ...
-                        'k',                                ...
-                        'Visible',                          ...
-                        'off');
-                    
-                end
-                obj.graphics    = {c,t};
-                hold(the_axis,'off');
+            if(view == 3)
+                maskSlc = obj.data(:,:,slice);
+            elseif(view == 2)
+%                 maskSlc = permute(obj.data, [2,1,3]);
+                data    = flip(obj.data,1);
+                maskSlc = squeeze(data(slice,:,:));
+                maskSlc = flip(maskSlc, 2);
+            elseif(view == 1)
+                maskSlc = squeeze(obj.data(:,slice,:));
+                maskSlc = flip(maskSlc, 2);
+%                 maskSlc = permute(squeeze(maskSlc),[2,1]);
+%                 maskSlc = flip(maskSlc,2);
             end
+
+            if(viewAxis ~= imageOr)
+                maskSlc = rot90(maskSlc);
+            end
+
+
+            %Test
+%             imData      = flip(imData, viewAxis);
+%             
+%             tm          = app.transMatPerImage{imID};
+%             or          = NiftiUtils.FindOrientation(tm);
+%             imageOr     = strfind('sca', or(5)); 
+% 
+%             %Create meshgrid for view
+%             [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
+%             %Interpolate slice
+%             slice = squeeze(interp3(single(imData), ...
+%                 xq,yq,zq, 'linear', 0));
+% 
+%             if(viewAxis ~= imageOr)
+%                 slice = rot90(slice);
+%             end
         end
         
         function DrawMeasurementInAxis(app, axID, obj) 
@@ -449,19 +436,31 @@ classdef Graphics < handle
         function DrawCrosshairInAxis(app, axID, ijk, sz)
             %First, remove the previous drawing
             delete(app.crosshairRenderer{axID});
+
+            if ~app.buttonDown
+                return
+            end
             
             the_axis    = app.GetAxis(axID);    
-
-            %Draw two lines, 
-        
             hold(the_axis,'on');
-            h2  = plot(the_axis, ijk(1), ijk(2), '*r',          ...
+
+            %Draw two lines
+            l1  = plot(the_axis, ...
+                [1, sz(1)], [ijk(2), ijk(2)], '--c',...
                 'HitTest',                              ...
                 'on',                                   ...
                 'ButtonDownFcn',                        ...
                 @app.MouseClickedInImage);
+        
+            l2  = plot(the_axis, ...
+                [ijk(1), ijk(1)], [1, sz(2)], '--c',...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage);
+
             hold(the_axis,'off');
-            app.crosshairRenderer{axID} = h2;
+            app.crosshairRenderer{axID} = [l1, l2];
         end
         
 
