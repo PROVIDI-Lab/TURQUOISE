@@ -155,16 +155,18 @@ classdef GUI < handle
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
 
-            GUI.UpdateAxisInfo(app)
             app.zoomToggle      = false;
             
             %Update all GUI elements
-            GUI.UpdateSliceSlider(app);
-            GUI.UpdateMinMaxSlider(app);
-            GUI.UpdateUOBox(app);
-            
-            Graphics.UpdateImage(app);
-            Graphics.UpdateAxisParams(app, app.current_view);
+            Graphics.ResetTextRenderer(app)
+            GUI.UpdateSliceSlider(app)
+            GUI.UpdateMinMaxSlider(app)
+            GUI.UpdateUOBox(app)
+            GUI.ChangeListBoxValue(app, index)
+            GUI.UpdateAxisButtons(app)
+                        
+            Graphics.UpdateImage(app)
+            Graphics.UpdateAxisParams(app, app.current_view)
             GUI.InitCrosshair(app)
         end
         
@@ -533,27 +535,27 @@ classdef GUI < handle
         
         %% Update buttons
                 
-        function UpdateAxisInfo(app)
-            %Updates the axisview buttons to display the correct one.
-            imID    = app.imagePerAxis(app.current_view);
-            
-            axInfo  = NiftiUtils.FindOrientation(...
-                app.transMatPerImage{imID});
-            
-            %Reset the values of the buttons
-            app.AxialButton.BackgroundColor         = [.96 .96 .96];
-            app.SagittalButton.BackgroundColor      = [.96 .96 .96];
-            app.CoronalButton.BackgroundColor       = [.96 .96 .96];
-            
-            if     axInfo(5) == 'c'
-                app.CoronalButton.BackgroundColor   = [.96 .96 0];
-            elseif axInfo(5) == 's'
-                app.SagittalButton.BackgroundColor  = [.96 .96 0];
-            else
-                app.AxialButton.BackgroundColor     = [.96 .96 0];
-            end
-
-        end
+%         function UpdateAxisInfo(app)
+%             %Updates the axisview buttons to display the correct one.
+%             imID    = app.imagePerAxis(app.current_view);
+%             
+%             axInfo  = NiftiUtils.FindOrientation(...
+%                 app.transMatPerImage{imID});
+%             
+%             %Reset the values of the buttons
+%             app.AxialButton.BackgroundColor         = [.96 .96 .96];
+%             app.SagittalButton.BackgroundColor      = [.96 .96 .96];
+%             app.CoronalButton.BackgroundColor       = [.96 .96 .96];
+%             
+%             if     axInfo(5) == 'c'
+%                 app.CoronalButton.BackgroundColor   = [.96 .96 0];
+%             elseif axInfo(5) == 's'
+%                 app.SagittalButton.BackgroundColor  = [.96 .96 0];
+%             else
+%                 app.AxialButton.BackgroundColor     = [.96 .96 0];
+%             end
+% 
+%         end
 
         function UpdateAxisButtons(app)
             %Updates the axisview buttons to display the correct one.
@@ -592,7 +594,15 @@ classdef GUI < handle
                
         end
         
-        %% UOBox
+        %% Listboxes
+
+        function ChangeListBoxValue(app, index)
+        %Changes the value of the AvailableImageListBox
+            
+            %Get the name of the file at the index
+            name = app.AvailableimagesListBox.Items{index};
+            app.AvailableimagesListBox.Value = name;
+        end
         
         function UpdateUOBox(app)
         %Updates the box with the different user-made ROIs.

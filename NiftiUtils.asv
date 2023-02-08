@@ -91,11 +91,27 @@ classdef NiftiUtils < handle
 
             imID        = app.imagePerAxis(axID);
             tm          = app.transMatPerImage{imID};
-            sz          = size(app.image{imID});
+            sz          = size(app.data{imID}.img);
 
-            
+            if view == 1
+                minRef = [slice, 0, 0, 1];
+                maxRef = [slice, sz(2), sz(3), 1];
+            elseif view == 2
+                minRef = [0, slice, 0, 1];
+                maxRef = [sz(1), slice, sz(3), 1];
+            else
+                minRef = [0, 0, slice, 1];
+                maxRef = [sz(1), sz(2), slice, 1];
+            end
 
+            minRef = tm * minRef';
+            maxRef = tm * maxRef';
 
+            minRef(view) = [];
+            maxRef(view) = [];
+
+            xref = [minRef(1), maxRef(1)];
+            yref = [minRef(2), maxRef(2)];
 
         end
 
@@ -297,6 +313,7 @@ classdef NiftiUtils < handle
             %(zooming & scrolling)
 
             params  = app.viewingParams;
+            disp([axID,])
             tm      = NiftiUtils.AdaptTransMat(...
                             tm, max(dim), ...
                             dim(1), dim(2), slice, ...
@@ -360,7 +377,6 @@ classdef NiftiUtils < handle
 %             tm(imageOr, 1:3) = tm(imageOr, 1:3) * scale;
 %             tm(viewIdx(2), 1:3) = tm(viewIdx(2), 1:3) * yScale;
             
-        
             %Zoom in image plane
             zoomFactor  = params(4);
             zoomTm      = tm(1:3,1:3);
@@ -376,7 +392,9 @@ classdef NiftiUtils < handle
             %center halfway the image (including view-axis slice).
             if all(params(5:7) ~= -1)
                 halfPoint = [params(5:7),1]';
-                halfPoint(view)     = slice;    %scroll through view axis
+
+                    %scroll through view axis
+                halfPoint(view)     = slice; 
             else
                 imAxes              = [1,2,3];
                 imAxes(view)        = [];

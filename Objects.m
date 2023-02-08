@@ -532,14 +532,24 @@ classdef Objects < handle
         %% visibility & interaction
         
         
-        function ToggleVisibleUO(app)
+        function ToggleVisibleUO(app, varargin)
             %Toggles the visible status of the object
+
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
+            end
             
-            idx     = app.UOBox.Value;
             idx = Objects.findUOIndex(app, idx);
             
             visible = app.userObjects{idx}.visible;
             app.userObjects{idx}.setVisible(~visible)
+            Graphics.UpdateUserObjects(app)
         end
                 
         function UOId = FindUOUnderMouse(app, hit, varargin)
@@ -589,7 +599,7 @@ classdef Objects < handle
                 if obj.imageIdx ~= imID
                     continue
                 end
-                if ~obj.visible || obj.deleted
+                if  obj.deleted
                     continue
                 end
                 

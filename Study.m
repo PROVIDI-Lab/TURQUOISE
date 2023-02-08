@@ -23,7 +23,7 @@ classdef Study < handle
             %Initiatalize study variables
             app.userObjects         = {};
             app.imagePerAxis        = [];
-            app.slicePerImage       = {};
+            app.slicePerImage       = cell(nImages, 1);
             app.viewPerImage        = ones(1,nImages);
             app.d4PerImage          = ones(1,nImages);
             app.points              = {[],[]};
@@ -139,31 +139,16 @@ classdef Study < handle
             %Switch to new image
             app.imIdx = index;
 
-            if index > length(app.slicePerImage)
-                app.slicePerImage{index} = {[],[],[]};
-                IOUtils.LoadNii(app, index)
-                IOUtils.LoadUserObjects(app, index)
-                app.imagePerAxis(app.current_view) = index;
-                GUI.DisplayNewImage(app, index)
-                return
-            end
-            
-            if isempty(app.slicePerImage{index}) %Image not loaded before
-                IOUtils.LoadNii(app, index)
-                IOUtils.LoadUserObjects(app, index)
-                app.imagePerAxis(app.current_view) = index;
-                GUI.DisplayNewImage(app, index)
-                return
-            end
-            
-            %Load the image, segmentations and measurement into the study,
-            %either from disk, or from the list.
+            %Image not loaded before
             if isempty(app.data{index})
-                GUI.DisableControlsStatus(app)
-                IOUtils.LoadNii(app, index)    
+                IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
-                GUI.RevertControlsStatus(app)
+                app.imagePerAxis(app.current_view) = index;
+                GUI.DisplayNewImage(app, index)
+                return
             end
+            
+            %Image loaded before
             app.imagePerAxis(app.current_view) = index;
             GUI.SwitchImage(app, index)
         end

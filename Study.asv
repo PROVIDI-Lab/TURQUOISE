@@ -8,6 +8,9 @@ classdef Study < handle
         function InitStudy(app)
             %Initialises all objects that are used when working with a
             %study. Called after PrepareStudy.
+
+            %First, remove everything from the screen
+            GUI.ResetViews(app);
             
             nImages     = length(app.studyNames);
             if nImages == 0
@@ -19,6 +22,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
+            app.imagePerAxis        = [];
             app.slicePerImage       = {};
             app.viewPerImage        = ones(1,nImages);
             app.d4PerImage          = ones(1,nImages);
@@ -26,7 +30,7 @@ classdef Study < handle
             app.data                = cell(nImages, 1);
             app.unsavedProgress     = false;
             app.zoomPerImage        = cell(nImages, 1);
-            app.viewingParams       = [1,1,1,1];
+            app.viewingParams       = [1,1,1,1, -1,-1,-1];
             
             if isempty(app.user_profile)
                 app.user_profile = '';
@@ -135,8 +139,9 @@ classdef Study < handle
             %Switch to new image
             app.imIdx = index;
 
+            %Image not loaded before
             if index > length(app.slicePerImage)
-                app.slicePerImage{index} = {};
+                app.slicePerImage{index} = {[],[],[]};
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
                 app.imagePerAxis(app.current_view) = index;
@@ -181,14 +186,19 @@ classdef Study < handle
             for i = 1:length(app.studyNames)
                 fn = app.studyNames{i};
 
-                hdr =  load_nii_hdr(fullfile(fp,[fn '.nii']));
+                if(exist(fullfile(fp,[fn '.nii']),'file') > 0)
+                    ext = '.nii';
+                elseif(exist(fullfile(fp,[fn '.nii.gz']),'file') > 0)
+                    ext = '.nii.gz';
+                else
+                    error('Cannot find the specified file.');
+                end
+                hdr =  load_untouch_header_only(fullfile(fp,[fn ext]));
                 tm  = NiftiUtils.getTransformationMatrix(hdr);
                 app.transMatPerImage{i} = tm;
                 or  = NiftiUtils.FindOrientation(tm);
                 app.viewPerImage(i) = ...
                     strfind('sca',or(5)); %1 = sag, 2=cor, 3=axial
-                disp(fn)
-                disp(viewPerImage(i))
 
                 refs(:,i) =...
                     NiftiUtils.GetRefHalfway(hdr);

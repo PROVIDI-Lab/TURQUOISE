@@ -49,11 +49,14 @@ classdef ROI < handle
             imID = app.imagePerAxis(Cv);
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if strcmp(obj.name, ROIName) && obj.imageIdx == imID
+                if strcmp(obj.name, ROIName) && ...
+                        obj.imageIdx == imID && ...
+                        obj.deleted ~= 1
                     Objects.AddToUO(app, obj.ID)
                     break
                 end
             end
+
             app.points{Cv} = [];
             
         end

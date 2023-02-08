@@ -137,72 +137,8 @@ classdef Graphics < handle
                 
                 %Get interpolated image slice at reference location
                 imSlice     = Graphics.InterpolateImSlice(app, axID);
-
-%                 imID            = app.imagePerAxis(axID);
-%                 viewAxis        = app.viewPerImage(imID); 
-%                 k               = app.slicePerImage{imID}{viewAxis};
-%                 if viewAxis     == 1
-%                     imSlice2 = app.data{imID}.img(k,:,:,1);
-%                 elseif viewAxis == 2
-%                     imSlice2 = app.data{imID}.img(:,k,:,1);
-%                 else
-%                     imSlice2 = app.data{imID}.img(:,:,k,1);
-%                 end
-% 
-%                 imSlice2 = squeeze(imSlice2);
-%                 imSlice2 = rot90(imSlice2);
-% 
-%                 imshowpair(imSlice, imSlice2, 'montage')
-
                 set(app.imageRenderer{axID},'CData',imSlice);
             end          
-        end
-
-        function UpdateAxisParams(app, axID)
-            %Update parameters of the axis, such as the limits, aspect
-            %ratios, contrast scaling.
-            %Adds letter showing the image orientation
-
-            %To be called when either a new image is loaded, or a new
-            %viewing axis is used.
-
-            the_axis    = app.GetAxis(axID);
-            imID        = app.imagePerAxis(axID);
-            view        = app.viewPerImage(imID);
-
-            the_axis.XLim = [0, size(app.imageRenderer{axID}.CData, 2)];
-            the_axis.YLim = [0, size(app.imageRenderer{axID}.CData, 1)];
-            pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
-            pixdim(view) = [];
-            daspect(the_axis,[flip(pixdim) 1])
-
-            %Adjust scaling
-            if isempty(app.cScalePerImage{imID})
-                app.cScalePerImage{imID} = [0 10];
-            end
-            try
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
-            catch
-                set(the_axis, 'CLim', [0,10]);
-            end
-
-            %Write axis info
-            delete(app.textRenderer{axID})
-            axisSizeX = the_axis.XLim(2);
-            axisSizeY = the_axis.YLim(2);
-            orr = NiftiUtils.FindOrientationWithAxis(...
-                app.transMatPerImage{imID}, view);
-            t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
-                'Color', 'Yellow', 'FontSize', 15);
-            t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
-                'Color', 'Yellow', 'FontSize', 15);
-            t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
-                'Color', 'Yellow', 'FontSize', 15);
-            t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
-                'Color', 'Yellow', 'FontSize', 15);
-
-            app.textRenderer{axID} = [t1, t2, t3, t4];
-
         end
         
         function slice = InterpolateImSlice(app, axID)
@@ -280,24 +216,6 @@ classdef Graphics < handle
             if(viewAxis ~= imageOr)
                 maskSlc = rot90(maskSlc);
             end
-
-
-            %Test
-%             imData      = flip(imData, viewAxis);
-%             
-%             tm          = app.transMatPerImage{imID};
-%             or          = NiftiUtils.FindOrientation(tm);
-%             imageOr     = strfind('sca', or(5)); 
-% 
-%             %Create meshgrid for view
-%             [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
-%             %Interpolate slice
-%             slice = squeeze(interp3(single(imData), ...
-%                 xq,yq,zq, 'linear', 0));
-% 
-%             if(viewAxis ~= imageOr)
-%                 slice = rot90(slice);
-%             end
         end
         
         function DrawMeasurementInAxis(app, axID, obj) 
@@ -506,7 +424,91 @@ classdef Graphics < handle
                     'r');
                 hold(app.UIAxes1,'off');
             end
-        end                                     
+        end      
+        
+        function ResetTextRenderer(app)
+            %Resets the AP/SI/LR labels to the default color
+
+            numAxes = 2;    %can be changed when dynamic axes are supported
+            for axID = 1:numAxes
+
+                the_axis    = app.GetAxis(axID);
+                imID        = app.imagePerAxis(axID);
+                view        = app.viewPerImage(imID);
+
+                %Write axis info
+                delete(app.textRenderer{axID})
+                axisSizeX = the_axis.XLim(2);
+                axisSizeY = the_axis.YLim(2);
+    
+                col = 'Yellow';
+                orr = NiftiUtils.FindOrientationWithAxis(...
+                    app.transMatPerImage{imID}, view);
+                t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
+                    'Color', col, 'FontSize', 15);
+                t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+                    'Color', col, 'FontSize', 15);
+                t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
+                    'Color', col, 'FontSize', 15);
+                t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+                    'Color', col, 'FontSize', 15);
+    
+                app.textRenderer{axID} = [t1, t2, t3, t4];
+            end
+        end
+
+        function UpdateAxisParams(app, axID)
+            %Update parameters of the axis, such as the limits, aspect
+            %ratios, contrast scaling.
+            %Adds letter showing the image orientation
+
+            %To be called when either a new image is loaded, or a new
+            %viewing axis is used.
+
+            the_axis    = app.GetAxis(axID);
+            imID        = app.imagePerAxis(axID);
+            view        = app.viewPerImage(imID);
+
+            the_axis.XLim = [0, size(app.imageRenderer{axID}.CData, 2)];
+            the_axis.YLim = [0, size(app.imageRenderer{axID}.CData, 1)];
+
+            pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
+            pixdim(view) = [];
+            daspect(the_axis,[flip(pixdim) 1])
+
+            %Adjust scaling
+            if isempty(app.cScalePerImage{imID})
+                app.cScalePerImage{imID} = [0 10];
+            end
+            try
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            catch
+                app.cScalePerImage{imID} = [0 10];
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            end
+
+            %Write axis info
+            delete(app.textRenderer{axID})
+            axisSizeX = the_axis.XLim(2);
+            axisSizeY = the_axis.YLim(2);
+
+            col = 'Green';
+            orr = NiftiUtils.FindOrientationWithAxis(...
+                app.transMatPerImage{imID}, view);
+            t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
+                'Color', col, 'FontSize', 15);
+            t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+                'Color', col, 'FontSize', 15);
+            t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
+                'Color', col, 'FontSize', 15);
+            t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+                'Color', col, 'FontSize', 15);
+
+            app.textRenderer{axID} = [t1, t2, t3, t4];
+
+        end
+
+
     end
     
 end

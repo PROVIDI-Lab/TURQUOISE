@@ -299,6 +299,7 @@ classdef NiftiUtils < handle
                            reshape(zq, 1, []);
                            ones(1,numel(xq))];
 
+            %Turn on for visualisation
 %             gridO       = tm * grid;
 %             xqO       = reshape(gridO(1,:), gridDim);
 %             yqO       = reshape(gridO(2,:), gridDim);
@@ -321,7 +322,7 @@ classdef NiftiUtils < handle
             %Transform grid to get sampling locations
             grid    = tm * grid;
 
-%             %visualize
+%             turn on for visualisation
 %             xq       = reshape(grid(1,:), gridDim);
 %             yq       = reshape(grid(2,:), gridDim);
 %             zq       = reshape(grid(3,:), gridDim);
@@ -366,17 +367,6 @@ classdef NiftiUtils < handle
         %   view    - index to go from ijk to desired projection
         %   params  - other offsets and scale factors to be used
 
-            %scale for off-axis views
-%             xScale      = resx / resGrid;
-%             yScale      = resy / resGrid;
-%             scale       = min(xScale, yScale);
-%             if scale ~= 1
-%                 scale = scale * 2;
-%             end
-%             tm(imageOr, 1:3) = tm(imageOr, 1:3) * scale;
-%             tm(viewIdx(2), 1:3) = tm(viewIdx(2), 1:3) * yScale;
-            
-        
             %Zoom in image plane
             zoomFactor  = params(4);
             zoomTm      = tm(1:3,1:3);
@@ -390,17 +380,12 @@ classdef NiftiUtils < handle
             %overlay centres & scroll
             %If ijk coordinates to center are provided, use those. If not,
             %center halfway the image (including view-axis slice).
-            if all(params(5:7) ~= -1)
-                halfPoint = [params(5:7),1]';
-                halfPoint(view)     = slice;    %scroll through view axis
-            else
-                imAxes              = [1,2,3];
-                imAxes(view)        = [];
-                halfPoint           = ones(4,1);
-%                 halfPoint([imAxes]) = [resGrid/2, resGrid/2];
-                halfPoint([imAxes]) = [resx/2, resy/2];
-                halfPoint(view)     = slice;    %scroll through view axis
-            end
+
+            imAxes              = [1,2,3];
+            imAxes(view)        = [];
+            halfPoint           = ones(4,1);
+            halfPoint([imAxes]) = [resx/2, resy/2];
+            halfPoint(view)     = slice;    %scroll through view axis
 
             halfPointDist       = tm * halfPoint;
             deltaCenter         = params(1:3)' - halfPointDist(1:3);
