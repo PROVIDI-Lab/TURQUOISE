@@ -241,6 +241,27 @@ classdef NiftiUtils < handle
         
         end
 
+        function viewDim = FindViewingDimension(app, imID)
+            %Returns the dimension needed for a certain view, given the
+            %image orientation and a certain projection.
+            %e.g. an axial image with a sagittal projection will have a
+            %viewDim of 1 (the first dimension of the 3D image shows the
+            %sagittal projection)
+            % You can find this from the viewing axis, and the image 
+            % orientation as follows:
+            %                           viewing axis
+            %                   sag         cor         ax
+            %           sag     k           i           j
+            %im Orr     cor     i           k           j
+            %           ax      i           j           k
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            viewDim     = or_Mat(imageOr, viewAxis);
+        end
+
         function [xq,yq,zq] = GetDisplayGrid(app, axID)
             %In order to find the display grid, we take the current
             %reference r_m and create a grid in the plane of the selected
@@ -248,15 +269,8 @@ classdef NiftiUtils < handle
             %The grid size (in world coordinates) is based on the zoom
             %level. The grid spacing is based on the size of the window.
 
-            %First, find which image dimension should be used. You can find
-            %this from the viewing axis, and the image orientation as
-            %follows:
-            %                           viewing axis
-            %                   sag         cor         ax
-            %im Orr     sag     k           i           j
-            %           cor     i           k           j
-            %           ax      i           j           k
-
+            
+            %find viewing dimension, as described in findViewingDimension
             imID        = app.imagePerAxis(axID);
             viewAxis    = app.viewPerImage(imID); 
             tm          = app.transMatPerImage{imID};
@@ -392,31 +406,6 @@ classdef NiftiUtils < handle
             tm(1:3,4)           = tm(1:3,4) + deltaCenter;
         end
 
-        function view = GetIJKView(app, varargin)
-            %returns the view of the image relative to the image
-            %coordinates.
-            %We can find this from the viewing axis, and the image 
-            % orientation as follows:
-            %                           viewing axis
-            %                   sag         cor         ax
-            %im Orr     sag     k           i           j
-            %           cor     i           k           j
-            %           ax      i           j           k
-
-            if nargin == 2
-                imID    = varargin{1};
-            else
-                imID    = app.imIdx;
-            end
-
-            viewAxis    = app.viewPerImage(imID); 
-            tm          = app.transMatPerImage{imID};
-            or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);    %final projection
-        end
-
         function showGrid(app, axID, xq, yq, zq)
 
             imID        = app.imagePerAxis(axID);
@@ -497,7 +486,7 @@ classdef NiftiUtils < handle
             imID            = app.imagePerAxis(axID);
             viewAxis        = app.viewPerImage(imID); 
             k               = app.slicePerImage{imID}{viewAxis};
-            ijkView         = NiftiUtils.GetIJKView(app, imID);
+            ijkView         = NiftiUtils.FindViewingDimension(app, imID);
 
             if ijkView == 1
                 ijk = [k, i, j];

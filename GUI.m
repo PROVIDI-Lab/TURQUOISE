@@ -95,7 +95,7 @@ classdef GUI < handle
             app.current_view        = 1;
 %             app.Align               = '';
             
-            GUI.UpdateAxisInfo(app);
+            GUI.UpdateAxisButtons(app);
             GUI.UpdateAlignButtons(app);
            
             set(app.imageRenderer{1},'CData', zeros(100));
@@ -122,7 +122,7 @@ classdef GUI < handle
                 return
             end
 
-            GUI.UpdateAxisInfo(app);
+            GUI.UpdateAxisButtons(app);
             app.zoomToggle              = false;
             
             uoIdx = Objects.FindUoForImage(app, index);
@@ -380,7 +380,7 @@ classdef GUI < handle
             slice   = app.slicePerImage{app.imIdx}{view};
             
             %Update SliceSlider
-            viewAxis    = NiftiUtils.GetIJKView(app);
+            viewAxis    = NiftiUtils.FindViewingDimension(app, app.imIdx);
             viewSize    = size(app.data{app.imIdx}.img, viewAxis);
             if(viewSize == 1) % workaround when only 1 slice is available
                 viewSize = 2;
@@ -894,14 +894,11 @@ classdef GUI < handle
             ijk         = NiftiUtils.xyz2ijk(tm, xyz);
 
             %Remove relative viewing axis
-            or          = NiftiUtils.FindOrientation(tm);
             viewAxis    = app.viewPerImage(imID);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-            slice       = ijk(view);
-            ijk(view)   = [];
-
+            viewDim     = NiftiUtils.FindViewingDimension(app, imID);
+            slice       = ijk(viewDim);
+            ijk(viewDim)   = [];
+            
             %Scroll if needed
             if ~isempty(app.slicePerImage{imID})
                 if slice ~= app.slicePerImage{imID}{viewAxis}
@@ -950,6 +947,7 @@ classdef GUI < handle
             
             cm = uicontextmenu(app.UIFigure);
             
+            m0 = uimenu(cm,'Text','Edit Points');
             m1 = uimenu(cm,'Text','Delete');
             m2 = uimenu(cm,'Text','Rename');
             m3 = uimenu(cm,'Text','Copy To');
@@ -957,6 +955,8 @@ classdef GUI < handle
 
             drawnow     %Necessary to display the cm
             
+            m0.MenuSelectedFcn = ...
+                {@Objects.EditUO, app, id};
             m1.MenuSelectedFcn = ...
                 {@Objects.DeleteUO, app, id};
             m2.MenuSelectedFcn = ...

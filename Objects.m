@@ -30,6 +30,11 @@ classdef Objects < handle
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
             end
+            if isempty(obj.viewDim)
+                obj.viewDim     = NiftiUtils.FindViewingDimension(...
+                    app, obj.imageIdx);
+            end
+
             
             %Calculate properties
             obj.makeProperties(app);
@@ -164,18 +169,19 @@ classdef Objects < handle
             slice       = modes(view);
         end
         
-        function EditUO(app)
+        function EditUO(app, varargin)
             %When the edit menu in he UOBox contextmenu is called.
-            idx     = app.UOBox.Value;
-            if isempty(idx)
-                return
+
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
             end
-            
-            idx = Objects.findUOIndex(app, idx);
-            if idx == -1
-                return
-            end
-            
+                        
             obj     = app.userObjects{idx};
             
             switch obj.type
@@ -190,14 +196,21 @@ classdef Objects < handle
         
         function EditPolygon(app, idx)
             obj     = app.userObjects{idx};
-            points  = obj.points(:,1:2);
+            points  = obj.points;
             
             %Hide contour
             app.userObjects{idx}.setVisible(false);
+            app.userObjects{idx}.editing = true;
+            Graphics.UpdateUserObjects(app);
+
+            %select only points from the current slice
+            slice = app.slicePerImage{obj.imageIdx}{obj.viewDim};
+            slcPoints = points(points(:,obj.viewDim) == slice, :);
+            slcPoints(:,obj.viewDim) = [];
             
             %Create polygon with contextmenu
             ax = app.GetAxis(app.current_view);
-            h = images.roi.Polygon(ax, 'Position', points);
+            h = images.roi.Polygon(ax, 'Position', slcPoints);
             cm = h.ContextMenu;
             cm.Children(1).Visible = 'off';
             %Add items to save the polygon & stop editing
@@ -211,26 +224,38 @@ classdef Objects < handle
         end
         
         function FinishEditingPolygon(~, ~, app, polygon)
-            idx     = app.UOBox.Value;
-            idx     = Objects.findUOIndex(app, idx);
+            
+            idx = -1;
+            for i = 1:length(app.userObjects)
+                if app.userObjects{i}.editing
+                    idx = i;
+                    break
+                end
+            end
+
             if idx == -1
                 return
             end
-            points  = polygon.Position;
+
+            newPoints  = polygon.Position;
             
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
-            slice   = ones(size(points(:,1)))*slice;
-            
-            points  = [points, slice];
-            app.userObjects{idx}.points = points;
+            view    = app.userObjects{idx}.viewDim;
+            slice   = app.slicePerImage{app.imIdx}{view};            
+            newPoints  = [newPoints, ones(size(newPoints(:,1)))*slice];
+            newPoints  = round(newPoints);
+
+            %first remove all the old points
+            sliceIdx = app.userObjects{idx}.points(:, view) == slice;
+            app.userObjects{idx}.points(sliceIdx, :) = [];
+            app.userObjects{idx}.points = ...
+                [app.userObjects{idx}.points; newPoints];
             app.userObjects{idx}.makeProperties(app);
             
-            %Create new contour
+            %Create new mask
             app.userObjects{idx}.createMask(app)
             app.userObjects{idx}.set('changed', true);
             
-            %turn contour back on
+            %turn mask back on
             app.userObjects{idx}.setVisible(true)
             
             %Remove polygon
@@ -361,8 +386,8 @@ classdef Objects < handle
             
             
             %Hide contour
-            app.userObjects{idx}.setVisible(true);
-            
+            app.userObjects{idx}.setVisible(true)
+            Graphics.UpdateUserObjects(app)
             delete(roi)
             
         end
@@ -394,6 +419,8 @@ classdef Objects < handle
             
             %delete / change properties
             app.userObjects{idx}.deleted = true;
+            app.userObjects{idx}.editing = false;
+            app.userObjects{idx}.renaming = true;
             app.userObjects{idx}.data = [];
             app.userObjects{idx}.points = [];
             app.userObjects{idx}.prop = [];
@@ -583,13 +610,9 @@ classdef Objects < handle
             ijk     = NiftiUtils.xyz2ijk(tm, xyz);
 
             %Remove relative viewing axis
-            or          = NiftiUtils.FindOrientation(tm);
-            viewAxis    = app.viewPerImage(imID);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-            slice       = ijk(view);
-            ijk(view)   = [];
+            viewDim         = NiftiUtils.FindViewingDimension(app, imID);
+            slice           = ijk(viewDim);
+            ijk(viewDim)    = [];
 
              
             %Go over all UOs in reverse order
@@ -605,12 +628,12 @@ classdef Objects < handle
                 
                 if obj.type == 1 || obj.type == 3 || obj.type == 4
                     
-                    if(view == 3)
+                    if(viewDim == 3)
                         maskSlc = obj.data(:,:,slice);
-                    elseif(view == 2)
+                    elseif(viewDim == 2)
                         maskSlc = obj.data(:,slice,:);
                         maskSlc = permute(squeeze(maskSlc),[2,1]);
-                    elseif(view == 1)
+                    elseif(viewDim == 1)
                         maskSlc = obj.data(slice,:,:);
                         maskSlc = permute(squeeze(maskSlc),[2,1]);
                     end

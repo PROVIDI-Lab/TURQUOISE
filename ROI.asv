@@ -49,11 +49,14 @@ classdef ROI < handle
             imID = app.imagePerAxis(Cv);
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if strcmp(obj.name, ROIName) && obj.imageIdx == imID
+                if strcmp(obj.name, ROIName) && ...
+                        obj.imageIdx == imID && ...
+                        obj.deleted ~= 1
                     Objects.AddToUO(app, obj.ID)
                     break
                 end
             end
+
             app.points{Cv} = [];
             
         end
@@ -69,9 +72,17 @@ classdef ROI < handle
                 "name", name)
         end        
         
-        function mask = PointsToMask(app, points, imID, type)
+        function mask = PointsToMask(app, points, imID, varargin)
         %Creates an array the size of the current image where everything in
         %the points is filled in.
+
+            if nargin == 5
+                type = varargin{1};
+                viewDim = varargin{2};
+            else
+                type = 1;
+                viewDim = 3;
+            end
         
             %preallocate the mask
             mask    = false(size(app.data{imID}.img));
@@ -102,22 +113,32 @@ classdef ROI < handle
             imageOr     = strfind('sca', or(5)); 
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);
-            slice       = app.slicePerImage{imID}{viewAxis};
 
-            %Get xref and yref, limits of the image in world-coordinates
-            [xref, yref]    = NiftiUtils.GetSliceBoundary(...
-                app, app.current_view, view, slice);
+            %iterate over slices in the view direction
+            slices = unique(points(:,viewDim));
+            for i = 1:length(slices)
+                slice = slices(i);
 
-            worldCoords(:,view) = [];
-            xi              = worldCoords(:,1);
-            yi              = worldCoords(:,2);
+                tmpWC
 
-            maskSz          = size(app.data{imID}.img);
-            maskSz(view)    = [];
-            maskSlc         = zeros(maskSz(1), maskSz(2));
+                %Get xref and yref, limits of the image in world-coordinates
+                [xref, yref]    = NiftiUtils.GetSliceBoundary(...
+                    app, app.current_view, view, slice);
+    
+                worldCoords(:,view) = [];
+                xi              = worldCoords(:,1);
+                yi              = worldCoords(:,2);
+    
+                maskSz          = size(app.data{imID}.img);
+                maskSz(view)    = [];
+                maskSlc         = zeros(maskSz(1), maskSz(2));
+    
+                maskSlc         = roipoly(xref, yref, maskSlc, xi, yi);
+                mask            = ROI.AddSliceToMask(...
+                    mask, maskSlc, view, slice);
+            end
 
-            maskSlc         = roipoly(xref, yref, maskSlc, xi, yi);
-            mask
+            return
 
             
             points  = round(points);

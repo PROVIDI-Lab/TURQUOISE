@@ -14,7 +14,7 @@ classdef UserObj < matlab.mixin.SetGet
        ID                       %Which userObj is this
        deleted      = false     %Stores if the userObj has been deleted
        renaming     = false     %Stores whether the object is to be renamed
-       editing      = false     %stores whether the object is being edited
+       editing      = false
        viewDim
     end
     
@@ -71,7 +71,13 @@ classdef UserObj < matlab.mixin.SetGet
         
         function setVisible(obj, visible, ~)
             
-             obj.visible              = visible;
+            try
+                obj.visible              = visible;
+%                 obj.graphics{1}.Visible  = visible; 
+            catch
+                return
+            end
+            
         end
         
 %         function setBoxVisible(obj, boxVisible)

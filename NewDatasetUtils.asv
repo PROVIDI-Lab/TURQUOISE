@@ -1,0 +1,228 @@
+classdef NewDatasetUtils < handle
+    methods (Static)
+
+        function status = ConvertDcm2Nii(app)
+
+            status = 1; %check if the operation continues well
+
+            %Look for dcm & nii files
+            msg = sprintf('Looking for Nifti files.');
+            app.dlg.Message = msg;
+            app.dlg.Value =  0 / 2;
+            niiFiles = dir(fullfile(app.fp, '**\*.nii'));
+            msg = sprintf('Looking for Dicom files.');
+            app.dlg.Message = msg;
+            app.dlg.Value =  1 / 2;
+            dcmFiles = dir(fullfile(app.fp, '**\*.dcm'));
+            app.dlg.Value =  2 / 2;
+
+            if isempty(niiFiles)
+                if isempty(dcmFiles)
+                    errordlg("No files found.", "File error")
+                    status = 0;
+                    return
+                end
+            else    %no need to convert
+                return
+            end
+
+            %Find dcm2nii location
+            dcm2nii = NewDatasetUtils.FindDcm2nii();
+
+            if isempty(dcm2nii)
+                errordlg("Invalid dcm2nii location.")
+                status = 0;
+                return
+            end
+
+            %Go over folders, run dcm2nii per folder
+            folders = dir(app.fp);
+            folders = folders(~ismember({folders.name},{'.','..'}));
+
+            for i = 1:length(folders)
+                folder = folders(i);
+
+                if ~folder.isdir
+                    continue
+                end
+
+                inpath = fullfile(folder.folder, folder.name);
+                outpath = fullfile(inpath, 'rmsstudio');
+                mkdir(outpath)
+
+                app.dlg.Value = i/length(folders);
+                app.dlg.Message = ['Converting dcms in folder '...,
+                    num2str(i) ' / ' num2str(length(folders))];
+                NewDatasetUtils.convertFolder(inpath, outpath, dcm2nii)
+            end
+
+        end
+
+        function convertFolder(inpath, outpath, dcm2nii)
+            cmnd = dcm2nii;
+            cmnd = [cmnd ' -f %d_%s ']; %add series & description
+            cmnd = [cmnd '-p n '];      %philips precise float
+
+            out = fullfile(outpath);
+            in = fullfile(inpath);
+
+            cmnd = [cmnd '-o "' out  '" "' in '"'];
+            system(cmnd);
+        end
+
+        function dcm2nii = FindDcm2nii()
+            %Find the path of dcm2nii
+            %Returns: path to dcm2nii
+
+            if exist('dcm2nii','dir')
+                dcm2nii = what('dcm2nii');
+
+                %if multiple versions exist, take the first one
+                if ~all(size(dcm2nii) == 1)
+                    dcm2nii = dcm2nii(1);
+                end
+
+                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');                
+                
+            else
+                dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
+                if dcm2niiDir == 0
+                    dcm2nii = '';
+                    return
+                end
+                addpath(dcm2niiDir)
+                dcm2nii     = fullfile(dcm2niiDir, 'dcm2niix');
+            end
+            
+        end
+
+
+        function status = ResliceNiis(app)
+
+            status = 1;
+
+            msg = sprintf('Looking for Nifti files.');
+            app.dlg.Message = msg;
+            app.dlg.Value =  0;
+            niiFiles = dir(fullfile(app.fp, '**\*.nii'));
+            should_reslice = [];
+
+            %Check each nii for reslicing
+            for i = 1:length(niiFiles)
+                app.dlg.Message = ['Checking Nifti header '...,
+                    num2str(i) ' / ' num2str(length(niiFiles))];
+                app.dlg.Value =  i / length(niiFiles);
+
+                fn = fullfile(niiFiles(i).folder, niiFiles(i).name);
+                hdr = load_nii_hdr(fn);
+                if NewDatasetUtils.checkNiiHdr(hdr)
+                    should_reslice{end+1} = fn;
+                end
+            end
+
+            %Reslice niis
+            for i = 1:length(should_reslice)
+                app.dlg.Message = ['Reslicing Nifti '...,
+                    num2str(i) ' / ' num2str(length(should_reslice))];
+                app.dlg.Value =  i / length(should_reslice);
+                
+                %Overwrite previous nii
+                reslice_nii(should_reslice{i}, should_reslice{i})
+            end
+
+        end
+
+        function shouldReslice = checkNiiHdr(hdr)
+            shouldReslice = 0;
+            tolerance = 0.1;
+            
+            if isequal(hdr.hist.sform_code,0)
+               error('User requires sform, sform not set in header');
+            end
+            
+            R = [hdr.hist.srow_x(1:3)
+               hdr.hist.srow_y(1:3)
+               hdr.hist.srow_z(1:3)];
+            
+            T = [hdr.hist.srow_x(4)
+               hdr.hist.srow_y(4)
+               hdr.hist.srow_z(4)];
+            
+            if det(R) == 0 | ~isequal(R(find(R)), sum(R)')
+                hdr.hist.old_affine = [ [R;[0 0 0]] [T;1] ];
+                R_sort = sort(abs(R(:)));
+                R( find( abs(R) < tolerance*min(R_sort(end-2:end)) ) ) = 0;
+                hdr.hist.new_affine = [ [R;[0 0 0]] [T;1] ];
+            
+                if det(R) == 0 | ~isequal(R(find(R)), sum(R)')
+                shouldReslice = 1;
+                end
+            end
+        end
+
+
+        function status = ComputeADCMaps(app)
+            status = 1;
+
+            msg = sprintf('Looking for DWI files.');
+            app.dlg.Message = msg;
+            app.dlg.Value =  0;
+
+            bvalFiles = dir(fullfile(app.fp, '**\*.bval'));
+
+            for i = 1:length(bvalFiles)
+                fn = fullfile(bvalFiles(i).folder, bvalFiles(i).name);
+                app.dlg.Message = ['Compuing ADC map '...,
+                    num2str(i) ' / ' num2str(length(bvalFiles))];
+                app.dlg.Value =  i / length(bvalFiles);
+                NewDataset.DWI2ADC(fn)
+            end
+
+        end
+
+        function DWI2ADC(fn)
+
+            bvals = sort(unique(load(bvalfn)));
+            X = [-bvals' ones(length(bvals),1)];
+
+            nii_fn = strrep(fn, '.bval', '.nii');
+            nii = load_nii(nii_fn);
+
+            [sx,sy,sz,st] = size(nii_data.img);
+
+            %init array
+            out_img = nii;
+            out_img.img = zeros(sx*sy*sz,1);
+            input_img = reshape(nii_data.img,sx*sy*sz,st);
+            
+            %Sort according to bvals
+            [~, I] = sort(mean(input_img), 'descend');
+            input_img = input_img(:,I);
+            
+            %Calculate ADC values based on solving the diffusion equation for
+            %ADC
+            for ij=1:sx*sy*sz
+               if(sum(input_img(ij,:)==0) > 0)
+                   continue
+               end
+               S = single(input_img(ij,:)');
+               p = X\log(S);
+               out_img_img(ij) = max(p(1),0);
+            end
+            out_img_1.hdr.dime.bitpix = 32;
+            out_img_1.hdr.dime.datatype = 16;
+            out_img_1.hdr.dime.scl_slope = 1;
+            out_img_1.hdr.dime.scl_inter = 0;
+            out_img_1.img = reshape(out_img_img,sx,sy,sz);
+            out_img_1.hdr.dime.dim(1) = 3;
+            out_img_1.hdr.dime.dim(5) = 1;
+
+            [folder, name, ext] = fileparts(nii_fn);
+            save_nii(fullfile(folder, ['ADC_' name ext]))
+
+        end
+
+
+
+    end
+end

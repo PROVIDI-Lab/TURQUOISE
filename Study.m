@@ -22,7 +22,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
-            app.imagePerAxis        = [];
+            app.imagePerAxis        = [1, 2];
             app.slicePerImage       = cell(nImages, 1);
             app.viewPerImage        = ones(1,nImages);
             app.d4PerImage          = ones(1,nImages);

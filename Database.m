@@ -12,7 +12,8 @@ classdef Database < handle
 
            elseif nargin == 2
                app.datasetPath      = varargin{1};
-               Interaction.PromptProfile(app)
+               app.user_profile     = '';
+%                Interaction.PromptProfile(app)
 
            else
                %Prompt for a database location

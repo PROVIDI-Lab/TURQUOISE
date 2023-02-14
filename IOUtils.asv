@@ -244,6 +244,8 @@ classdef IOUtils < handle
                 type = 1;
             end
 
+            if isfield(data,)
+
             Objects.AddNewUserObj(app,...
                     "type", type, ...
                     "data", ROI.PointsToMask(app, points, idx, type),...
@@ -344,15 +346,21 @@ classdef IOUtils < handle
             
             app.studyNames = cell(length(files),1);
             
-            files2keep = true(length(f))
+            files2keep = true(length(files),1);
 
             for file_id=1:length(files)
                 text        = files(file_id).name; 
+                hdr = load_untouch_header_only(fullfile(app.current_folder,text));
+                if(hdr.dime.dim(4) == 1) % Only 1 slice
+                    files2keep(file_id) = false;
+                end
+
                 text = erase(text, '.nii.gz');
                 app.studyNames{file_id} = erase(text, '.nii');
             end
             
-            app.AvailableimagesListBox.Items = app.studyNames;
+            app.AvailableimagesListBox.Items = app.studyNames(files2keep);
+            app.studyNames = app.studyNames(files2keep);
         end
         
         function convertToNii(app)

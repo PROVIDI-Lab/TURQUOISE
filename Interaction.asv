@@ -4,15 +4,7 @@ classdef Interaction < handle
     %this class. The functions here will then call functions in the other
     %classes to complete the user interaction.
     
-    methods (Static)         
-        function ChangeListBoxValue(app, index)
-        %Changes the value of the AvailableImageListBox
-            
-            %Get the name of the file at the index
-            name = app.AvailableimagesListBox.Items{index};
-            app.AvailableimagesListBox.Value = name;
-        end
-        
+    methods (Static)                 
         function ListBoxChanged(app)
             %Finds the new index of the AvailableImagesListBox and calls
             %functions to update the app acoordingly. 
@@ -94,24 +86,17 @@ classdef Interaction < handle
         %        caller_name - object that was pressed, used to manage
         %        calling this function from unknown sources (not
         %        pre-defined).
-        
+
             if isempty(app.studyNames)
                 return
             end
         
-            GUI.DisableAllButtonsAndActions(app);
-            
-            %Save current zoom. Used to store any changes made througout
-            %the standard UI instead of ctrl+scroll.
-%             GUI.StoreZoomLevel(app)
-            
+            GUI.DisableAllButtonsAndActions(app);           
             app.current_view    = new_view_idx;
-                       
+
             %Switch to the correct image
             index   = app.imagePerAxis(new_view_idx);
             Study.SwitchImage(app, index)
-            Interaction.ChangeListBoxValue(app, index)
-            GUI.UpdateUOBox(app)
         end
         
         function MouseClickedInImage(app,hit)
@@ -188,6 +173,7 @@ classdef Interaction < handle
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
                     GUI.UOContextMenu(app, id, C) 
+                    return
                 end
             else
                 %If not doing anything else, move the cursor and other
@@ -648,7 +634,7 @@ classdef Interaction < handle
         %Updates the slice to the new value, then updates the GUI
         %Input:
         %   value - new value for current_slice
-            slice = round(value);
+            slice   = round(value);
             imID    = app.imagePerAxis(axID);
             view    = app.viewPerImage(imID);
 
@@ -708,11 +694,10 @@ classdef Interaction < handle
             drawnow;
             
             imID    = app.imagePerAxis(app.current_view);
-        
-            ROIPrompt(app, ...
-                Objects.GetAllUOsForImage(app, imID), ...
-                getpref('rmsstudio', 'ROILst'),...
-                renameQ);
+
+            objs    = Objects.GetAllUOsForImage(app, imID);
+            nameLst = getpref('rmsstudio', 'ROILst');
+            app.ROIPrompt.Show(objs, nameLst, renameQ)
          
             return
         end
@@ -798,11 +783,11 @@ classdef Interaction < handle
             img = app.data{app.imIdx}.img;
             total_mask = permute(zeros(size(img)),[2,1,3]);
             
-            names = containers.Map;
+            z   = [];
             
             for i = 1:length(app.userObjects)
                uo = app.userObjects{i};
-               if uo.imageIdx ~= app.imIdx
+               if uo.imageIdx ~= app.imIdx || uo.deleted
                    continue
                end
 
@@ -821,8 +806,8 @@ classdef Interaction < handle
                    total_mask = total_mask - tmp_mask;
                end
                
-               [~,~,z] = ind2sub(size(uo.data), find(uo.data));
-               names(uo.name) = mode(z);
+               [~,~,zi] = ind2sub(size(uo.data), find(uo.data));
+               z(end+1) = unique(zi);
             end
 
             total_mask(total_mask > 1) = 1;
@@ -837,13 +822,6 @@ classdef Interaction < handle
 
             %apply mask tot ADC
             adc_list = Interaction.overlayMask(img, total_mask);
-            
-            z = cell2mat(names.values);
-            z = z(strcmp(names.keys, 'Whole Tumor'));
-            if isempty(z)
-                z = cell2mat(names.values);
-                z = z(strcmp(names.keys, 'Whole Tumor1'));
-            end            
             
             figure
             subplot(2,1,1)

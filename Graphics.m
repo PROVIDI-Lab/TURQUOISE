@@ -21,8 +21,13 @@ classdef Graphics < handle
             if length(app.slicePerImage) < app.imagePerAxis(app.current_view)
                 return
             end   
+   
             imID        = app.imagePerAxis(app.current_view);
             view        = app.viewPerImage(imID);
+            
+            if isempty(app.slicePerImage{imID})
+                return
+            end
             if app.slicePerImage{imID}{view} == -1
                 return
             end
@@ -150,9 +155,9 @@ classdef Graphics < handle
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
             imageOr     = strfind('sca', or(5)); 
-
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);
+
 
             %Basically, sag, cor, ax, is a fucked up system. 
             %Not only does the viewing axis change, but dimensions are
@@ -386,9 +391,9 @@ classdef Graphics < handle
             
             imID        = app.imagePerAxis(axID);
             view        = app.viewPerImage(imID);   %sag, cor, ax
-            ijkView     = NiftiUtils.GetIJKView(app);
+            viewDim     = NiftiUtils.FindViewingDimension(app, imID);
             slice       = app.slicePerImage{imID}{view};
-            maxSize     = size(app.data{imID}.img, ijkView);
+            maxSize     = size(app.data{imID}.img, viewDim);
             sliceString = strcat(num2str(slice), " / ", num2str(maxSize));
             nameString  = app.studyNames{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);
