@@ -16,6 +16,7 @@ classdef UserObj < matlab.mixin.SetGet
        renaming     = false     %Stores whether the object is to be renamed
        editing      = false     %stores whether the object is being edited
        viewDim
+       comment
     end
     
     methods        

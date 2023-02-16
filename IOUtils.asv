@@ -149,7 +149,8 @@ classdef IOUtils < handle
             
             %write new json to disk
             jsonObj     = struct(   'points', obj.points, ...
-                                    'type', obj.type);
+                                    'type', obj.type, ...
+                                    'viewDim', obj.viewDim);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');
@@ -167,9 +168,11 @@ classdef IOUtils < handle
             end
             
             if isa(app.user_profile, 'cell')
-                direc       = fullfile(app.current_folder, folder, app.user_profile{1});
+                direc       = fullfile(app.current_folder, ...
+                    folder, app.user_profile{1});
             else
-                direc       = fullfile(app.current_folder, folder, app.user_profile);
+                direc       = fullfile(app.current_folder, ...
+                    folder, app.user_profile);
             end
             
             %First find any segmentations
@@ -244,11 +247,16 @@ classdef IOUtils < handle
                 type = 1;
             end
 
-            if isfield(data,)
+            if isfield(data, 'viewDim')
+                viewDim = data.viewDim;
+            else
+                viewDim = 3;
+            end
 
+            mask = ROI.PointsToMask(app, points, idx, type, viewDim);
             Objects.AddNewUserObj(app,...
                     "type", type, ...
-                    "data", ROI.PointsToMask(app, points, idx, type),...
+                    "data", mask,...
                     "points", data.points,...
                     "name", name,...
                     "imageIdx", idx);

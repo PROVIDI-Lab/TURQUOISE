@@ -54,7 +54,7 @@ classdef Study < handle
                 if strcmp(item(1:2), '* ')
                         
                     IOUtils.LoadNii(app, i)
-                    app.imagePerAxis(length(imList) + 1) = i;
+                    app.imagePerAxis(loadCounter + 1) = i;
                     imList(end+1) = i;
                 end
             end
@@ -68,15 +68,14 @@ classdef Study < handle
                 if any(app.imagePerAxis == i)
                     continue
                 end
-                msg = sprintf('Loading image %d of 2', ...
-                    length(imList) + 1);
+                msg = sprintf('Loading image %d of 2', loadCounter + 1);
                 d.Message = msg;
-                d.Value = (length(imList) + 1)/ 2;
+                d.Value = (loadCounter + 1)/ 2;
                 
                 IOUtils.LoadNii(app, i)
                 IOUtils.LoadUserObjects(app, i);
-                app.imagePerAxis(length(imList) + 1) = i;
-                imList(end+1) = i;
+                app.imagePerAxis(loadCounter + 1) = i;
+                loadCounter = loadCounter + 1;
             end                
             
             %Initialize the window
@@ -85,9 +84,6 @@ classdef Study < handle
             Backups.CreateBackup(app)
             Study.ToggleUnsavedProgress(app, false)
             close(d);
-
-            IOUtils.LoadUserObjects(app, imList(1))
-            IOUtils.LoadUserObjects(app, imList(2))
             
         end
         

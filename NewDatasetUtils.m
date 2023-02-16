@@ -35,27 +35,42 @@ classdef NewDatasetUtils < handle
                 return
             end
 
-            %Go over folders, run dcm2nii per folder
-            folders = dir(app.fp);
-            folders = folders(~ismember({folders.name},{'.','..'}));
+            %Go over patient folders
+            pidFolders = dir(app.fp);
+            pidFolders = pidFolders(~ismember({pidFolders.name},{'.','..'}));
 
-            for i = 1:length(folders)
-                folder = folders(i);
 
-                if ~folder.isdir
+            for i = 1:length(pidFolders)
+                pFolder = pidFolders(i);
+
+                if ~pFolder.isdir
                     continue
                 end
 
-                inpath = fullfile(folder.folder, folder.name);
-                outpath = fullfile(inpath, 'rmsstudio');
-                mkdir(outpath)
+                %Find all session folders 
+                sessionFolders = dir(fullfile(...
+                    pFolder.folder, pFolder.name));
+                sessionFolders = sessionFolders(...
+                                ~ismember({sessionFolders.name},...
+                                {'.','..'}));
 
-                app.dlg.Value = i/length(folders);
-                app.dlg.Message = ['Converting dcms in folder '...,
-                    num2str(i) ' / ' num2str(length(folders))];
-                NewDatasetUtils.convertFolder(inpath, outpath, dcm2nii)
+                for j = 1:length(sessionFolders)
+                    sFolder = sessionFolders(j);
+                    inpath = fullfile(sFolder.folder, sFolder.name);
+                    outpath = fullfile(inpath, 'rmsstudio');
+                    mkdir(outpath)
+    
+                    app.dlg.Value = (i-1)/length(pidFolders) + ...
+                        j/length(sessionFolders)/length(pidFolders);
+                    msg = ['Converting Dicoms, folder '...,
+                        num2str(i) ' / ' num2str(length(pidFolders)),...
+                        ' - ' pFolder.name, ' - ', sFolder.name];
+                    app.dlg.Message = msg;
+                    NewDatasetUtils.convertFolder(inpath, outpath, dcm2nii)
+                end
             end
 
+            app.dlg.Value = 1;
         end
 
         function convertFolder(inpath, outpath, dcm2nii)

@@ -150,7 +150,8 @@ classdef IOUtils < handle
             %write new json to disk
             jsonObj     = struct(   'points', obj.points, ...
                                     'type', obj.type, ...
-                                    'viewDim', obj.viewDim);
+                                    'viewDim', obj.viewDim,...
+                                    'comment', obj.comment);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');
@@ -253,13 +254,20 @@ classdef IOUtils < handle
                 viewDim = 3;
             end
 
+            if isfield(data, 'comment')
+                comment = data.comment;
+            else
+                comment = '';
+            end
+
             mask = ROI.PointsToMask(app, points, idx, type, viewDim);
             Objects.AddNewUserObj(app,...
                     "type", type, ...
                     "data", mask,...
                     "points", data.points,...
                     "name", name,...
-                    "imageIdx", idx);
+                    "imageIdx", idx,...
+                    'comment', comment);
         end
         
         function LoadMeasurements(app, name, idx)

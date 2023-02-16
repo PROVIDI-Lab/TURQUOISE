@@ -697,7 +697,7 @@ classdef Interaction < handle
 
             objs    = Objects.GetAllUOsForImage(app, imID);
             nameLst = getpref('rmsstudio', 'ROILst');
-            app.ROIPrompt.Show(objs, nameLst, renameQ)
+            app.ROIPromptApp.Show(objs, nameLst, renameQ)
          
             return
         end

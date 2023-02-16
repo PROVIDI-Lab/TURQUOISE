@@ -35,27 +35,42 @@ classdef NewDatasetUtils < handle
                 return
             end
 
-            %Go over folders, run dcm2nii per folder
-            folders = dir(app.fp);
-            folders = folders(~ismember({folders.name},{'.','..'}));
+            %Go over patient folders
+            pidFolders = dir(app.fp);
+            pidFolders = pidFolders(~ismember({pidFolders.name},{'.','..'}));
 
-            for i = 1:length(folders)
-                folder = folders(i);
 
-                if ~folder.isdir
+            for i = 1:length(pidFolders)
+                pFolder = pidFolders(i);
+
+                if ~pFolder.isdir
                     continue
                 end
 
-                inpath = fullfile(folder.folder, folder.name);
-                outpath = fullfile(inpath, 'rmsstudio');
-                mkdir(outpath)
+                %Find all session folders 
+                sessionFolders = dir(fullfile(...
+                    pFolder.folder, pFolder.name));
+                sessionFolders = sessionFolders(...
+                                ~ismember({sessionFolders.name},...
+                                {'.','..'}));
 
-                app.dlg.Value = i/length(folders);
-                app.dlg.Message = ['Converting dcms in folder '...,
-                    num2str(i) ' / ' num2str(length(folders))];
-                NewDatasetUtils.convertFolder(inpath, outpath, dcm2nii)
+                for j = 1:length(sessionFolders)
+                    sFolder = sessionFolders(j);
+                    inpath = fullfile(sFolder.folder, sFolder.name);
+                    outpath = fullfile(inpath, 'rmsstudio');
+                    mkdir(outpath)
+    
+                    app.dlg.Value = (i-1)/length(pidFolders) + ...
+                        j/length(sessionFolders)/length(pidFolders);
+                    msg = ['Converting Dicoms, folder '...,
+                        num2str(i) ' / ' num2str(length(pidFolders)),...
+                        ' - ' pFolder.name, ' - ', sFolder.name];
+                    app.dlg.Message = msg;
+                    NewDatasetUtils.convertFolder(inpath, outpath, dcm2nii)
+                end
             end
 
+            app.dlg.Value = 1;
         end
 
         function convertFolder(inpath, outpath, dcm2nii)
@@ -124,11 +139,12 @@ classdef NewDatasetUtils < handle
             for i = 1:length(should_reslice)
                 app.dlg.Message = ['Reslicing Nifti '...,
                     num2str(i) ' / ' num2str(length(should_reslice))];
-                app.dlg.Value =  i / length(should_reslice);
+                app.dlg.Value =  (i-1) / length(should_reslice);
                 
                 %Overwrite previous nii
                 reslice_nii(should_reslice{i}, should_reslice{i})
             end
+            app.dlg.Value =  1;
 
         end
 
@@ -172,53 +188,54 @@ classdef NewDatasetUtils < handle
 
             for i = 1:length(bvalFiles)
                 fn = fullfile(bvalFiles(i).folder, bvalFiles(i).name);
-                app.dlg.Message = ['Compuing ADC map '...,
+                app.dlg.Message = ['Computing ADC map '...,
                     num2str(i) ' / ' num2str(length(bvalFiles))];
-                app.dlg.Value =  i / length(bvalFiles);
-                NewDataset.DWI2ADC(fn)
+                app.dlg.Value =  (i-1) / length(bvalFiles);
+                NewDatasetUtils.DWI2ADC(fn)
             end
+            app.dlg.Value =  1;
 
         end
 
         function DWI2ADC(fn)
 
-            bvals = sort(unique(load(bvalfn)));
+            bvals = sort(unique(load(fn)));
             X = [-bvals' ones(length(bvals),1)];
 
             nii_fn = strrep(fn, '.bval', '.nii');
             nii = load_nii(nii_fn);
 
-            [sx,sy,sz,st] = size(nii_data.img);
+            [sx,sy,sz,st] = size(nii.img);
 
-            %init array
+            %init arrays
             out_img = nii;
             out_img.img = zeros(sx*sy*sz,1);
-            input_img = reshape(nii_data.img,sx*sy*sz,st);
+            input_img = reshape(nii.img,sx*sy*sz,st);
             
             %Sort according to bvals
             [~, I] = sort(mean(input_img), 'descend');
             input_img = input_img(:,I);
             
-            %Calculate ADC values based on solving the diffusion equation for
-            %ADC
+            %Calculate ADC values based on solving the diffusion equation.
+            %TODO: takes a while...
             for ij=1:sx*sy*sz
                if(sum(input_img(ij,:)==0) > 0)
                    continue
                end
                S = single(input_img(ij,:)');
                p = X\log(S);
-               out_img_img(ij) = max(p(1),0);
+               out_img.img(ij) = max(p(1),0);
             end
-            out_img_1.hdr.dime.bitpix = 32;
-            out_img_1.hdr.dime.datatype = 16;
-            out_img_1.hdr.dime.scl_slope = 1;
-            out_img_1.hdr.dime.scl_inter = 0;
-            out_img_1.img = reshape(out_img_img,sx,sy,sz);
-            out_img_1.hdr.dime.dim(1) = 3;
-            out_img_1.hdr.dime.dim(5) = 1;
+            out_img.hdr.dime.bitpix = 32;
+            out_img.hdr.dime.datatype = 16;
+            out_img.hdr.dime.scl_slope = 1;
+            out_img.hdr.dime.scl_inter = 0;
+            out_img.img = reshape(out_img.img,sx,sy,sz);
+            out_img.hdr.dime.dim(1) = 3;
+            out_img.hdr.dime.dim(5) = 1;
 
             [folder, name, ext] = fileparts(nii_fn);
-            save_nii(fullfile(folder, ['ADC_' name ext]))
+            save_nii(out_img, fullfile(folder, ['ADC_' name ext]))
 
         end
 

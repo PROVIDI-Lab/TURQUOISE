@@ -93,10 +93,8 @@ classdef GUI < handle
             app.slicePerImage       = {};
             Study.FindRealWorldReference(app);  %restore axis
             app.current_view        = 1;
-%             app.Align               = '';
             
             GUI.UpdateAxisButtons(app);
-            GUI.UpdateAlignButtons(app);
            
             set(app.imageRenderer{1},'CData', zeros(100));
             set(app.imageRenderer{2},'CData', zeros(100));
@@ -576,24 +574,6 @@ classdef GUI < handle
             end
         end
         
-        function UpdateAlignButtons(app)
-            %Updates the alignment buttons to highlight the one that's 
-            %currently active.
-            app.AlignLRButton.BackgroundColor   = [.96 .96 .96];
-            app.AlignRLButton.BackgroundColor   = [.96 .96 .96];
-            
-            if isempty(app.Align)
-                return
-            end
-            
-            if strcmp(app.Align, 'LR')
-                app.AlignLRButton.BackgroundColor   = [.96 .96 0];
-            elseif strcmp(app.Align, 'RL')
-                app.AlignRLButton.BackgroundColor   = [.96 .96 0];
-            end
-               
-        end
-        
         %% Listboxes
 
         function ChangeListBoxValue(app, index)
@@ -822,10 +802,11 @@ classdef GUI < handle
             MeanSig  = obj.prop.mean;
 
             String   = strcat(Name,                 ...
-                        '\tVolume:%.2f mm^3 \tMean: %.2f');
+                        '\tVolume:%.2f mm^3 \tMean: %.2f \n%s');
             String   = sprintf(String,              ...               
                                Volume,              ...
-                               MeanSig);
+                               MeanSig, ...
+                               string(obj.comment));
             app.UOHoverLabel.Text = String;
         end
 
@@ -952,6 +933,7 @@ classdef GUI < handle
             m2 = uimenu(cm,'Text','Rename');
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
+            m5 = uimenu(cm, 'Text', 'Add Comment');
 
             drawnow     %Necessary to display the cm
             
@@ -965,6 +947,8 @@ classdef GUI < handle
                 {@Objects.CopyUOTo, app, id};
             m4.MenuSelectedFcn = ...
                 {@Objects.ToggleVisibleUO, app, id};
+            m5.MenuSelectedFcn = ...
+                {@Objects.AddComment, app, id};
 
             cm.Position   = [pos(1), pos(2)];
             cm.Visible    = 'on';
@@ -1000,8 +984,6 @@ classdef GUI < handle
             %UI elements and more.
             %Buttons
             app.DrawPolygonButton.Enable            = 'on';
-            app.AlignLRButton.Enable                = 'on';
-            app.AlignRLButton.Enable                = 'on';
             app.VisibleSlider.Enable                = 'on';
             app.SliceDecreaseButton.Enable          = 'on';
             app.SliceIncreaseButton.Enable          = 'on';
@@ -1049,8 +1031,6 @@ classdef GUI < handle
 
             %Buttons
             app.DrawPolygonButton.Enable            = 'off';
-            app.AlignLRButton.Enable                = 'off';
-            app.AlignRLButton.Enable                = 'off';
             app.VisibleSlider.Enable                = 'off';
             app.SliceDecreaseButton.Enable          = 'off';
             app.SliceIncreaseButton.Enable          = 'off';

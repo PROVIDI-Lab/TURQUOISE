@@ -34,6 +34,9 @@ classdef Objects < handle
                 obj.viewDim     = NiftiUtils.FindViewingDimension(...
                     app, obj.imageIdx);
             end
+            if isempty(obj.comment)
+                obj.comment = '';
+            end
 
             
             %Calculate properties
@@ -512,6 +515,27 @@ classdef Objects < handle
             additiveQ     = Interaction.PromptAdditiveSubtractive(app);
             app.userObjects{idx}.additive = strcmp(additiveQ, 'additive');
             Backups.CreateBackup(app); 
+        end
+
+        function AddComment(app,  varargin)
+            %When the addComment in a contextmenu is called.
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
+            end
+
+            prevComment = app.userObjects{idx}.comment;
+            comment = inputdlg('','Add comment', [3 50], {prevComment});
+
+            if ~isempty(comment)
+                app.userObjects{idx}.comment = comment;
+            end
+
         end
         
         %% backups stuff

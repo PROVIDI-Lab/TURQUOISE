@@ -411,25 +411,7 @@ classdef Graphics < handle
                 delete(app.tempDrawings(ij));
             end
             app.tempDrawings = [];
-        end
-        
-        % Shows selection contour for deleting
-        function UpdateSelectionContour(app)
-            if(app.selection_contour ~= -1)
-                delete(app.seleection_contour);
-                app.selection_contour = -1;
-            end
-            if(app.should_show_selection == true)
-                hold(app.UIAxes1,'on');
-                vert = [5 20 2*app.selector_size 2*app.selector_size];
-                app.selection_contour = plot(app.UIAxes1,               ...
-                    [vert(1) vert(1)+vert(3) vert(1)+vert(3) vert(1)],  ...
-                    [vert(2) vert(2) vert(2)+vert(4) vert(2)+vert(4)],  ...
-                    'Color',                                            ...
-                    'r');
-                hold(app.UIAxes1,'off');
-            end
-        end      
+        end  
         
         function ResetTextRenderer(app)
             %Resets the AP/SI/LR labels to the default color
