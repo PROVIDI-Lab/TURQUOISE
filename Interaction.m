@@ -14,9 +14,8 @@ classdef Interaction < handle
                 app.AvailableimagesListBox.Items);
                         
             %if index matches the index of any of the other axes, ignore
-            cv =     app.current_view;
             otherView = [1,2];
-            otherView(cv) = [];
+            otherView(app.axID) = [];
             if app.imagePerAxis(otherView) == index
                 return
             end
@@ -46,8 +45,8 @@ classdef Interaction < handle
             %Switch slice and view       
             obj                         = app.userObjects{index};
             [view, slice]               = Objects.GetUOViewAndSlice(obj);
-            app.viewPerImage(app.imIdx) = view;
-            app.slicePerImage{app.imIdx}{view}    = slice;
+            app.viewPerImage(app.imID) = view;
+            app.slicePerImage{app.imID}{view}    = slice;
             
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
@@ -55,12 +54,6 @@ classdef Interaction < handle
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
-            %Update visible slider
-            if obj.visible
-                app.VisibleSlider.Value = 'On';
-            else
-                app.VisibleSlider.Value = 'Off';
-            end
             
         end
         
@@ -79,9 +72,9 @@ classdef Interaction < handle
         
     %% UIAxes interactions
     
-        function SwitchViewAndFocus(app,new_view_idx,~)
-        % When switching to another view, store current properties for
-        % later recalling them
+    function SwitchViewAndFocus(app, newAxID,~)
+        % Switches the program to another UIAxis
+
         % Input: new_view_idx - idx of view that was pressed
         %        caller_name - object that was pressed, used to manage
         %        calling this function from unknown sources (not
@@ -92,10 +85,10 @@ classdef Interaction < handle
             end
         
             GUI.DisableAllButtonsAndActions(app);           
-            app.current_view    = new_view_idx;
+            app.axID    = newAxID;
 
             %Switch to the correct image
-            index   = app.imagePerAxis(new_view_idx);
+            index   = app.imagePerAxis(newAxID);
             Study.SwitchImage(app, index)
         end
         
@@ -104,10 +97,12 @@ classdef Interaction < handle
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
 
+            tic
+
             if isempty(app.data)
                 return
             end
-            if isempty(app.data{app.imIdx})
+            if isempty(app.data{app.imID})
                 return
             end
             if app.busyStatus   %Don't do anything if the app is busy
@@ -117,9 +112,9 @@ classdef Interaction < handle
             %Check if the screen that was pressed is different from the
             %current view.
             if (hit.Source.Parent == app.UIAxes1                       ...
-                    && app.current_view == 2)       ||                  ...
+                    && app.axID == 2)       ||                  ...
                 (hit.Source.Parent == app.UIAxes2                       ...
-                    && app.current_view == 1)       &&                  ...
+                    && app.axID == 1)       &&                  ...
                     hit.Button == 1
             
                     %Switch focus to the screen that was pressed
@@ -140,7 +135,7 @@ classdef Interaction < handle
                 if hit.Button == 1
                     ROI.AddPointToPolygon(app,hitx,hity);
                 elseif hit.Button == 3  %right mouse button, finish drawing
-                    if(size(app.points{app.current_view},1) <= 3)
+                    if(size(app.points{app.axID},1) <= 3)
                         return
                     end
                     Interaction.PromptName(app);
@@ -168,7 +163,7 @@ classdef Interaction < handle
                 
             elseif hit.Button == 3
                 %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOUnderMouse(app, hit, app.current_view);
+                id = Objects.FindUOUnderMouse(app, hit, app.axID);
 
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
@@ -197,8 +192,8 @@ classdef Interaction < handle
             if app.buttonDown
                 app.buttonDown = false;
                 %TODO: don't hardcode axes
-                Graphics.DrawCrosshairInAxis(app, 1, [], [])
-                Graphics.DrawCrosshairInAxis(app, 2, [], [])
+                Graphics.ResetCrosshairsInAxis(app, 1)
+                Graphics.ResetCrosshairsInAxis(app, 2)
                 return
             end
         
@@ -224,14 +219,13 @@ classdef Interaction < handle
             %Triggers when the mouse moves in the image after the
             %windowbuttonmotionFCN has been set for the UIAxes elements.
             if isempty(app.dragPoint) || isempty(app.currentDragPoint)
-                
                 GUI.MouseHover(app, hit)                
                 return
             end
             
-            if app.busyStatus   %Don't do anything if the app is busy
-                return
-            end
+%             if app.busyStatus   %Don't do anything if the app is busy
+%                 return
+%             end
             
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
@@ -278,6 +272,18 @@ classdef Interaction < handle
                         app.ctrl    = true;
                     case 'f12'
                         Interaction.Debug(app)
+                    case 's'
+                        Interaction.ChangeViewAxis(app, 1)
+                    case 'c'
+                        Interaction.ChangeViewAxis(app, 2)
+                    case 'a'
+                        Interaction.ChangeViewAxis(app, 3)
+                    case 'q'
+                        profile on
+                    case 'w'
+                        profile viewer
+                    case 'escape'
+                        GUI.RevertControlsStatus(app)
                 end
                 
             elseif contains(modifier, 'control')
@@ -322,15 +328,14 @@ classdef Interaction < handle
         function BackspacePressed(app)
         %Remove the last points in app.drawing
             
-            Cv = app.current_view;
             if isempty(app.points)
                 return
             end
-            if isempty(app.points{Cv})
+            if isempty(app.points{app.axID})
                 return
             end
             
-            app.points{Cv}(end, :) = [];
+            app.points{app.axID}(end, :) = [];
             Graphics.UpdateImage(app);
             
         end
@@ -338,7 +343,7 @@ classdef Interaction < handle
         function ToggleZoom(app)
             %Toggle the zoom function of the current UIAxes.
             ax  = [app.UIAxes1, app.UIAxes2];
-            ax  = ax(app.current_view);            
+            ax  = ax(app.axID);            
             
             if app.zoomToggle
                 zoom(ax, 'off')
@@ -353,24 +358,26 @@ classdef Interaction < handle
         
         function ChangeViewAxis(app, viewAxis)
         %Switches viewAxis of the current UIAxis to the specified one
-        %coronal = 1, sagittal = 2, axial = 3
-            app.viewPerImage(app.imIdx) = viewAxis;
+        %sagittal = 1, coronal = 2, axial = 3
+            app.viewPerImage(app.imID) = viewAxis;
+            disp('test')
             try
-                if isempty(app.slicePerImage{app.imIdx}{viewAxis})
-                    app.slicePerImage{app.imIdx}{viewAxis} = ...
-                        round(size(app.data{app.imIdx}.img, viewAxis)/2);
+                if isempty(app.slicePerImage{app.imID}{viewAxis})
+                    app.slicePerImage{app.imID}{viewAxis} = ...
+                        round(size(app.data{app.imID}.img, viewAxis)/2);
                 end
             catch
-                app.slicePerImage{app.imIdx}{viewAxis} = ...
-                        round(size(app.data{app.imIdx}.img, viewAxis)/2);
+                app.slicePerImage{app.imID}{viewAxis} = ...
+                        round(size(app.data{app.imID}.img, viewAxis)/2);
             end
 
-
+            GUI.DisableControlsStatus(app)
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
             GUI.UpdateAxisButtons(app)
-            Graphics.UpdateAxisParams(app, app.current_view);
+            Graphics.UpdateAxisParams(app, app.axID);
             GUI.InitCrosshair(app)
+            GUI.RevertControlsStatus(app)
         end
         
         function ResetStudy(app)
@@ -471,7 +478,7 @@ classdef Interaction < handle
                 return
             end
             
-            IOUtils.LoadSegmentation(app, fp, app.imIdx);  
+            IOUtils.LoadSegmentation(app, fp, app.imID);  
             GUI.UpdateUOBox(app)
             
             %Switch to new labels
@@ -488,14 +495,14 @@ classdef Interaction < handle
                                 defPath);
             fp              = fullfile(path, file);
             
-            IOUtils.loadSegmentationPoints(app, fp, app.imIdx);  
+            IOUtils.loadSegmentationPoints(app, fp, app.imID);  
             Graphics.UpdateImage(app);
         end
         
         function DrawPolygon(app)
             %Called when the user presses the 'draw polygon' button.
             
-            if isempty(app.data{app.imIdx})
+            if isempty(app.data{app.imID})
                 return
             end
             
@@ -515,7 +522,7 @@ classdef Interaction < handle
         
         function CircularROI(app)
         %Prepares drawing a Circular ROI
-            if isempty(app.data{app.imIdx})
+            if isempty(app.data{app.imID})
                 return
             end
             ROI.StartDrawingCircular(app);    
@@ -523,7 +530,7 @@ classdef Interaction < handle
         
         function EllipseROI(app)
         %Prepares drawing a Circular ROI
-            if isempty(app.data{app.imIdx})
+            if isempty(app.data{app.imID})
                 return
             end
             ROI.StartDrawingEllipse(app);    
@@ -542,7 +549,7 @@ classdef Interaction < handle
                 app.drawing.mode    = 3;
             else
                 app.drawing.mode    = 0;
-                app.points{app.current_view}      = [];
+                app.points{app.axID}      = [];
             end 
         end
         
@@ -656,8 +663,8 @@ classdef Interaction < handle
             app.viewingParams(4+view)       = slice;
             
             %Update the GUI
-            if axID == app.current_view
-                GUI.UpdateSliceSlider(app)
+            if axID == app.axID
+                GUI.UpdateSliceSliderValue(app, slice)
             end
             Graphics.UpdateImageForAxis(app, axID);
 %             Graphics.UpdateSelectionContour(app);
@@ -666,7 +673,7 @@ classdef Interaction < handle
         
         function Update4D(app, value)
             %Updates the 4D axis for the current image
-            max4D   = size(app.data{app.imIdx}.img, 4);
+            max4D   = size(app.data{app.imID}.img, 4);
             min4D   = 1;
             if value > max4D
                 value   = max4D;
@@ -674,10 +681,9 @@ classdef Interaction < handle
                 value   = min4D;
             end 
             
-            app.d4PerImage(app.imIdx)   = value;
+            app.d4PerImage(app.imID)   = value;
             GUI.Update4DSlider(app);
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app);   
         end
         %% Prompts
         
@@ -693,7 +699,7 @@ classdef Interaction < handle
             GUI.DisableControlsStatus(app);
             drawnow;
             
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
 
             objs    = Objects.GetAllUOsForImage(app, imID);
             nameLst = getpref('rmsstudio', 'ROILst');
@@ -780,14 +786,14 @@ classdef Interaction < handle
         
         function showADCHist(app)
             
-            img = app.data{app.imIdx}.img;
+            img = app.data{app.imID}.img;
             total_mask = permute(zeros(size(img)),[2,1,3]);
             
             z   = [];
             
             for i = 1:length(app.userObjects)
                uo = app.userObjects{i};
-               if uo.imageIdx ~= app.imIdx || uo.deleted
+               if uo.imageIdx ~= app.imID || uo.deleted
                    continue
                end
 

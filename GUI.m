@@ -22,28 +22,28 @@ classdef GUI < handle
                     msg = sprintf('Preparing image 1 of 2');
                     d.Message = msg;
                     d.Value = 0.5;
-                    app.current_view      = 2;
+                    app.axID      = 2;
                     %Keep track of which image is in which view
-                    idx = app.imagePerAxis(app.current_view);
+                    idx = app.imagePerAxis(app.axID);
                     app.AvailableimagesListBox.Value =...
                         app.AvailableimagesListBox.Items{idx};
-                    app.imIdx = idx;
+                    app.imID = idx;
                     %Show everything
                     GUI.DisplayNewImage(app, idx)
                     
                     %Switch back
-                    app.current_view = 1;
+                    app.axID = 1;
                 end
                 
                 msg = sprintf('Preparing image 2 of 2');
                 d.Message = msg;
                 d.Value = 1;
-                app.current_view      = 1;
+                app.axID      = 1;
                 %Keep track of which image is in which view
-                idx = app.imagePerAxis(app.current_view);
+                idx = app.imagePerAxis(app.axID);
                 app.AvailableimagesListBox.Value =...
                     app.AvailableimagesListBox.Items{idx};
-                app.imIdx = idx;
+                app.imID = idx;
                 %Show everything
                 GUI.DisplayNewImage(app, idx)
                 
@@ -66,6 +66,8 @@ classdef GUI < handle
             colormap(the_ax,'gray');
             axis(the_ax,'off');
             the_ax.BackgroundColor = 'k';
+
+            GUI.SetupCrosshairs(app, the_ax, axID)
         end
 
         function AddUOLayer(app, axID, objID)
@@ -86,13 +88,41 @@ classdef GUI < handle
             set(app.UORenderer{axID}{objID},...
                 'ButtonDownFcn',@app.MouseClickedInImage);
         end
+
+        function SetupCrosshairs(app, the_axis, axID)
+            %Plots the crosshairs on each image axis. Crosshairs are
+            %updated in Graphics.DrawCrosshairInAxis, which only sets the
+            %data.
+
+            hold(the_axis,'on');
+            %Draw two lines
+            l1  = plot(the_axis, ...
+                [1, 2], [1, 2], '--c',...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage, ...
+                'Visible','off');
+        
+            l2  = plot(the_axis, ...
+                [1, 2], [1, 2], '--c',...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage, ...
+                'Visible','off');
+
+            hold(the_axis,'off');
+            app.crosshairRenderer{axID} = [l1, l2];
+
+        end
         
         function ResetViews(app)
             %Resets both views and switches all displaying options to their
             %default values.
             app.slicePerImage       = {};
             Study.FindRealWorldReference(app);  %restore axis
-            app.current_view        = 1;
+            app.axID        = 1;
             
             GUI.UpdateAxisButtons(app);
            
@@ -139,10 +169,12 @@ classdef GUI < handle
             GUI.UpdateSliceSlider(app);
             GUI.UpdateMinMaxSlider(app);
             GUI.UpdateUOBox(app);
+            GUI.Update4DSlider(app);
             
             %Draw the new image
             Graphics.UpdateImage(app);   
-            Graphics.UpdateAxisParams(app, app.current_view);
+            Graphics.UpdateAxisParams(app, app.axID);
+            Graphics.UpdateAxisScaling(app, app.axID);
             GUI.InitCrosshair(app)
         end  
         
@@ -162,9 +194,10 @@ classdef GUI < handle
             GUI.UpdateUOBox(app)
             GUI.ChangeListBoxValue(app, index)
             GUI.UpdateAxisButtons(app)
+            GUI.Update4DSlider(app)
                         
             Graphics.UpdateImage(app)
-            Graphics.UpdateAxisParams(app, app.current_view)
+            Graphics.UpdateAxisParams(app, app.axID)
             GUI.InitCrosshair(app)
         end
         
@@ -207,17 +240,17 @@ classdef GUI < handle
         end
         
         function SliceUp(app)
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view} + 1;
-            Interaction.UpdateSlice(app, slice, app.current_view);
+            Interaction.UpdateSlice(app, slice, app.axID);
         end
         
         function SliceDown(app)
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view} - 1;
-            Interaction.UpdateSlice(app, slice, app.current_view);
+            Interaction.UpdateSlice(app, slice, app.axID);
         end
         
         function axID = FindAxisUnderCursor(app, event)
@@ -334,7 +367,7 @@ classdef GUI < handle
 
             app.viewingParams(4) = 1;
             app.viewingParams(5:7) = [-1, -1, -1];
-            Graphics.UpdateImageForAxis(app, app.current_view);
+            Graphics.UpdateImageForAxis(app, app.axID);
         end        
         
 
@@ -368,18 +401,19 @@ classdef GUI < handle
         end
         
         function UpdateSliceSlider(app)
-        % Sets the limits and current value of the slice slider
-            if(isempty(app.data{app.imIdx}))
+        % Sets the limits and current value of the slice slider. To be
+        % called when a new image / imageOrientation is loaded.
+            if(isempty(app.data{app.imID}))
                 return
             end
             
             %Get data dimensions
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            view    = app.viewPerImage(app.imID);
+            slice   = app.slicePerImage{app.imID}{view};
             
             %Update SliceSlider
-            viewAxis    = NiftiUtils.FindViewingDimension(app, app.imIdx);
-            viewSize    = size(app.data{app.imIdx}.img, viewAxis);
+            viewAxis    = NiftiUtils.FindViewingDimension(app, app.imID);
+            viewSize    = size(app.data{app.imID}.img, viewAxis);
             if(viewSize == 1) % workaround when only 1 slice is available
                 viewSize = 2;
             end
@@ -390,7 +424,7 @@ classdef GUI < handle
             app.SliceSlider.MinorTicks = 1 : 1 : viewSize;
             if isnan(slice) || slice < 0 || slice > viewSize
                 slice = round( viewSize / 2);
-                app.slicePerImage{app.imIdx}{view} = slice;
+                app.slicePerImage{app.imID}{view} = slice;
             end
             
             try
@@ -399,36 +433,56 @@ classdef GUI < handle
                 return
             end            
         end
+
+        function UpdateSliceSliderValue(app, value)
+            %Updates the value of the slice slider, to be called when the
+            %user scrolls through the image.
+            
+            try
+                app.SliceSlider.Value = double(value);
+            catch
+                return
+            end
+
+        end
         
         function Update4DSlider(app)
             %Updates the slider that sets the 4d axis
-            refvol  = app.data{app.imIdx}.img;
-            
-            app.DSlider.MajorTicks = 1:1:size(refvol,4);
-            if(size(refvol,4) > 20)
-                app.DSlider.MajorTicks = 1:10:size(refvol,4);
-            end
-            if(size(refvol,4) > 1)
-                app.DSlider.Limits = [1 size(refvol,4)];
+            imSz4D  = size(app.data{app.imID}.img, 4);
+
+            if imSz4D == 1
+                app.DSlider.Enable = 'off';
+                app.Increase4DButton.Enable = 'off';
+                app.Decrease4DButton.Enable = 'off';
+                return
             else
-                app.DSlider.Limits = [1 2];
+                app.DSlider.Enable = 'on';
+                app.Increase4DButton.Enable = 'on';
+                app.Decrease4DButton.Enable = 'on';
             end
-            app.DSlider.Value = double(app.d4PerImage(app.imIdx)); 
+            
+            app.DSlider.MajorTicks = 1:1:imSz4D;
+            if(imSz4D > 20)
+                app.DSlider.MajorTicks = 1:10:imSz4D;
+            end
+
+            app.DSlider.Limits = [1 imSz4D];
+            app.DSlider.Value = double(app.d4PerImage(app.imID)); 
         end
         
         function UpdateMinMaxSlider(app)
         %Updates the min and max sliders
-            if ~isfield(app.data{app.imIdx}, 'img')
+            if ~isfield(app.data{app.imID}, 'img')
                 return
             end
-%             V = app.data_list{app.current_image(app.imIdx)}.img(:,:,:,1);
-            V = app.data{app.imIdx}.img(:,:,:,1);
+%             V = app.data_list{app.current_image(app.imID)}.img(:,:,:,1);
+            V = app.data{app.imID}.img(:,:,:,1);
             app.MinValue = min(V(:));
             if app.MinValue <0
                 app.MinValue = 0;
             end
             app.MaxValue = max(V(:));
-            app.cScalePerImage{app.imIdx} = [app.MinValue, app.MaxValue];
+            app.cScalePerImage{app.imID} = [app.MinValue, app.MaxValue];
 %             app.cMinValue = app.MinValue;
 %             app.cMaxValue = app.MaxValue;
             if(app.MinValue == app.MaxValue)
@@ -499,8 +553,8 @@ classdef GUI < handle
                 cMaxVal = cMinVal + 0.001;
             end
             
-            app.cScalePerImage{app.imIdx} = [cMinVal, cMaxVal];
-            Graphics.UpdateImage(app); 
+            app.cScalePerImage{app.imID} = [cMinVal, cMaxVal];
+            Graphics.UpdateAxisScaling(app, app.axID); 
             
         end
         
@@ -508,26 +562,26 @@ classdef GUI < handle
             %Previously MaxvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_maxvalue   = value/100*app.MaxValue;
-            cVals           = app.cScalePerImage{app.imIdx};
+            cVals           = app.cScalePerImage{app.imID};
             cMinVal         = cVals(1);
             if cMinVal >= next_maxvalue
                 next_maxvalue = cMinVal+0.001;
             end
-            app.cScalePerImage{app.imIdx} = [cMinVal, next_maxvalue];
-            Graphics.UpdateImage(app); 
+            app.cScalePerImage{app.imID} = [cMinVal, next_maxvalue];
+            Graphics.UpdateAxisScaling(app, app.axID);  
         end
         
         function UpdateMinContrast(app, value)
             %Previously MinvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_minvalue = value/100*app.MaxValue;
-            cVals           = app.cScalePerImage{app.imIdx};
+            cVals           = app.cScalePerImage{app.imID};
             cMaxVal         = cVals(2);
             if cMaxVal <= next_minvalue
                 next_minvalue = cMaxVal - 0.001;
             end
-            app.cScalePerImage{app.imIdx} = [next_minvalue, cMaxVal];
-            Graphics.UpdateImage(app);
+            app.cScalePerImage{app.imID} = [next_minvalue, cMaxVal];
+            Graphics.UpdateAxisScaling(app, app.axID); 
         end
         
         
@@ -535,7 +589,7 @@ classdef GUI < handle
                 
 %         function UpdateAxisInfo(app)
 %             %Updates the axisview buttons to display the correct one.
-%             imID    = app.imagePerAxis(app.current_view);
+%             imID    = app.imagePerAxis(app.axID);
 %             
 %             axInfo  = NiftiUtils.FindOrientation(...
 %                 app.transMatPerImage{imID});
@@ -557,7 +611,7 @@ classdef GUI < handle
 
         function UpdateAxisButtons(app)
             %Updates the axisview buttons to display the correct one.
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             
             %Reset the values
@@ -594,7 +648,7 @@ classdef GUI < handle
             counter     = 1;
             for idx     = 1:length(app.userObjects)
                 obj  = app.userObjects{idx};
-                if obj.imageIdx ~= app.imagePerAxis(app.current_view)
+                if obj.imageIdx ~= app.imagePerAxis(app.axID)
                    continue
                 end
                 if obj.deleted
@@ -735,6 +789,8 @@ classdef GUI < handle
             end
 
             GUI.DisplayHoverValue(app, hit)
+
+            return
             UOId = Objects.FindUOUnderMouse(app, hit);
             
             if app.buttonDown
@@ -814,10 +870,10 @@ classdef GUI < handle
 
         function InitCrosshair(app)
         %Finds the middle point of the image in the first UIAxes.
-        %Initializes the renderer and moves it to that position.
+        %Moves the crosshair to that position.
 
         %Find middle of first image
-        imID        = app.imagePerAxis(app.current_view);  
+        imID        = app.imagePerAxis(app.axID);  
         sz          = size(app.data{imID}.img);
         viewAxis    = app.viewPerImage(imID);
         sz(viewAxis)    = [];
@@ -827,10 +883,12 @@ classdef GUI < handle
         %Convert to world coordinates
         xyz         = NiftiUtils.hitToXYZ(app, i, j);
 
-
         %Draw crosshair for each axis   -TODO: don't hardcode axes
         GUI.CrosshairPerImage(app, 1, xyz)
         GUI.CrosshairPerImage(app, 2, xyz)
+
+        Graphics.ResetCrosshairsInAxis(app, 1)
+        Graphics.ResetCrosshairsInAxis(app, 2)
         end
 
 
@@ -983,45 +1041,10 @@ classdef GUI < handle
             %Re-ables user interaction with the different menus, buttons,
             %UI elements and more.
             %Buttons
-            app.DrawPolygonButton.Enable            = 'on';
-            app.VisibleSlider.Enable                = 'on';
-            app.SliceDecreaseButton.Enable          = 'on';
-            app.SliceIncreaseButton.Enable          = 'on';
-            app.CoronalButton.Enable                = 'on';
-            app.SagittalButton.Enable               = 'on';
-            app.AxialButton.Enable                  = 'on';
 
-            %Menus
-            app.FileMenu.Enable                     = 'on';
-            app.ViewMenu.Enable                     = 'on';
-            app.AnalyseMenu.Enable                  = 'on';
-            app.DrawMenu.Enable                     = 'on';
-            app.SegmentMenu.Enable                  = 'on';
-            
-            %Sliders
-            app.SliceSlider.Enable                  = 'on';
-            app.MinvalSlider.Enable                 = 'on';
-            app.MaxvalSlider.Enable                 = 'on';
-
-            %Listboxes
-            app.AvailableimagesListBox.Enable       = 'on';
-            app.AvailableStudiesListBox.Enable      = 'on';
-            app.UOBox.Enable                        = 'on';
-
-
-            %4d stuff
-%             Cv      = app.current_view;
-%             if(~isempty(app.data{Cv}) && ndims(app.data{Cv}.img) > 3)
-            app.DSlider.Enable                  = 'on';
-            app.Decrease4DButton.Enable         = 'on';
-            app.Increase4DButton.Enable         = 'on';
-%             end
-            
-            app.StatusLampLabel.Text                = 'Idle';
-            app.StatusLamp.Color                    = 'g';
-            
-            GUI.ResetCursor(app)
+            close(app.progressDlg)
             app.busyStatus                          = false;
+            figure(app.UIFigure)    %Request focus back to the uifigure
 
         end
         
@@ -1029,51 +1052,15 @@ classdef GUI < handle
         % This prevents user interaction
         function DisableControlsStatus(app)
 
-            %Buttons
-            app.DrawPolygonButton.Enable            = 'off';
-            app.VisibleSlider.Enable                = 'off';
-            app.SliceDecreaseButton.Enable          = 'off';
-            app.SliceIncreaseButton.Enable          = 'off';
-             app.CoronalButton.Enable               = 'off';
-            app.SagittalButton.Enable               = 'off';
-            app.AxialButton.Enable                  = 'off';
-
-            %Menus
-            app.FileMenu.Enable                     = 'off';
-            app.ViewMenu.Enable                     = 'off';
-            app.AnalyseMenu.Enable                  = 'off';
-            app.DrawMenu.Enable                     = 'off';
-            app.SegmentMenu.Enable                  = 'off';
-            
-            %Sliders
-            app.SliceSlider.Enable                  = 'off';
-            app.MinvalSlider.Enable                 = 'off';
-            app.MaxvalSlider.Enable                 = 'off';
-
-            %Listboxes
-            app.AvailableimagesListBox.Enable       = 'off';
-            app.AvailableStudiesListBox.Enable      = 'off';
-            app.UOBox.Enable                        = 'off';
-
-
-            %4d stuff
-            app.DSlider.Enable                      = 'off';
-            app.Decrease4DButton.Enable             = 'off';
-            app.Increase4DButton.Enable             = 'off';
-            
-            app.StatusLampLabel.Text                = 'Busy';
-            app.StatusLamp.Color                    = 'r';
-            
-            GUI.SetWatchCursor(app)
-            app.busyStatus                          = true;
-
+            app.progressDlg =  uiprogressdlg(app.UIFigure, 'Title',...
+                'Loading');
+            app.busyStatus  = true;
 
         end
         
         
         function DisableAllButtonsAndActions(app)
             % Resets actions to baseline
-            app.should_show_selection                   = false;
             app.drawing.mode                            = 0;
             
             app.currentDragPoint                    = -1;

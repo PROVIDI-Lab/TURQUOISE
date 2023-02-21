@@ -444,8 +444,8 @@ classdef NiftiUtils < handle
             %Translate the transformation matrix
             newTM   = tm;
 
-            halfPoint           = [dim(1)/2, dim(2)/2, dim(3)/2, 1];
-            halfPointDist       = tm * halfPoint';
+            halfPoint([imAxes]) = [dim(1)/2, dim(2)/2, dim(3)/2, 1];
+            halfPointDist       = tm * halfPoint;
             deltaCenter         = offset' - halfPointDist(1:3);
             newTM(1:3,4)        = tm(1:3,4) + deltaCenter;
 
@@ -490,8 +490,7 @@ classdef NiftiUtils < handle
 
             for i = 1:d4
                 imData = nii.img(:,:,:,i);
-                [xq, yq, zq] = NiftiUtils.Get3DGrid(nii.hdr, tm, ...
-                    app.viewingParams(1:3));
+                [xq, yq, zq] = NiftiUtils.Get3DGrid(app, tm);
 
                 newImData = interp3(imData, xq, yq, zq, 'linear', 0);
                 img(:,:,:,i) = newImData;

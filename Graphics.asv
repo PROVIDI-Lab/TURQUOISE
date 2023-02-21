@@ -9,7 +9,7 @@ classdef Graphics < handle
         
         function UpdateImage(app)   
         %Updates the image for the current view
-            Graphics.UpdateImageForAxis(app, app.current_view)
+            Graphics.UpdateImageForAxis(app, app.axID)
         end
         
         function UpdateUserObjects(app)
@@ -18,11 +18,11 @@ classdef Graphics < handle
             if isempty(app.slicePerImage)
                 return
             end         
-            if length(app.slicePerImage) < app.imagePerAxis(app.current_view)
+            if length(app.slicePerImage) < app.imagePerAxis(app.axID)
                 return
             end   
    
-            imID        = app.imagePerAxis(app.current_view);
+            imID        = app.imagePerAxis(app.axID);
             view        = app.viewPerImage(imID);
             
             if isempty(app.slicePerImage{imID})
@@ -32,21 +32,23 @@ classdef Graphics < handle
                 return
             end
         
-            Graphics.UpdateUserObjectsForAxis(app, app.current_view)
+            Graphics.UpdateUserObjectsForAxis(app, app.axID)
         end
         
         function UpdateUserInteractions(app)
         %Updates the user interactions for the current view
-            Graphics.UpdateUserInteractionsForAxis(app, app.current_view)
+            Graphics.UpdateUserInteractionsForAxis(app, app.axID)
         end
         
         function UpdateImageForAxis(app, axID)
         %Called when everything is redrawn
             Graphics.DrawImageInAxis(app, axID);
+
             %Draw user-objects
             Graphics.DrawUserObjects(app, axID);
             Graphics.UpdateUserInteractionsForAxis(app, axID);
             Graphics.UpdateUIAxesLabel(app, axID);
+
         end
         
         function UpdateUserObjectsForAxis(app, axID)
@@ -138,19 +140,12 @@ classdef Graphics < handle
         
         function DrawImageInAxis(app,axID)  
         % This draws the image slice
-            if(isprop(app,'data'))
+            if isempty(app.data)
+                return
+            end
                 
-                %Get interpolated image slice at reference location
-                imSlice     = Graphics.InterpolateImSlice(app, axID);
-                set(app.imageRenderer{axID},'CData',imSlice);
-            end          
-        end
-        
-        function slice = InterpolateImSlice(app, axID)
             imID        = app.imagePerAxis(axID);
             d4          = app.d4PerImage(imID);
-            imData      = app.data{imID}.img(:,:,:,d4);
-
             viewAxis    = app.viewPerImage(imID); 
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
@@ -158,6 +153,45 @@ classdef Graphics < handle
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);
 
+            %test for the quicker version
+            slice       = app.slicePerImage{imID}{viewAxis};
+
+            %When imageor ~= viewaxis, the image needs to be rotated.
+            %We don't initialize the image, to save time
+
+            %view = 1
+            if view == 1 && viewAxis == imageOr
+                set(app.imageRenderer{axID},'CData', ...
+                    squeeze(app.data{imID}.img(slice, :, :, d4)));
+            elseif view == 1 && viewAxis ~= imageOr
+                set(app.imageRenderer{axID},'CData', ...
+                    rot90(squeeze(app.data{imID}.img(slice, :, :, d4))));
+
+            %view = 2 %flip 1st dim if coronal
+            elseif view == 2  && viewAxis == imageOr   
+                set(app.imageRenderer{axID},'CData', ...
+                    squeeze(app.data{imID}.img(end:-1:1, slice, :, d4)));
+            elseif view == 2  && viewAxis ~= imageOr   
+                set(app.imageRenderer{axID},'CData', ...
+                    rot90(squeeze(...
+                        app.data{imID}.img(end:-1:1, slice, :, d4))));
+            
+            %view = 3
+            elseif view == 3 && viewAxis == imageOr
+                set(app.imageRenderer{axID},'CData', ...
+                    squeeze(app.data{imID}.img(:, :, slice, d4)));
+            elseif view == 3 && viewAxis ~= imageOr
+                set(app.imageRenderer{axID},'CData', ...
+                    rot90(squeeze(app.data{imID}.img(:, :, slice, d4))));
+            end               
+
+                      
+        end
+        
+        function imSlice = InterpolateImSlice(app, axID)
+            
+                
+            return
 
             %Basically, sag, cor, ax, is a fucked up system. 
             %Not only does the viewing axis change, but dimensions are
@@ -171,10 +205,10 @@ classdef Graphics < handle
             %Create meshgrid for view
             [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
             %interpolate slice
-            slice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
+            imSlice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
             
             if(viewAxis ~= imageOr)
-                slice = rot90(slice);
+                imSlice = rot90(imSlice);
             end
 
         end
@@ -189,9 +223,7 @@ classdef Graphics < handle
 
 
             col = app.colors_list(obj.ID,:);
-            CData  = cat(3, ones(size(imSlice)) * col(1),...
-                             ones(size(imSlice)) * col(2),...
-                             ones(size(imSlice)) * col(3));
+            
             set(app.UORenderer{axID}{obj.ID},'CData', CData);
             set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.4);
         end
@@ -286,14 +318,13 @@ classdef Graphics < handle
             
             the_axis = app.GetAxis(axID);
             
-            Cv  = app.current_view;
             if ~isempty(app.tempDrawings)
                 Graphics.DeleteAllTempDrawings(app);
             end
             
             %Plot app.drawing.points
-            if(~isempty(app.points{Cv}))
-                tmp = app.points{Cv};
+            if(~isempty(app.points{app.axID}))
+                tmp = app.points{app.axID};
                 
                 %only plot points on current slice
                 imID        = app.imagePerAxis(axID);
@@ -353,34 +384,33 @@ classdef Graphics < handle
         end
 
         function DrawCrosshairInAxis(app, axID, ijk, sz)
-            %First, remove the previous drawing
-            delete(app.crosshairRenderer{axID});
 
             if ~app.buttonDown
                 return
             end
-            
-            the_axis    = app.GetAxis(axID);    
-            hold(the_axis,'on');
 
-            %Draw two lines
-            l1  = plot(the_axis, ...
-                [1, sz(1)], [ijk(2), ijk(2)], '--c',...
-                'HitTest',                              ...
-                'on',                                   ...
-                'ButtonDownFcn',                        ...
-                @app.MouseClickedInImage);
-        
-            l2  = plot(the_axis, ...
-                [ijk(1), ijk(1)], [1, sz(2)], '--c',...
-                'HitTest',                              ...
-                'on',                                   ...
-                'ButtonDownFcn',                        ...
-                @app.MouseClickedInImage);
+            app.crosshairRenderer{axID}(1).Visible = 'on';
+            app.crosshairRenderer{axID}(2).Visible = 'on';
 
-            hold(the_axis,'off');
-            app.crosshairRenderer{axID} = [l1, l2];
+            set(app.crosshairRenderer{axID}(1), 'XData',...
+                [1, sz(1)]);
+            set(app.crosshairRenderer{axID}(1), 'YData',...
+                [ijk(2), ijk(2)]);
+
+            set(app.crosshairRenderer{axID}(2), 'XData',...
+                [ijk(1), ijk(1)]);
+            set(app.crosshairRenderer{axID}(2), 'YData',...
+                [1, sz(2)]);
+
         end
+
+        function ResetCrosshairsInAxis(app, axID)
+
+            app.crosshairRenderer{axID}(1).Visible = 'off';
+            app.crosshairRenderer{axID}(2).Visible = 'off';
+        end
+
+                        
         
 
 %% Other
@@ -463,17 +493,6 @@ classdef Graphics < handle
             pixdim(view) = [];
             daspect(the_axis,[flip(pixdim) 1])
 
-            %Adjust scaling
-            if isempty(app.cScalePerImage{imID})
-                app.cScalePerImage{imID} = [0 10];
-            end
-            try
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
-            catch
-                app.cScalePerImage{imID} = [0 10];
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
-            end
-
             %Write axis info
             delete(app.textRenderer{axID})
             axisSizeX = the_axis.XLim(2);
@@ -493,6 +512,23 @@ classdef Graphics < handle
 
             app.textRenderer{axID} = [t1, t2, t3, t4];
 
+        end
+
+        function UpdateAxisScaling(app, axID)
+
+            the_axis    = app.GetAxis(axID);
+            imID        = app.imagePerAxis(axID);
+
+            %Adjust scaling
+            if isempty(app.cScalePerImage{imID})
+                app.cScalePerImage{imID} = [0 10];
+            end
+            try
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            catch
+                app.cScalePerImage{imID} = [0 10];
+                set(the_axis, 'CLim', app.cScalePerImage{imID});
+            end
         end
 
 

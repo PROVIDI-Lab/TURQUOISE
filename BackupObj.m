@@ -6,7 +6,7 @@ classdef BackupObj < handle
        viewPerImage,
        slicePerImage,
        d4PerImage,          %4D index
-       current_view,        %Current uiAxes in focus
+       axID,        %Current uiAxes in focus
        MinValue,            %Minimum slider value
        MaxValue,            %Maximum slider value
        segmentation,        %User segmentations (sparse array)

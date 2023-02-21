@@ -5,7 +5,6 @@ classdef Segmentation < handle
         % This handles the magic draw, in 2D and 3D, for different
         % algorithms
         
-            Cv      = app.current_view;
             if(hit.Button == 1)
 
                 if(app.drawing.magic_3d == false)
@@ -30,8 +29,7 @@ classdef Segmentation < handle
         %..    
             
             %TODO: fix x&y
-            Cv      = app.current_view;
-            imID    = app.imagePerAxis(Cv);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             
@@ -89,7 +87,7 @@ classdef Segmentation < handle
                     TheImg = imcomplement(TheImg);
             end
             
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             
@@ -126,7 +124,7 @@ classdef Segmentation < handle
         function segmentation = Seg3D(app, hitx, hity)
         %...
         
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             axis4D  = app.d4PerImage(imID);
@@ -156,7 +154,7 @@ classdef Segmentation < handle
         
         function segmentation = Thresh3D(app, TheVal, TheImg, hitx, hity)
             
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             
@@ -190,7 +188,7 @@ classdef Segmentation < handle
                     TheImg = imcomplement(TheImg);
             end
             
-            imID    = app.imagePerAxis(app.current_view);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage(imID);
             

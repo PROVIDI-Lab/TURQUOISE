@@ -14,28 +14,30 @@ classdef Measurements < handle
         %hitx - x-coordinate of click
         %hity - y-coordinate of click       
             
-            Cv      = app.current_view;
-            imID    = app.imagePerAxis(Cv);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view};
             %Add points to list
             if(hit.Button == 1) 
                 if(view == 3)
-                    app.points{Cv} = [app.points{Cv};   hitx hity slice];
+                    app.points{app.axID} = ...
+                        [app.points{app.axID};   hitx hity slice];
                 elseif(view == 2)
-                    app.points{Cv} = [app.points{Cv};   hitx slice hity];
+                    app.points{app.axID} = ...
+                        [app.points{app.axID};   hitx slice hity];
                 elseif(view == 1)
-                    app.points{Cv} = [app.points{Cv};   slice hitx hity];
+                    app.points{app.axID} = ...
+                        [app.points{app.axID};   slice hitx hity];
                 end
                 
             else
                 %Reset
                 app.drawing.mode        = 0;
-                app.points{Cv}          = [];
+                app.points{app.axID}          = [];
             end
             
             %Perform measurement
-            if(size(app.points{Cv},1) == 2)
+            if(size(app.points{app.axID},1) == 2)
                 Measurements.AddMeasurementToApp(app, [])
             end 
         end
@@ -49,49 +51,11 @@ classdef Measurements < handle
             if size(name,1) == 0
                 name    = Interaction.PromptName(app);
             end
-            Cv  = app.current_view;
             Objects.AddNewUserObj(app,...
                     "type", 2, ...
-                    "points", app.points{Cv}, ...
+                    "points", app.points{app.axID}, ...
                     "name", name{1})
-            
-%             if ~isempty(name) && strcmp(name, ' ') ~= 1
-%                 app.measure_names{Cv}{end+1} = name{1};
-%             else %if the user presses cancel, remove the measurement
-%                 app.points{Cv} = [];
-%                 Graphics.UpdateImage();
-%                 return
-%             end
-%             
-%             %Add measurement to app
-%             NP = app.points{Cv};
-%             app.measure_lines{Cv} = [app.measure_lines{Cv};NP];
-%             app.points{Cv} = [];
-%             
-%             %Calculate length
-%             P1        = NP(1,:);
-%             P2        = NP(2,:);
-%             direction = P2-P1;
-%             CL        = norm(direction,2);
-%             L         = CL*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
-%             app.measure_length{Cv}(end+1)   = L;
-%             
-%             GUI.DisableAllButtonsAndActions(app);
-        end
-        
-        function RemoveMeasurement(app, idx)
-        %removes the measurement(s) at the indexes
-        
-            %TODO: work with objects instead of measure_lines;
-            return
-            
-            Cv  = app.current_view;
-            app.measure_lines{Cv}(2*idx,:)      = [];
-            app.measure_lines{Cv}(2*idx-1,:)    = [];
-            app.measure_names{Cv}(idx)          = [];
-            app.measure_length{Cv}(idx)         = [];
-        end
-        
+        end        
         
         function PerformAutomaticEllipseMeasurement(app, id)
             %Automatically fits an ellipse on the segmentation with the
@@ -100,9 +64,8 @@ classdef Measurements < handle
             %TODO: rework for userobjects
             return
             
-            Cv  = app.current_view;
             %Don't do anything if no segmentations exist.
-            if ~isfield(app.segmentation{Cv}, 'img')
+            if ~isfield(app.segmentation{app.axID}, 'img')
                 return
             end
             
@@ -142,14 +105,14 @@ classdef Measurements < handle
                 V = V(:,[3 2 1]);
             end
 
-            app.measure_lines{Cv}                           ...
-                            = [app.measure_lines{Cv};V];     
-            app.measurement_list{app.imIdx}     ...
-                            = app.measure_lines{Cv};
+            app.measure_lines{app.axID}                           ...
+                            = [app.measure_lines{app.axID};V];     
+            app.measurement_list{app.imID}     ...
+                            = app.measure_lines{app.axID};
 
             %The name of the new measurements is equal to the name of
             %the most recent segmentation + 'major' or 'minor'
-            name        = app.seg_names{Cv}{seg_id};
+            name        = app.seg_names{app.axID}{seg_id};
             nameMajor   = strcat(name, ' major');
             nameMinor   = strcat(name, ' minor');
 
@@ -158,14 +121,14 @@ classdef Measurements < handle
             P1          = V(1,:);
             P2          = V(2,:);
             CL          = norm(P2-P1,2);
-            Length1     = CL*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+            Length1     = CL*min(app.data{app.imID}.hdr.dime.pixdim(2:4));
 
             %line2
             P3          = V(3,:);
             P4          = V(4,:);
             CL2         = norm(P4-P3,2);
             Length2     = ...
-                CL2*min(app.data{app.imIdx}.hdr.dime.pixdim(2:4));
+                CL2*min(app.data{app.imID}.hdr.dime.pixdim(2:4));
 
             %Compare
             if(Length1 > Length2)
@@ -196,13 +159,12 @@ classdef Measurements < handle
             %TODO: rework for measurements
             
             return
-            
-            Cv  = app.current_view;            
+                   
             %Don't do anything if no measurements exist
             if ~isempty(app.measure_lines)
-                app.measure_names{Cv}                       = {};
-                app.measure_lines{Cv}                       = [];
-                app.points{Cv}                              = [];
+                app.measure_names{app.axID}                       = {};
+                app.measure_lines{app.axID}                       = [];
+                app.points{app.axID}                              = [];
             end
            
         end

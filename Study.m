@@ -135,25 +135,29 @@ classdef Study < handle
         %   app, reference to the RMSStudio app
         %   index, index of image in the available_image_box
             
-            if app.imIdx == index
+            if app.imID == index
                 return
             end
             
             %Switch to new image
-            app.imIdx = index;
+            app.imID = index;
 
             %Image not loaded before
             if isempty(app.data{index})
+                GUI.DisableControlsStatus(app)
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
-                app.imagePerAxis(app.current_view) = index;
+                app.imagePerAxis(app.axID) = index;
                 GUI.DisplayNewImage(app, index)
+                GUI.RevertControlsStatus(app)
                 return
             end
             
             %Image loaded before
-            app.imagePerAxis(app.current_view) = index;
+            GUI.DisableControlsStatus(app)
+            app.imagePerAxis(app.axID) = index;
             GUI.SwitchImage(app, index)
+            GUI.RevertControlsStatus(app)
         end
                
         

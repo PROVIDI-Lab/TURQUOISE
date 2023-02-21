@@ -11,18 +11,20 @@ classdef ROI < handle
             % mouse is pressed somewhere in the image. It adds the point to
             % app.drawing. 
             
-            Cv      = app.current_view;
-            imID    = app.imagePerAxis(Cv);
+            imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view};
 
             %add new point
             if(view == 3)
-                app.points{Cv} = [app.points{Cv}; hitx hity slice];
+                app.points{app.axID} = ...
+                    [app.points{app.axID}; hitx hity slice];
             elseif(view == 2)
-                app.points{Cv} = [app.points{Cv}; hitx slice hity];
+                app.points{app.axID} = ...
+                    [app.points{app.axID}; hitx slice hity];
             elseif(view == 1)
-                app.points{Cv} = [app.points{Cv}; slice hitx hity];
+                app.points{app.axID} = ...
+                    [app.points{app.axID}; slice hitx hity];
             end
 
         end
@@ -31,22 +33,22 @@ classdef ROI < handle
         % When at least 3 points are specified in app.drawing.points, a
         % segmentation is constructed and added to the app.
         %   
-            Cv  = app.current_view;
-            if isempty(ROIName) || size(app.points{Cv},1) <= 3
+            if isempty(ROIName) || size(app.points{app.axID},1) <= 3
                	return
             end
 
-            app.points{Cv}  = ROI.ValidatePoints(app, app.points{Cv});
+            app.points{app.axID}  = ROI.ValidatePoints(app, ...
+                                        app.points{app.axID});
 
             %Check if a new ROI should be made
             if newROI
                 ROI.CreateSegmentation(app, ROIName)
-                app.points{Cv} = [];
+                app.points{app.axID} = [];
                 return
             end
             
             %If not, add to existing ROI
-            imID = app.imagePerAxis(Cv);
+            imID = app.imagePerAxis(app.axID);
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
                 if strcmp(obj.name, ROIName) && ...
@@ -57,19 +59,18 @@ classdef ROI < handle
                 end
             end
 
-            app.points{Cv} = [];
+            app.points{app.axID} = [];
             Graphics.DeleteAllTempDrawings(app);
             
         end
         
         function CreateSegmentation(app, name)
         %Creates a segmentation from a collection of points.
-            Cv  = app.current_view;
             Objects.AddNewUserObj(app,...
                 "type", 1, ...
                 "data", ROI.PointsToMask(...
-                app, app.points{Cv}, app.imagePerAxis(Cv), 1),...
-                "points", app.points{Cv}, ...
+                app, app.points{app.axID}, app.imagePerAxis(app.axID), 1),...
+                "points", app.points{app.axID}, ...
                 "name", name)
         end        
         
@@ -120,7 +121,7 @@ classdef ROI < handle
 
                 %Get xref and yref, limits of the image in wc;
                 [xref, yref]    = NiftiUtils.GetSliceBoundary(...
-                    app, app.current_view, viewDim, slice);
+                    app, app.axID, viewDim, slice);
     
                 xi              = tmpWC(:,1);
                 yi              = tmpWC(:,2);
@@ -149,8 +150,8 @@ classdef ROI < handle
         %Makes sure that all points are valid.
        
             sz  = size(...
-                app.data{app.imIdx}.img(:,:,:,...
-                app.d4PerImage(app.imIdx)));
+                app.data{app.imID}.img(:,:,:,...
+                app.d4PerImage(app.imID)));
             points(:,1)     = min(points(:,1), sz(2));
             points(:,2)     = min(points(:,2), sz(1));
             points(:,3)     = min(points(:,3), sz(3));
@@ -179,7 +180,7 @@ classdef ROI < handle
         
         function StartDrawingCircular(app)
             
-            ax = app.GetAxis(app.current_view);
+            ax = app.GetAxis(app.axID);
             roi = drawcircle(ax);        
             
             cm = roi.ContextMenu;
@@ -200,10 +201,10 @@ classdef ROI < handle
             end
             
             %Create points & mask
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            view    = app.viewPerImage(app.imID);
+            slice   = app.slicePerImage{app.imID}{view};
             points  = [roi.Center, roi.Radius, view, slice];
-            mask    = ROI.PointsToMask(app, points, app.imIdx, 3);
+            mask    = ROI.PointsToMask(app, points, app.imID, 3);
             
             %Create UO
             Objects.AddNewUserObj(app,...
@@ -243,7 +244,7 @@ classdef ROI < handle
         
         function StartDrawingEllipse(app)
             
-            ax = app.GetAxis(app.current_view);
+            ax = app.GetAxis(app.axID);
             roi = drawellipse(ax);        
             
             cm = roi.ContextMenu;
@@ -264,11 +265,11 @@ classdef ROI < handle
             end
             
             %Create points & mask
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            view    = app.viewPerImage(app.imID);
+            slice   = app.slicePerImage{app.imID}{view};
             points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
                 view, slice];
-            mask    = ROI.PointsToMask(app, points, app.imIdx, 4);
+            mask    = ROI.PointsToMask(app, points, app.imID, 4);
             
             %Create UO
             Objects.AddNewUserObj(app,...
@@ -315,33 +316,6 @@ classdef ROI < handle
             % create the ellipse
             maskSlc = x0.^2 / radiusY^2 + y0.^2 / radiusX^2 <= 1;
         end
-        
-        
-        %%
-        
-        function RemoveSegmentation(app, index)
-            %Removes the specified segmentation from the current 
-            %segmentations. 
-            %Input: index - the index of the segmentation to be removed.
-           
-            %TODO: update also remove name
-            %TODO: removing a segmentation in the middle should reduce all
-            %other labels by one.
-            %TODO: remove all ROIpoints associated
-            Cv      = app.current_view;
-            if(index ~= 0)
-                    L = app.segmentation{Cv}.img    == index;
-                    app.segmentation{Cv}.img(L)     = 0;
-            end
-        end
-        
-        function RemoveAllROIs(app)
-        %Remove all ROIs from the current image
-            
-            app.userObjects = {};
-            Graphics.UpdateImage(app);
-            
-        end
-        
+                
     end
 end

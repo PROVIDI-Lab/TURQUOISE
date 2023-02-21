@@ -9,13 +9,13 @@ classdef Backups < handle
             
             Study.ToggleUnsavedProgress(app, true);
             
-            obj.current_image_idx   = app.imIdx;
+            obj.current_image_idx   = app.imID;
             obj.imagePerAxis        = app.imagePerAxis;
             obj.slicePerImage       = app.slicePerImage;
             obj.viewPerImage        = app.viewPerImage;
             obj.d4PerImage          = app.d4PerImage;
             obj.viewPerImage        = app.viewPerImage;
-            obj.current_view        = app.current_view;
+            obj.axID        = app.axID;
             obj.MinValue            = app.MinValue;
             obj.MaxValue            = app.MaxValue;
             obj.userObjects         = Objects.CreateObjectBackup(app);
@@ -44,12 +44,12 @@ classdef Backups < handle
             app.viewPerImage    = bck.viewPerImage;
 
             %If view is different
-            if app.current_view ~= bck.current_view
+            if app.axID ~= bck.axID
                 Interaction.SwitchViewAndFocus(app,                  ...
-                                              bck.current_view);
+                                              bck.axID);
 
             %If image is different
-            elseif app.imIdx ~= bck.current_image_idx
+            elseif app.imID ~= bck.current_image_idx
                 Interaction.ChangeListBoxValue(app,                  ...
                                               bck.current_image_idx)
             end

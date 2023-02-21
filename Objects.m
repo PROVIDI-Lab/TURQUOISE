@@ -18,7 +18,7 @@ classdef Objects < handle
             %Fill in unspecified details
             if isempty(obj.imageIdx)
                 obj.imageIdx     = ...
-                    app.imagePerAxis(app.current_view);
+                    app.imagePerAxis(app.axID);
             end
             if isempty(obj.name)
                 obj.name        = ...
@@ -80,11 +80,10 @@ classdef Objects < handle
 
         function AddToUO(app, ID)
             %Adds points & data to existing ROI. 
-            Cv          = app.current_view;
             obj         = app.userObjects{ID};
-            obj.points  = [obj.points; app.points{Cv}];
+            obj.points  = [obj.points; app.points{app.axID}];
             obj.data    = obj.data + ROI.PointsToMask(...
-                app, app.points{Cv}, app.imagePerAxis(Cv), 1);
+                app, app.points{app.axID}, app.imagePerAxis(app.axID), 1);
             obj.data(obj.data > 1) = 1;
             obj.makeProperties(app);
             
@@ -134,14 +133,14 @@ classdef Objects < handle
             
         end
         
-        function idx = FindUoForImage(app, imIdx)
-            %Returns the index of the first uo with obj.imageIdx == imIdx
+        function idx = FindUoForImage(app, imID)
+            %Returns the index of the first uo with obj.imageIdx == imID
             %If none are found, returns -1
             idx = -1;
             
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if obj.imageIdx == imIdx
+                if obj.imageIdx == imID
                     idx = i;
                     break
                 end
@@ -212,7 +211,7 @@ classdef Objects < handle
             slcPoints(:,obj.viewDim) = [];
             
             %Create polygon with contextmenu
-            ax = app.GetAxis(app.current_view);
+            ax = app.GetAxis(app.axID);
             h = images.roi.Polygon(ax, 'Position', slcPoints);
             cm = h.ContextMenu;
             cm.Children(1).Visible = 'off';
@@ -243,7 +242,7 @@ classdef Objects < handle
             newPoints  = polygon.Position;
             
             view    = app.userObjects{idx}.viewDim;
-            slice   = app.slicePerImage{app.imIdx}{view};            
+            slice   = app.slicePerImage{app.imID}{view};            
             newPoints  = [newPoints, ones(size(newPoints(:,1)))*slice];
             newPoints  = round(newPoints);
 
@@ -278,7 +277,7 @@ classdef Objects < handle
             app.userObjects{idx}.setVisible(false);
             
             %Create polygon with contextmenu
-            ax = app.GetAxis(app.current_view);
+            ax = app.GetAxis(app.axID);
             h   = images.roi.Circle(ax,...
                 'Center',obj.points(1:2),'Radius',obj.points(3));
             cm = h.ContextMenu;
@@ -299,8 +298,8 @@ classdef Objects < handle
                 return
             end
             
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            view    = app.viewPerImage(app.imID);
+            slice   = app.slicePerImage{app.imID}{view};
             points  = [roi.Center, roi.Radius, view, slice];
             
             app.userObjects{idx}.points = points;
@@ -335,7 +334,7 @@ classdef Objects < handle
             app.userObjects{idx}.setVisible(false);
             
             %Create polygon with contextmenu
-            ax = app.GetAxis(app.current_view);
+            ax = app.GetAxis(app.axID);
             h   = images.roi.Ellipse(ax,...
                 'Center',points(1:2),'SemiAxes',points(3:4),...
                 'RotationAngle', points(5));
@@ -357,8 +356,8 @@ classdef Objects < handle
                 return
             end
             
-            view    = app.viewPerImage(app.imIdx);
-            slice   = app.slicePerImage{app.imIdx}{view};
+            view    = app.viewPerImage(app.imID);
+            slice   = app.slicePerImage{app.imID}{view};
             points  = [roi.Center, roi.SemiAxes, roi.RotationAngle,...
                 view, slice];
             
