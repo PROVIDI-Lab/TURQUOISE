@@ -14,7 +14,6 @@ classdef Interaction < handle
                 app.AvailableimagesListBox.Items);
                         
             %if index matches the index of any of the other axes, ignore
-            cv =     app.axID;
             otherView = [1,2];
             otherView(app.axID) = [];
             if app.imagePerAxis(otherView) == index
@@ -55,12 +54,6 @@ classdef Interaction < handle
             
             %Update GUI
             GUI.UpdateAxisButtons(app)
-            %Update visible slider
-            if obj.visible
-                app.VisibleSlider.Value = 'On';
-            else
-                app.VisibleSlider.Value = 'Off';
-            end
             
         end
         
@@ -103,6 +96,8 @@ classdef Interaction < handle
             %Handles clicks in the image area. Calls functions depending on
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
+
+            tic
 
             if isempty(app.data)
                 return
@@ -197,8 +192,8 @@ classdef Interaction < handle
             if app.buttonDown
                 app.buttonDown = false;
                 %TODO: don't hardcode axes
-                Graphics.DrawCrosshairInAxis(app, 1, [], [])
-                Graphics.DrawCrosshairInAxis(app, 2, [], [])
+                Graphics.ResetCrosshairsInAxis(app, 1)
+                Graphics.ResetCrosshairsInAxis(app, 2)
                 return
             end
         
@@ -224,14 +219,13 @@ classdef Interaction < handle
             %Triggers when the mouse moves in the image after the
             %windowbuttonmotionFCN has been set for the UIAxes elements.
             if isempty(app.dragPoint) || isempty(app.currentDragPoint)
-                
                 GUI.MouseHover(app, hit)                
                 return
             end
             
-            if app.busyStatus   %Don't do anything if the app is busy
-                return
-            end
+%             if app.busyStatus   %Don't do anything if the app is busy
+%                 return
+%             end
             
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
@@ -272,8 +266,6 @@ classdef Interaction < handle
                         Interaction.ToggleZoom(app)
 %                     case 'e'
 %                         Interaction.EditPolygon(app)
-                    case 'v'
-                        Interaction.showADCHist(app)
                     case 'control'
                         app.ctrl    = true;
                     case 'f12'
@@ -284,6 +276,12 @@ classdef Interaction < handle
                         Interaction.ChangeViewAxis(app, 2)
                     case 'a'
                         Interaction.ChangeViewAxis(app, 3)
+                    case 'q'
+                        profile on
+                    case 'w'
+                        profile viewer
+                    case 'escape'
+                        GUI.RevertControlsStatus(app)
                 end
                 
             elseif contains(modifier, 'control')
@@ -360,7 +358,6 @@ classdef Interaction < handle
         %Switches viewAxis of the current UIAxis to the specified one
         %sagittal = 1, coronal = 2, axial = 3
             app.viewPerImage(app.imID) = viewAxis;
-            disp('test')
             try
                 if isempty(app.slicePerImage{app.imID}{viewAxis})
                     app.slicePerImage{app.imID}{viewAxis} = ...
@@ -517,7 +514,6 @@ classdef Interaction < handle
                 Graphics.UpdateImage(app);
             end
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app); 
         end
         
         function CircularROI(app)
@@ -664,7 +660,7 @@ classdef Interaction < handle
             
             %Update the GUI
             if axID == app.axID
-                GUI.UpdateSliceSlider(app)
+                GUI.UpdateSliceSliderValue(app, slice)
             end
             Graphics.UpdateImageForAxis(app, axID);
 %             Graphics.UpdateSelectionContour(app);
@@ -684,7 +680,6 @@ classdef Interaction < handle
             app.d4PerImage(app.imID)   = value;
             GUI.Update4DSlider(app);
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app);   
         end
         %% Prompts
         
@@ -776,66 +771,12 @@ classdef Interaction < handle
             IX = randperm(size(app.colors_list,1));
             app.colors_list = app.colors_list(IX,:);
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app);
         end
         
         function Debug(app)
             %Used for quick access to the app state
             disp('Debugging, press "continue"')
             a = 12;
-        end
-        
-        function showADCHist(app)
-            
-            img = app.data{app.imID}.img;
-            total_mask = permute(zeros(size(img)),[2,1,3]);
-            
-            z   = [];
-            
-            for i = 1:length(app.userObjects)
-               uo = app.userObjects{i};
-               if uo.imageIdx ~= app.imID || uo.deleted
-                   continue
-               end
-
-               tmp_mask = uo.data;
-               if ~all(size(total_mask) == size(uo.data))
-                   minx = min(size(tmp_mask,1), size(total_mask,1));
-                   miny = min(size(tmp_mask,2), size(total_mask,2)); 
-                   
-                   tmp_mask = zeros(size(total_mask));
-                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny,:);
-               end
-
-               if contains(uo.name, 'Whole Tumor')
-                   total_mask = total_mask + tmp_mask;
-               else
-                   total_mask = total_mask - tmp_mask;
-               end
-               
-               [~,~,zi] = ind2sub(size(uo.data), find(uo.data));
-               z(end+1) = unique(zi);
-            end
-
-            total_mask(total_mask > 1) = 1;
-            total_mask(total_mask < 0) = 0;
-            
-            tmp = Interaction.overlayMask(img, total_mask);
-            if mean(tmp(:)) > 500
-                img = img / 1000;
-            elseif mean(tmp(:)) < 0.5
-                img = img * 1000;
-            end
-
-            %apply mask tot ADC
-            adc_list = Interaction.overlayMask(img, total_mask);
-            
-            figure
-            subplot(2,1,1)
-            histogram(adc_list)
-            subplot(2,1,2)
-            imshowpair(img(:,:,z),total_mask(:,:,z))
-            
         end
         
         function values = overlayMask(im, mask)

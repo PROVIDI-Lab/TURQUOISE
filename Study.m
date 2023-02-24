@@ -154,10 +154,10 @@ classdef Study < handle
             end
             
             %Image loaded before
-            GUI.DisableControlsStatus(app)
+%             GUI.DisableControlsStatus(app)
             app.imagePerAxis(app.axID) = index;
             GUI.SwitchImage(app, index)
-            GUI.RevertControlsStatus(app)
+%             GUI.RevertControlsStatus(app)
         end
                
         

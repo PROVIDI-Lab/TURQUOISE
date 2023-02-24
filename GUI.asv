@@ -210,31 +210,47 @@ classdef GUI < handle
         
         %% Scrolling & zooming the axes
         
-        function Scroll(app, event)
+        function Scroll(app, varargin)
         %Manages the scrollwheelEvent 
         
             if isempty(app.data) || isempty(app.studyNames)
                 return
             end
-            verticalScrollCount     = event.VerticalScrollCount;
-            axID    = GUI.FindAxisUnderCursor(app, event);
-            if axID == -1
-                return
+
+            if nargin == 2  %app + event
+
+                event           = varargin{1};
+                scrollCount     = event.VerticalScrollCount;
+                axID            = GUI.FindAxisUnderCursor(app, event);
+                if axID == -1
+                    return
+                end
+
+                hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+                i       = hit(1);
+                j       = hit(2);
+
+            elseif nargin == 3  %app + value + axID
+
+                scrollCount = varargin{1};
+                axID        = varargin{2};
+                i           = app.crosshairPerAxis{axID}(1);
+                j           = app.crosshairPerAxis{axID}(2);
+
             end
+
             imID    = app.imagePerAxis(axID);
             
             if app.ctrl %Zoom instead of scrolling
-                scrollCount     = verticalScrollCount;
                 GUI.ZoomAxis(app, axID, scrollCount, event);
                 return
             end
+
             view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} - verticalScrollCount;
+            slice   = app.slicePerImage{imID}{view} - scrollCount;
             Interaction.UpdateSlice(app, slice, axID);
 
-            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
-            i       = hit(1);
-            j       = hit(2);
+            
             GUI.MoveCrosshair(app, i, j, axID)
             
         end
@@ -353,9 +369,8 @@ classdef GUI < handle
             imID            = app.imagePerAxis(axID);
             viewAxis        = app.viewPerImage(imID); 
             zPos            = app.slicePerImage{imID}{viewAxis};
-            ijkView     = NiftiUtils.GetIJKView(app);
+            ijkView     = NiftiUtils.FindViewingDimension(app, imID);
             dim         = size(app.data{imID}.img, ijkView);
-            zPos        = zPos - dim/2;
             
             app.viewingParams(5:7) = [xCenter, yCenter, 1];
 
@@ -401,7 +416,8 @@ classdef GUI < handle
         end
         
         function UpdateSliceSlider(app)
-        % Sets the limits and current value of the slice slider
+        % Sets the limits and current value of the slice slider. To be
+        % called when a new image / imageOrientation is loaded.
             if(isempty(app.data{app.imID}))
                 return
             end
@@ -431,6 +447,18 @@ classdef GUI < handle
             catch
                 return
             end            
+        end
+
+        function UpdateSliceSliderValue(app, value)
+            %Updates the value of the slice slider, to be called when the
+            %user scrolls through the image.
+            
+            try
+                app.SliceSlider.Value = double(value);
+            catch
+                return
+            end
+
         end
         
         function Update4DSlider(app)
@@ -776,6 +804,7 @@ classdef GUI < handle
             end
 
             GUI.DisplayHoverValue(app, hit)
+
             UOId = Objects.FindUOUnderMouse(app, hit);
             
             if app.buttonDown
@@ -794,15 +823,15 @@ classdef GUI < handle
             %Get the value of the voxel underneath the cursor and write to
             %app.HoverLabel
 
-            hitx = round(hit.Source.CurrentPoint(1));
-            hity = round(hit.Source.CurrentPoint(2));
+            hitx = round(hit.IntersectionPoint(1));
+            hity = round(hit.IntersectionPoint(2));
             
             if isnan(hitx) || isnan(hity)
                 return
             end
             
             %Find which view the cursor is over
-            if round(hitx) <= hit.Source.Position(3)/2
+            if round(hit.Point(1)) <= hit.Source.Position(3)/2
                 view = 1;
             else
                 view = 2;
@@ -885,13 +914,13 @@ classdef GUI < handle
                 hit = varargin{1};
 
                 %return when hit is wrong
-                if any(isnan(hit.Source.CurrentPoint))
+                if any(isnan(hit.IntersectionPoint))
                     return
                 end
     
                 %Find xyz position of hit
-                i           = hit.Source.CurrentPoint(1);
-                j           = hit.Source.CurrentPoint(2);
+                i           = hit.IntersectionPoint(1);
+                j           = hit.IntersectionPoint(2);
                 xyz         = NiftiUtils.hitToXYZ(app, i, j);
             elseif nargin == 4
                 i           = varargin{1};
@@ -977,6 +1006,7 @@ classdef GUI < handle
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
             m5 = uimenu(cm, 'Text', 'Add Comment');
+            m6 = uimenu(cm, 'Text', 'Show Histogram');
 
             drawnow     %Necessary to display the cm
             
@@ -992,6 +1022,8 @@ classdef GUI < handle
                 {@Objects.ToggleVisibleUO, app, id};
             m5.MenuSelectedFcn = ...
                 {@Objects.AddComment, app, id};
+            m6.MenuSelectedFcn = ...
+                {@Objects.ShowHist, app, id};
 
             cm.Position   = [pos(1), pos(2)];
             cm.Visible    = 'on';

@@ -210,47 +210,48 @@ classdef GUI < handle
         
         %% Scrolling & zooming the axes
         
-        function Scroll(app, event)
+        function Scroll(app, varargin)
         %Manages the scrollwheelEvent 
         
             if isempty(app.data) || isempty(app.studyNames)
                 return
             end
-            verticalScrollCount     = event.VerticalScrollCount;
-            axID    = GUI.FindAxisUnderCursor(app, event);
-            if axID == -1
-                return
+
+            if nargin == 2  %app + event
+
+                event           = varargin{1};
+                scrollCount     = event.VerticalScrollCount;
+                axID            = GUI.FindAxisUnderCursor(app, event);
+                if axID == -1
+                    return
+                end
+
+                hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+                i       = hit(1);
+                j       = hit(2);
+
+            elseif nargin == 3  %app + value + axID
+
+                scrollCount = varargin{1};
+                axID        = varargin{2};
+                i           = app.crosshairPerAxis{axID}(1);
+                j           = app.crosshairPerAxis{axID}(2);
+
             end
+
             imID    = app.imagePerAxis(axID);
             
             if app.ctrl %Zoom instead of scrolling
-                scrollCount     = verticalScrollCount;
                 GUI.ZoomAxis(app, axID, scrollCount, event);
                 return
             end
+
             view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} - verticalScrollCount;
+            slice   = app.slicePerImage{imID}{view} - scrollCount;
             Interaction.UpdateSlice(app, slice, axID);
 
-            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
-            i       = hit(1);
-            j       = hit(2);
             GUI.MoveCrosshair(app, i, j, axID)
             
-        end
-        
-        function SliceUp(app)
-            imID    = app.imagePerAxis(app.axID);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} + 1;
-            Interaction.UpdateSlice(app, slice, app.axID);
-        end
-        
-        function SliceDown(app)
-            imID    = app.imagePerAxis(app.axID);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view} - 1;
-            Interaction.UpdateSlice(app, slice, app.axID);
         end
         
         function axID = FindAxisUnderCursor(app, event)
@@ -353,9 +354,8 @@ classdef GUI < handle
             imID            = app.imagePerAxis(axID);
             viewAxis        = app.viewPerImage(imID); 
             zPos            = app.slicePerImage{imID}{viewAxis};
-            ijkView     = NiftiUtils.GetIJKView(app);
+            ijkView     = NiftiUtils.FindViewingDimension(app, imID);
             dim         = size(app.data{imID}.img, ijkView);
-            zPos        = zPos - dim/2;
             
             app.viewingParams(5:7) = [xCenter, yCenter, 1];
 
@@ -661,7 +661,7 @@ classdef GUI < handle
                 end
 
                 [view, slice]   = Objects.GetUOViewAndSlice(obj);
-                views           = {'Cor', 'Sag', 'Ax'};
+                views           = {'Sag', 'Cor', 'Ax'};
                 view            = views{view};
                 types           = {'POL', 'MSR', 'CIR', 'ELL'};
                 type            = types{obj.type};
@@ -790,7 +790,6 @@ classdef GUI < handle
 
             GUI.DisplayHoverValue(app, hit)
 
-            return
             UOId = Objects.FindUOUnderMouse(app, hit);
             
             if app.buttonDown
@@ -884,8 +883,8 @@ classdef GUI < handle
         xyz         = NiftiUtils.hitToXYZ(app, i, j);
 
         %Draw crosshair for each axis   -TODO: don't hardcode axes
-        GUI.CrosshairPerImage(app, 1, xyz)
-        GUI.CrosshairPerImage(app, 2, xyz)
+        GUI.CrosshairPerAxis(app, 1, xyz)
+        GUI.CrosshairPerAxis(app, 2, xyz)
 
         Graphics.ResetCrosshairsInAxis(app, 1)
         Graphics.ResetCrosshairsInAxis(app, 2)
@@ -916,12 +915,12 @@ classdef GUI < handle
             end
 
             %Draw crosshair for each axis   -TODO: don't hardcode axes
-            GUI.CrosshairPerImage(app, 1, xyz)
-            GUI.CrosshairPerImage(app, 2, xyz)
+            GUI.CrosshairPerAxis(app, 1, xyz)
+            GUI.CrosshairPerAxis(app, 2, xyz)
 
         end
 
-        function CrosshairPerImage(app, axID, xyz)
+        function CrosshairPerAxis(app, axID, xyz)
         %Finds the image position of world coordinate xyz for image imID.
         %Also calculates endpoints of the crosshair and calls the rendering
         %function
@@ -937,6 +936,7 @@ classdef GUI < handle
             viewDim     = NiftiUtils.FindViewingDimension(app, imID);
             slice       = ijk(viewDim);
             ijk(viewDim)   = [];
+            app.crosshairPerAxis{axID} = ijk;
             
             %Scroll if needed
             if ~isempty(app.slicePerImage{imID})
@@ -992,6 +992,7 @@ classdef GUI < handle
             m3 = uimenu(cm,'Text','Copy To');
             m4 = uimenu(cm,'Text','Toggle Visibility');
             m5 = uimenu(cm, 'Text', 'Add Comment');
+            m6 = uimenu(cm, 'Text', 'Show Histogram');
 
             drawnow     %Necessary to display the cm
             
@@ -1007,6 +1008,8 @@ classdef GUI < handle
                 {@Objects.ToggleVisibleUO, app, id};
             m5.MenuSelectedFcn = ...
                 {@Objects.AddComment, app, id};
+            m6.MenuSelectedFcn = ...
+                {@Objects.ShowHist, app, id};
 
             cm.Position   = [pos(1), pos(2)];
             cm.Visible    = 'on';

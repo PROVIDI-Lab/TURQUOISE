@@ -45,9 +45,11 @@ classdef Objects < handle
             app.userObjects{end+1}  = obj;
             GUI.UpdateUOBox(app);
             GUI.AddUOLayer(app, 1, obj.ID)      %TOOD: don't hardcode axes
-            GUI.AddUOLayer(app, 2, obj.ID)  
-            Graphics.UpdateUserObjects(app);
-            Backups.CreateBackup(app);
+            GUI.AddUOLayer(app, 2, obj.ID) 
+            Graphics.UpdateAxisParams(app, 1)
+            Graphics.UpdateAxisParams(app, 2)
+            Graphics.UpdateImage(app)
+            Backups.CreateBackup(app)
         end
 
         function name = CheckNameUnique(app, name, idx)
@@ -534,6 +536,23 @@ classdef Objects < handle
             if ~isempty(comment)
                 app.userObjects{idx}.comment = comment;
             end
+
+        end
+
+        function ShowHist(app,  varargin)
+            %When the addComment in a contextmenu is called.
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
+            end
+
+            obj = app.userObjects{idx};
+            Plotting.ShowHistogram(app, obj);
 
         end
         

@@ -50,6 +50,8 @@ classdef Interaction < handle
             
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
+            Graphics.UpdateAxisParams(app, 1)
+            Graphics.UpdateAxisParams(app, 2)
 %             GUI.ResetAxisZoom(app)
             
             %Update GUI
@@ -84,7 +86,7 @@ classdef Interaction < handle
                 return
             end
         
-            GUI.DisableAllButtonsAndActions(app);           
+%             GUI.DisableAllButtonsAndActions(app);           
             app.axID    = newAxID;
 
             %Switch to the correct image
@@ -266,8 +268,6 @@ classdef Interaction < handle
                         Interaction.ToggleZoom(app)
 %                     case 'e'
 %                         Interaction.EditPolygon(app)
-                    case 'v'
-                        Interaction.showADCHist(app)
                     case 'control'
                         app.ctrl    = true;
                     case 'f12'
@@ -360,7 +360,6 @@ classdef Interaction < handle
         %Switches viewAxis of the current UIAxis to the specified one
         %sagittal = 1, coronal = 2, axial = 3
             app.viewPerImage(app.imID) = viewAxis;
-            disp('test')
             try
                 if isempty(app.slicePerImage{app.imID}{viewAxis})
                     app.slicePerImage{app.imID}{viewAxis} = ...
@@ -517,7 +516,6 @@ classdef Interaction < handle
                 Graphics.UpdateImage(app);
             end
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app); 
         end
         
         function CircularROI(app)
@@ -660,7 +658,7 @@ classdef Interaction < handle
             end
             
             app.slicePerImage{imID}{view}   = slice;
-            app.viewingParams(4+view)       = slice;
+%             app.viewingParams(4+view)       = slice;
             
             %Update the GUI
             if axID == app.axID
@@ -775,66 +773,12 @@ classdef Interaction < handle
             IX = randperm(size(app.colors_list,1));
             app.colors_list = app.colors_list(IX,:);
             Graphics.UpdateImage(app);
-            Graphics.UpdateSelectionContour(app);
         end
         
         function Debug(app)
             %Used for quick access to the app state
             disp('Debugging, press "continue"')
             a = 12;
-        end
-        
-        function showADCHist(app)
-            
-            img = app.data{app.imID}.img;
-            total_mask = permute(zeros(size(img)),[2,1,3]);
-            
-            z   = [];
-            
-            for i = 1:length(app.userObjects)
-               uo = app.userObjects{i};
-               if uo.imageIdx ~= app.imID || uo.deleted
-                   continue
-               end
-
-               tmp_mask = uo.data;
-               if ~all(size(total_mask) == size(uo.data))
-                   minx = min(size(tmp_mask,1), size(total_mask,1));
-                   miny = min(size(tmp_mask,2), size(total_mask,2)); 
-                   
-                   tmp_mask = zeros(size(total_mask));
-                   tmp_mask(1:minx, 1:miny, :) = uo.data(1:minx, 1:miny,:);
-               end
-
-               if contains(uo.name, 'Whole Tumor')
-                   total_mask = total_mask + tmp_mask;
-               else
-                   total_mask = total_mask - tmp_mask;
-               end
-               
-               [~,~,zi] = ind2sub(size(uo.data), find(uo.data));
-               z(end+1) = unique(zi);
-            end
-
-            total_mask(total_mask > 1) = 1;
-            total_mask(total_mask < 0) = 0;
-            
-            tmp = Interaction.overlayMask(img, total_mask);
-            if mean(tmp(:)) > 500
-                img = img / 1000;
-            elseif mean(tmp(:)) < 0.5
-                img = img * 1000;
-            end
-
-            %apply mask tot ADC
-            adc_list = Interaction.overlayMask(img, total_mask);
-            
-            figure
-            subplot(2,1,1)
-            histogram(adc_list)
-            subplot(2,1,2)
-            imshowpair(img(:,:,z),total_mask(:,:,z))
-            
         end
         
         function values = overlayMask(im, mask)

@@ -153,74 +153,74 @@ classdef Graphics < handle
             or_Mat      = [3,1,2; 1,3,2; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);
 
-            %test for the quicker version
             slice       = app.slicePerImage{imID}{viewAxis};
 
             %When imageor ~= viewaxis, the image needs to be rotated.
             %We don't initialize the image, to save time
 
-            %view = 1
+            %view = 1, sagittal
             if view == 1 && viewAxis == imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(slice, :, :, d4)));
+                    squeeze(app.data{imID}.img(:, slice, :, d4)));
             elseif view == 1 && viewAxis ~= imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(app.data{imID}.img(slice, :, :, d4))));
+                    rot90(squeeze(app.data{imID}.img(:, slice, :, d4))));
 
-            %view = 2 %flip 1st dim if coronal
+            %view = 2 
             elseif view == 2  && viewAxis == imageOr   
                 set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(end:-1:1, slice, :, d4)));
+                    squeeze(app.data{imID}.img(slice, :, :, d4)));
             elseif view == 2  && viewAxis ~= imageOr   
                 set(app.imageRenderer{axID},'CData', ...
                     rot90(squeeze(...
-                        app.data{imID}.img(end:-1:1, slice, :, d4))));
+                        app.data{imID}.img(slice, :, :, d4))));
             
-            %view = 3
+            %view = 3, axial - flip??!
             elseif view == 3 && viewAxis == imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(:, :, slice, d4)));
+                    squeeze(app.data{imID}.img(:, :, end - slice, d4)));
             elseif view == 3 && viewAxis ~= imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(app.data{imID}.img(:, :, slice, d4))));
-            end               
-
-                      
+                    rot90(squeeze(app.data{imID}.img(:, :, end - slice, d4))));
+            end                                     
         end
         
-        function imSlice = InterpolateImSlice(app, axID)
-            
-                
-            return
-
-            %Basically, sag, cor, ax, is a fucked up system. 
-            %Not only does the viewing axis change, but dimensions are
-            %sometimes mirrored
-            %This should probably be done in GetDisplayGrid
-            %TODO, check for images that aren't axial to start with
-            if view == 2            %really fucked way to do it
-                imData  = flip(imData, 1);
-            end
-
-            %Create meshgrid for view
-            [xq, yq, zq] = NiftiUtils.GetDisplayGrid(app, axID);
-            %interpolate slice
-            imSlice = squeeze(interp3(imData, xq,yq,zq, 'linear', 0));
-            
-            if(viewAxis ~= imageOr)
-                imSlice = rot90(imSlice);
-            end
-
-        end
         
         %% Individual User Object draw methods
         function DrawROIInAxis(app, axID, obj)          
-        %This draws the countour of a visible segmentation stored in obj.
-        %TODO: split function
+        %This draws the mask of a visible segmentation stored in obj.
 
-            %TODO: interpolate this in the same manner as the slice
-            imSlice = Graphics.InterpolateROI(app, axID, obj);
+            imID        = app.imagePerAxis(axID);
+            viewAxis    = app.viewPerImage(imID); 
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            view        = or_Mat(imageOr, viewAxis);
 
+            slice       = app.slicePerImage{imID}{viewAxis};
+
+            %When imageor ~= viewaxis, the image needs to be rotated.
+            %We don't initialize the image, to save time
+
+            %view = 1, sagittal
+            if view == 1 && viewAxis == imageOr
+                maskSlice = squeeze(obj.data(slice,: , :));
+            elseif view == 1 && viewAxis ~= imageOr
+                maskSlice = flip(rot90(squeeze(obj.data(slice, :, :))), 1);
+
+            %view = 2
+            elseif view == 2  && viewAxis == imageOr   
+                maskSlice = squeeze(obj.data(:, slice, :));
+            elseif view == 2  && viewAxis ~= imageOr   
+                maskSlice = flip(rot90(squeeze(obj.data(:, slice, :))), 1);
+            
+            %view = 3, axial
+            elseif view == 3 && viewAxis == imageOr
+                maskSlice = squeeze(obj.data(:, :, slice));
+            elseif view == 3 && viewAxis ~= imageOr
+                maskSlice = rot90(squeeze(obj.data(:, :, slice)));
+            end 
 
             col = app.colors_list(obj.ID,:);
 
@@ -228,39 +228,13 @@ classdef Graphics < handle
             %Basically creates an RGB version of imslice multiplied by the
             %colour vector
             set(app.UORenderer{axID}{obj.ID},'CData', ...
-                repmat(reshape(col, [1,1,3]), size(imSlice)) .*...
-                    repmat(imSlice, 1,1,3));
+                repmat(reshape(col, [1,1,3]), size(maskSlice)) .*...
+                    repmat(maskSlice, 1,1,3));
             %Set the UO to be slightly transparent
             %TODO, get transparency from a setting
-            set(app.UORenderer{axID}{obj.ID},'AlphaData', imSlice*0.4);
+            set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.4);
         end
 
-        function maskSlc = InterpolateROI(app, axID, obj)
-            imID        = app.imagePerAxis(axID);
-
-            tm          = app.transMatPerImage{imID};
-            or          = NiftiUtils.FindOrientation(tm);
-            viewAxis    = app.viewPerImage(imID);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-
-            slice       = app.slicePerImage{imID}{viewAxis};
-
-            if(view == 3)
-                maskSlc = obj.data(:,:,slice);
-            elseif(view == 2)       %Whhy are 1&2 switched??
-                maskSlc = squeeze(obj.data(slice,:,:));
-                maskSlc = flip(maskSlc, 2);
-            elseif(view == 1)   %Why flip in z-direction??
-                maskSlc = squeeze(obj.data(:,slice,:));
-                maskSlc = flip(maskSlc, 2);
-            end
-
-            if(viewAxis ~= imageOr)
-                maskSlc = rot90(maskSlc);
-            end
-        end
         
         function DrawMeasurementInAxis(app, axID, obj) 
         % This draws a measurement.
@@ -393,7 +367,12 @@ classdef Graphics < handle
         function DrawCrosshairInAxis(app, axID, ijk, sz)
 
             if ~app.buttonDown
-                return
+                if strcmp(app.crosshairTimer.Running, 'on')
+                    stop(app.crosshairTimer)
+                    start(app.crosshairTimer)
+                else
+                    start(app.crosshairTimer)
+                end
             end
 
             app.crosshairRenderer{axID}(1).Visible = 'on';
@@ -415,6 +394,14 @@ classdef Graphics < handle
 
             app.crosshairRenderer{axID}(1).Visible = 'off';
             app.crosshairRenderer{axID}(2).Visible = 'off';
+        end
+
+        function ResetCrosshairs(~, ~, app)
+            %todo: don't hardcode axes...
+
+            Graphics.ResetCrosshairsInAxis(app, 1)
+            Graphics.ResetCrosshairsInAxis(app, 2)
+            stop(app.crosshairTimer)
         end
 
                         

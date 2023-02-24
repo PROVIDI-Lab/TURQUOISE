@@ -17,12 +17,10 @@ classdef Database < handle
 
            else
                %Prompt for a database location
-               fp = uigetdir('Select a folder');
-               if(isnumeric(fp) && fp == 0)
-                   return
-               end
-               app.datasetPath  = fp;
-               Interaction.PromptProfile(app, fp)
+               Launcher(app, ...
+                    getpref('rmsstudio', 'datasets'), ...
+                    getpref('rmsstudio', 'profiles'));
+               return
            end
            
            %Create a list of subfolders with the studies

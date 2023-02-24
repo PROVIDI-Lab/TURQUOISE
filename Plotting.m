@@ -2,6 +2,28 @@ classdef Plotting < handle
     methods (Static)
         
         
+        function ShowHistogram(app, obj)
+            %Displays the histogram of the ROI with the given userobject
+
+            d4          = app.d4PerImage(obj.imageIdx);
+            img         = app.data{obj.imageIdx}.img(:,:,:,d4);
+            
+            tmp = Interaction.overlayMask(img, obj.data);
+            if mean(tmp(:)) > 500
+                tmp = tmp / 1000;
+            elseif mean(tmp(:)) < 0.5
+                tmp = tmp * 1000;
+            end
+
+            %apply mask tot ADC
+            figure
+            h = histogram(tmp);
+            xline(mean(tmp))
+            str = sprintf('Mean = %f', mean(tmp));
+            text(mean(tmp), max(h.Values)/4*3, str)
+            yticks([])
+        end
+
         function Labels3DView(app)
         % Show a 3D plot of the labels    
             f=figure;

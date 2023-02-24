@@ -36,7 +36,6 @@ classdef ROI < handle
             if isempty(ROIName) || size(app.points{app.axID},1) <= 3
                	return
             end
-
             app.points{app.axID}  = ROI.ValidatePoints(app, ...
                                         app.points{app.axID});
 
@@ -44,6 +43,7 @@ classdef ROI < handle
             if newROI
                 ROI.CreateSegmentation(app, ROIName)
                 app.points{app.axID} = [];
+                Graphics.DeleteAllTempDrawings(app);
                 return
             end
             
@@ -88,6 +88,11 @@ classdef ROI < handle
             else
                 type = 1;
             end
+
+            %Find image orientation
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5)); 
         
             %preallocate the mask
             mask    = false(size(app.data{imID}.img));
@@ -106,34 +111,30 @@ classdef ROI < handle
                 return
             end
 
-            %Get world-coordinate points
-            ijk = [points, ones(length(points),1)];
-            tm = app.transMatPerImage{imID};
-            xyz = tm * ijk';
-            worldCoords = xyz(1:3, :)';
-
             %iterate over slices in the view direction
             slices = unique(points(:,viewDim));
             for i = 1:length(slices)
                 slice = slices(i);
 
-                tmpWC = worldCoords(points(:, viewDim) == slice,:);
-
-                %Get xref and yref, limits of the image in wc;
-                [xref, yref]    = NiftiUtils.GetSliceBoundary(...
-                    app, app.axID, viewDim, slice);
-    
-                xi              = tmpWC(:,1);
-                yi              = tmpWC(:,2);
+                tmp = points(points(:, viewDim) == slice,:);
+                tmp(:, viewDim) = [];   %remove viewing axis    
+                xi              = tmp(:,1);
+                yi              = tmp(:,2);
     
                 maskSz          = size(app.data{imID}.img);
                 maskSz(viewDim) = [];
-                maskSlc         = zeros(maskSz(1), maskSz(2));
-    
-                maskSlc         = roipoly(xref, yref, maskSlc, xi, yi);
+                maskSlc         = false(maskSz(1), maskSz(2));
+                if imageOr == viewDim
+                    maskSlc         = roipoly(maskSlc, xi, yi);
+                else
+                    maskSlc         = roipoly(maskSlc, yi, xi);
+                end
+                  
                 mask            = ROI.AddSliceToMask(...
                     mask, maskSlc, viewDim, slice);
-            end          
+            end    
+
+            imshow(maskSlc)
         end
         
         function mask = AddSliceToMask(mask, maskSlc, view, slc)

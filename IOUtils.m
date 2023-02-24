@@ -40,9 +40,9 @@ classdef IOUtils < handle
             %interpolate image based on reference
             rwcImg      = NiftiUtils.MoveToRWC(app, nii);
 
-            %for testing
-            imshowpair(nii.img(:,:,round(size(nii.img, 3)/2)), ...
-                rwcImg(:,:,round(size(nii.img, 3)/2)))
+%             %for testing
+%             imshowpair(nii.img(:,:,round(size(nii.img, 3)/2)), ...
+%                 rwcImg(:,:,round(size(nii.img, 3)/2)))
             
             app.data{index}         = nii;
             app.d4PerImage(index)   = 1;
