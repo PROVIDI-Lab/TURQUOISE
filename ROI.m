@@ -133,8 +133,6 @@ classdef ROI < handle
                 mask            = ROI.AddSliceToMask(...
                     mask, maskSlc, viewDim, slice);
             end    
-
-            imshow(maskSlc)
         end
         
         function mask = AddSliceToMask(mask, maskSlc, view, slc)

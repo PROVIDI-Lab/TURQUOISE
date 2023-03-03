@@ -7,17 +7,17 @@ classdef Backups < handle
             
             obj = BackupObj();
             
+            %Set the UnsavedProgress to true
             Study.ToggleUnsavedProgress(app, true);
             
-            obj.current_image_idx   = app.imID;
+            obj.imID                = app.imID;
             obj.imagePerAxis        = app.imagePerAxis;
             obj.slicePerImage       = app.slicePerImage;
             obj.viewPerImage        = app.viewPerImage;
             obj.d4PerImage          = app.d4PerImage;
             obj.viewPerImage        = app.viewPerImage;
-            obj.axID        = app.axID;
-            obj.MinValue            = app.MinValue;
-            obj.MaxValue            = app.MaxValue;
+            obj.axID                = app.axID;
+            obj.cScalePerImage      = app.cScalePerImage;
             obj.userObjects         = Objects.CreateObjectBackup(app);
 
             %Remove any backups beyond the current index
@@ -49,20 +49,18 @@ classdef Backups < handle
                                               bck.axID);
 
             %If image is different
-            elseif app.imID ~= bck.current_image_idx
-                Interaction.ChangeListBoxValue(app,                  ...
-                                              bck.current_image_idx)
+            elseif app.imID ~= bck.imID
+                Study.SwitchImage(app, bck.imID)
             end
 
             app.d4PerImage          = bck.d4PerImage;
-            app.MinValue            = bck.MinValue;
-            app.MaxValue            = bck.MaxValue;
+            app.cScalePerImage      = bck.cScalePerImage;
 
             Objects.RestoreObjectBackup(app, bck.userObjects)
+            GUI.InitUORenderer(app, app.axID)
 
-            Graphics.UpdateImage(app);
+            Graphics.UpdateAxes(app);
             GUI.UpdateUOBox(app);
-
 
         end
         

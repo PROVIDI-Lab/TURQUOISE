@@ -7,6 +7,12 @@ classdef Graphics < handle
         
         %%Main call order for drawing in specific circumstances.
         
+        function UpdateAxes(app)   
+        %Updates all axes
+            Graphics.UpdateImageForAxis(app, 1)
+            Graphics.UpdateImageForAxis(app, 2)
+        end
+
         function UpdateImage(app)   
         %Updates the image for the current view
             Graphics.UpdateImageForAxis(app, app.axID)
@@ -75,17 +81,18 @@ classdef Graphics < handle
         function DrawUserObjects(app, axID)
         %Redraw all visible UserObjects.
         
+
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
 
-                %First, reset the alpha of all UOs
-                set(app.UORenderer{axID}{obj.ID},'AlphaData', 0);
-
-                %Next, draw it again, if necessary
+                %draw the UO, if necessary
                 if obj.imageIdx ~= app.imagePerAxis(axID)...
                         || ~obj.visible || obj.deleted
                     continue
                 end
+
+                %reset the alpha of all UOs on the axis
+                set(app.UORenderer{axID}{obj.ID},'AlphaData', 0);
 
                 switch obj.type 
                    case {1, 3, 4}
@@ -100,40 +107,7 @@ classdef Graphics < handle
 
             end
         end        
-        
-        
-        function DrawChangedUserObjects(app, axID)
-        %Draws any UserObj in app.userObjects that is both changed and 
-        %visible.
-
-        %Retired, tbd
-
-            return
-            for idx = 1:length(app.userObjects)
-                obj     = app.userObjects{idx};
-
-                %First, reset the alpha of all UOs
-                set(app.UORenderer{axID}{obj.ID},'AlphaData', 0);
-
-                if obj.imageIdx ~= app.imagePerAxis(axID)...
-                        || ~obj.changed ...
-                        || ~obj.visible
-                    continue
-                end
-                
-                switch obj.type
-                   case {1, 3}
-                       Graphics.DrawROIInAxis(app, axID, obj)
-                   case 2
-                       Graphics.DrawMeasurementInAxis(...
-                           app, axID, obj)
-                   otherwise
-                       continue
-               end
-               app.userObjects{idx}.set('changed', false);
-                
-            end
-        end        
+           
         
         
         %% Draw the image
@@ -178,10 +152,12 @@ classdef Graphics < handle
             %view = 3, axial - flip??!
             elseif view == 3 && viewAxis == imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(:, :, end - slice, d4)));
+                    squeeze(app.data{imID}.img(:, :, ...
+                    max(end - slice, 1), d4)));
             elseif view == 3 && viewAxis ~= imageOr
                 set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(app.data{imID}.img(:, :, end - slice, d4))));
+                    rot90(squeeze(app.data{imID}.img(:, :, ...
+                    max(end - slice, 1), d4))));
             end                                     
         end
         
@@ -487,21 +463,36 @@ classdef Graphics < handle
             pixdim(view) = [];
             daspect(the_axis,[flip(pixdim) 1])
 
+            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+
+        end
+
+        function UpdateOrientationInfoOnAxis(app, axID)
+
             %Write axis info
             delete(app.textRenderer{axID})
-            axisSizeX = the_axis.XLim(2);
-            axisSizeY = the_axis.YLim(2);
+            
+            the_axis    = app.GetAxis(axID);
+            axisX0 = the_axis.XLim(1);
+            axisX1 = the_axis.XLim(2);
+            axisY0 = the_axis.YLim(1);
+            axisY1 = the_axis.YLim(2);
+
+            axisXMid = axisX0 + (axisX1-axisX0) / 2;
+            axisYMid = axisY0 + (axisY1-axisY0) / 2;
 
             col = 'Green';
+            imID        = app.imagePerAxis(axID);
+            view        = app.viewPerImage(imID);
             orr = NiftiUtils.FindOrientationWithAxis(...
                 app.transMatPerImage{imID}, view);
-            t1 = text(the_axis, 5, round(axisSizeY/2), orr(1),...
+            t1 = text(the_axis, axisX0, axisYMid, orr(1),...
                 'Color', col, 'FontSize', 15);
-            t2 = text(the_axis, axisSizeX-5, round(axisSizeY/2), orr(2),...
+            t2 = text(the_axis, axisX1, axisYMid, orr(2),...
                 'Color', col, 'FontSize', 15);
-            t3 = text(the_axis, round(axisSizeX/2), 5, orr(3),...
+            t3 = text(the_axis, axisXMid, axisY0, orr(3),...
                 'Color', col, 'FontSize', 15);
-            t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
+            t4 = text(the_axis, axisXMid, axisY1, orr(4),...
                 'Color', col, 'FontSize', 15);
 
             app.textRenderer{axID} = [t1, t2, t3, t4];

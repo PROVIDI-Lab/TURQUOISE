@@ -38,7 +38,8 @@ classdef IOUtils < handle
             nii         = NiftiUtils.PermuteFlip(nii);
 
             %interpolate image based on reference
-            rwcImg      = NiftiUtils.MoveToRWC(app, nii);
+%             rwcImg      = NiftiUtils.MoveToRWC(app, nii);
+%             nii.img     = rwcImg;
 
 %             %for testing
 %             imshowpair(nii.img(:,:,round(size(nii.img, 3)/2)), ...

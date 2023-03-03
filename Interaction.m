@@ -90,17 +90,15 @@ classdef Interaction < handle
             app.axID    = newAxID;
 
             %Switch to the correct image
-            index   = app.imagePerAxis(newAxID);
-            Study.SwitchImage(app, index)
+            app.imID   = app.imagePerAxis(newAxID);
+            GUI.SwitchAxis(app, newAxID)
         end
         
         function MouseClickedInImage(app,hit)
             %Handles clicks in the image area. Calls functions depending on
             %the state of various buttons.
             %Input: hit - the location where the mouse was pressed.
-
-            tic
-
+            
             if isempty(app.data)
                 return
             end
@@ -171,6 +169,9 @@ classdef Interaction < handle
                     C = get(app.UIFigure, 'CurrentPoint');
                     GUI.UOContextMenu(app, id, C) 
                     return
+                else
+                    %rmb + drag is pan image
+                    GUI.StartDragging(app, hit)
                 end
             else
                 %If not doing anything else, move the cursor and other
@@ -186,10 +187,6 @@ classdef Interaction < handle
         function MouseReleasedInImage(app, hit)
         %When editing an ROIpoint, finalize the editing
             
-            if app.busyStatus   %Don't do anything if the app is busy
-                return
-            end
-
             %Dragging the crosshair
             if app.buttonDown
                 app.buttonDown = false;
@@ -203,36 +200,35 @@ classdef Interaction < handle
                 ROI.FinishDrawingCircular(app)
             elseif app.drawing.mode == 6
                 app.drawing.mode = 0;
+            elseif app.drawing.mode == 7
+                app.drawing.mode = 0;
+                GUI.ResetCursor(app);
             else
                 return
             end
             
-            app.currentDragPoint    = {};
             app.dragPoint           = [];
             app.currentCircle       = [];
             
             Graphics.UpdateImage(app)
-            set(hit.Source,'WindowButtonUpFcn','')
-%             GUI.SetButtonDownFcn(app)           
-            end
+            set(hit.Source,'WindowButtonUpFcn','')     
+        end
 
         
         function MouseDraggedInImage(app, hit)
             %Triggers when the mouse moves in the image after the
             %windowbuttonmotionFCN has been set for the UIAxes elements.
-            if isempty(app.dragPoint) || isempty(app.currentDragPoint)
+            if isempty(app.dragPoint)
                 GUI.MouseHover(app, hit)                
                 return
             end
-            
-%             if app.busyStatus   %Don't do anything if the app is busy
-%                 return
-%             end
-            
+
             hitx = round(hit.IntersectionPoint(1));
             hity = round(hit.IntersectionPoint(2));
-            if app.drawing.mode == 6
+            if app.drawing.mode == 6        %contrast
                 GUI.AdjustContrast(app, hitx, hity)
+            elseif app.drawing.mode == 7    %dragging
+                GUI.DragAxis(app, hit)
             end            
         end
         
@@ -264,10 +260,6 @@ classdef Interaction < handle
                         GUI.ResetAxisZoom(app)
                     case 'd'
                         Interaction.DrawPolygon(app)
-                    case 'z'
-                        Interaction.ToggleZoom(app)
-%                     case 'e'
-%                         Interaction.EditPolygon(app)
                     case 'control'
                         app.ctrl    = true;
                     case 'f12'
@@ -338,20 +330,6 @@ classdef Interaction < handle
             app.points{app.axID}(end, :) = [];
             Graphics.UpdateImage(app);
             
-        end
-        
-        function ToggleZoom(app)
-            %Toggle the zoom function of the current UIAxes.
-            ax  = [app.UIAxes1, app.UIAxes2];
-            ax  = ax(app.axID);            
-            
-            if app.zoomToggle
-                zoom(ax, 'off')
-                app.zoomToggle = false;
-            else
-                zoom(ax, 'on')
-                app.zoomToggle = true;
-            end            
         end
         
         %% UI buttons
@@ -508,7 +486,7 @@ classdef Interaction < handle
             if(app.drawing.mode ~= 1)
                 app.drawing.mode = 1;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 0];
-                GUI.SetDrawCursor(app)
+                GUI.SetCursor(app, 'crosshair')
             else
                 app.drawing.mode = 0;
                 app.DrawPolygonButton.BackgroundColor = [.96 .96 .96];

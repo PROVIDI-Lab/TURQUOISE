@@ -70,6 +70,27 @@ classdef GUI < handle
             GUI.SetupCrosshairs(app, the_ax, axID)
         end
 
+        function InitUORenderer(app, axID)
+            %whenever a new image gets displayed on any UIAxis, remove all
+            %previous UORenderer layers and draw new ones for all
+            %userObjects on that image.
+
+            %First, remove all UO layers 
+            for i = 1:length(app.UORenderer{axID})
+                delete(app.UORenderer{axID}{i})
+            end
+
+            app.UORenderer{axID} = {};
+
+            %Draw new ones for the objects on that image
+            UOIDs = Objects.GetAllUOIDsForImage(app, ...
+                app.imagePerAxis(axID));
+            for i = 1:length(UOIDs)
+                GUI.AddUOLayer(app, axID, UOIDs(i))
+            end
+
+        end
+
         function AddUOLayer(app, axID, objID)
             %Creates new imagesc with UO color and transparency 0
 
@@ -129,13 +150,8 @@ classdef GUI < handle
             set(app.imageRenderer{1},'CData', zeros(100));
             set(app.imageRenderer{2},'CData', zeros(100));
 
-            %Remove any objects drawn on the screen
-            for idx = 1:length(app.userObjects)
-                obj     = app.userObjects{idx};
-                delete(app.UORenderer{1}{obj.ID})
-                delete(app.UORenderer{2}{obj.ID})
-            end
-            app.UORenderer      = {{},{}};  %TODO: don't hardcode ndum Axes
+            GUI.InitUORenderer(app, 1)
+            GUI.InitUORenderer(app, 2)
                         
         end
         
@@ -151,7 +167,6 @@ classdef GUI < handle
             end
 
             GUI.UpdateAxisButtons(app);
-            app.zoomToggle              = false;
             
             uoIdx = Objects.FindUoForImage(app, index);
             if uoIdx ~= -1
@@ -170,6 +185,9 @@ classdef GUI < handle
             GUI.UpdateMinMaxSlider(app);
             GUI.UpdateUOBox(app);
             GUI.Update4DSlider(app);
+
+            %Setup the new UO renderer layers
+            GUI.InitUORenderer(app, app.axID)
             
             %Draw the new image
             Graphics.UpdateImage(app);   
@@ -184,8 +202,6 @@ classdef GUI < handle
         %Input:
         %app - the RMSStudio app
         %index - index of the image in the AvailableImageBox
-
-            app.zoomToggle      = false;
             
             %Update all GUI elements
             Graphics.ResetTextRenderer(app)
@@ -195,11 +211,29 @@ classdef GUI < handle
             GUI.ChangeListBoxValue(app, index)
             GUI.UpdateAxisButtons(app)
             GUI.Update4DSlider(app)
+
+            %Draw new UORenderer layers
+            GUI.InitUORenderer(app, app.axID)
                         
+            %Update to the new image
             Graphics.UpdateImage(app)
             Graphics.UpdateAxisParams(app, app.axID)
             GUI.InitCrosshair(app)
         end
+
+        function SwitchAxis(app, index)
+            %Updates the GUI to the new axis
+            %Update all GUI elements
+            Graphics.ResetTextRenderer(app)
+            GUI.UpdateSliceSlider(app)
+            GUI.UpdateMinMaxSlider(app)
+            GUI.UpdateUOBox(app)
+            GUI.ChangeListBoxValue(app, index)
+            GUI.UpdateAxisButtons(app)
+            GUI.Update4DSlider(app)
+        end
+
+
         
         function DisplayError(app)
             %Changes the statuslamp to show an error has occurred
@@ -243,6 +277,7 @@ classdef GUI < handle
             
             if app.ctrl %Zoom instead of scrolling
                 GUI.ZoomAxis(app, axID, scrollCount, event);
+                
                 return
             end
 
@@ -325,50 +360,157 @@ classdef GUI < handle
             %Zooms the image, additionally translates the current viewpoint
             %to keep the cursor mostly centered during zooming
             
-            zoomAmount      = 1 + scrollCount * 0.1; 
+            zoomAmount      = scrollCount * 0.05; 
             zoomFactor      = app.viewingParams(4);
 
-            zoomFactor      = zoomFactor * zoomAmount;
-            zoomFactor      = min(zoomFactor, 3);
-            zoomFactor      = max(zoomFactor, 0.2);
+            zoomFactor      = zoomFactor + zoomAmount;
+            zoomFactor      = min(zoomFactor, 1.5);
+            zoomFactor      = max(zoomFactor, 0.4);
             
             app.viewingParams(4) = zoomFactor;
 
-            %Keep the cursor in (roughly) the same spot
-            %formula for the new center is:
-            %   x + 0.5*zoom*(old_range - 2x)
-            %   where x is cursor position (in pixel coordinates)
-            %   zoom is zoom level as a fraction
-            %   old_range is pixel dimensions before zooming
-
-            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+            hit     = GUI.GetHitFromCurrentPointZoom(app, axID, event);
             xPos    = hit(1);
             yPos    = hit(2);
 
-            %Next, calculate xCenter and yCenter
-            xCenter         = xPos;% + 0.5 * zoomFactor * (deltaX - 2*xPos);
-            yCenter         = yPos;% + 0.5 * zoomFactor * (deltaY - 2*yPos);
+            %find world-coordinate location of hit
+            xyz         = NiftiUtils.hitToXYZ(app, xPos, yPos, axID);
+            GUI.ZoomAxisAtPosition(app, 1, xyz)
+            GUI.ZoomAxisAtPosition(app, 2, xyz)
 
-            
-            %find and correct the zPos for centering
-            imID            = app.imagePerAxis(axID);
-            viewAxis        = app.viewPerImage(imID); 
-            zPos            = app.slicePerImage{imID}{viewAxis};
-            ijkView     = NiftiUtils.FindViewingDimension(app, imID);
-            dim         = size(app.data{imID}.img, ijkView);
-            
-            app.viewingParams(5:7) = [xCenter, yCenter, 1];
+            %get another ijk to convert (why god why)
+            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
+            xPos    = hit(1);
+            yPos    = hit(2);
+            %Display crosshair
+            xyz         = NiftiUtils.hitToXYZ(app, xPos, yPos, axID);
+            GUI.CrosshairPerAxis(app, 1, xyz)
+            GUI.CrosshairPerAxis(app, 2, xyz)
+        end
 
-            Graphics.UpdateImageForAxis(app, axID);
+
+        function ZoomAxisAtPosition(app, axID, xyz)
+            %Uses the zoomFactor stored in app.viewingParams(4) to zoom the
+            %UIAxes. Position is given in world coordinates and calculated
+            %back to image coordinates.
+
+            %find i&j image coordinates of xyz hit
+            imID        = app.imagePerAxis(axID);
+            tm          = app.transMatPerImage{imID};
+            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+
+            %Remove relative viewing axis
+            viewDim     = NiftiUtils.FindViewingDimension(app, imID);
+            ijk(viewDim)   = [];
+            iPos        = ijk(1);
+            jPos        = ijk(2);
+
+            the_axis        = app.GetAxis(axID);
+
+            %find image dimensions
+            sz  = size(app.data{imID}.img);
+            sz(viewDim) = [];
+
+            %Find new limits - get width/height from zoomfactor and image
+            %dimensions. 
+
+            newWidth = sz(1) * app.viewingParams(4);
+            newHeight = sz(2) * app.viewingParams(4);
+
+            %find previous axis positions
+            i0 = the_axis.XLim(1);
+            i1 = the_axis.XLim(2);
+            j0 = the_axis.YLim(1);
+            j1 = the_axis.YLim(2);
+
+            %find relative position of cursor
+            iPerc   = iPos/(i1-i0);
+            jPerc   = jPos/(j1-j0);
+
+            %Find new limits such that cursor stays (roughly) in the same
+            %position
+            deltaI  = (i1-i0)-newWidth;
+            deltaJ  = (j1-j0)-newHeight;
+
+            i0New   = i0 + iPerc*deltaI;
+            i1New   = i1 - (1-iPerc)*deltaI;
+            j0New   = j0 + jPerc*deltaJ;
+            j1New   = j1 - (1-jPerc)*deltaJ;
+
+            the_axis.XLim = [i0New, i1New];
+            the_axis.YLim = [j0New, j1New];
+
+            Graphics.UpdateOrientationInfoOnAxis(app, axID)
 
         end
+
         
         function ResetAxisZoom(app)
+        %Resets the XLim and YLim of both axes to match the image sizes
 
             app.viewingParams(4) = 1;
-            app.viewingParams(5:7) = [-1, -1, -1];
-            Graphics.UpdateImageForAxis(app, app.axID);
-        end        
+
+            Graphics.UpdateAxisParams(app, 1)
+            Graphics.UpdateAxisParams(app, 2)
+
+            GUI.InitCrosshair(app)
+        end      
+
+        function StartDragging(app, hit)
+           %Records the point where the cursor was pressed to allow
+           %dragging the image
+                hitx = round(hit.IntersectionPoint(1));
+                hity = round(hit.IntersectionPoint(2));
+                app.dragPoint   = [hitx, 0, hity, 0];
+                app.drawing.mode = 7;   %drag mode
+                
+
+                set(hit.Source.Parent.Parent.Parent,...
+                    'WindowButtonUpFcn',...
+                    @app.MouseReleasedInImage);
+                
+                GUI.SetCursor(app, 'fleur')
+
+        end
+
+        function DragAxis(app, hit)
+            %Compares hitx and hity with the previous cursor position to
+            %drag the images
+
+            hitx = round(hit.IntersectionPoint(1));
+            hity = round(hit.IntersectionPoint(2));
+            dX              = -(hitx - app.dragPoint(1)) / 2;
+            dY              = -(hity - app.dragPoint(3)) / 2;
+            if isnan(dX)
+                dX = 0;
+            end
+            if isnan(dY)
+                dY = 0;
+            end
+
+            axID    = GUI.FindAxisUnderCursor(app, hit);
+            if axID <= 0
+                return
+            end
+            the_axis =  app.GetAxis(axID);
+            %get the current axis limits
+            x0          = the_axis.XLim(1);
+            x1          = the_axis.XLim(2);
+            y0          = the_axis.YLim(1);
+            y1          = the_axis.YLim(2);
+
+            %Set new XLim and YLim
+            the_axis.XLim = [x0 + dX, x1 + dX];
+            the_axis.YLim = [y0 + dY, y1 + dY];
+            
+            %update dragPoint
+            app.dragPoint(1) = hitx;
+            app.dragPoint(3) = hity;
+
+            %Update axis info position
+            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            
+        end
         
 
         function hit = GetHitFromCurrentPoint(app, axID, event)
@@ -377,14 +519,36 @@ classdef GUI < handle
             deltaX          = ax.XLim(2) - ax.XLim(1);
             xPos            = event.Source.CurrentPoint(1);
             xPos            = (xPos - ax.InnerPosition(1)) / ...
-                ax.InnerPosition(3);
-            xPos            = xPos * deltaX;
+                ax.Position(3);
+            xPos            = xPos * deltaX + ax.XLim(1);
 
             deltaY          = ax.YLim(2) - ax.YLim(1);
             yPos            = event.Source.CurrentPoint(2);
             yPos            = (yPos - ax.InnerPosition(2)) /...
-                ax.InnerPosition(4);
-            yPos            = deltaY - ( yPos * deltaY);
+                ax.Position(4);
+            yPos            = deltaY - ( yPos * deltaY) + ax.YLim(1);
+            
+            hit = [xPos, yPos];
+
+        end
+
+        function hit = GetHitFromCurrentPointZoom(app, axID, event)
+        %Find i,j position of mouseevent that only gives cursor position
+        %Special version for zooming because for some stupid reason,
+        %although this produces less accurate locations, it keeps the
+        %cursor constant while zooming?!
+            ax              = app.GetAxis(axID);
+            deltaX          = ax.XLim(2) - ax.XLim(1);
+            xPos            = event.Source.CurrentPoint(1);
+            xPos            = (xPos - ax.InnerPosition(1)) / ...
+                ax.Position(3);
+            xPos            = xPos * deltaX;    %changes here
+
+            deltaY          = ax.YLim(2) - ax.YLim(1);
+            yPos            = event.Source.CurrentPoint(2);
+            yPos            = (yPos - ax.InnerPosition(2)) /...
+                ax.Position(4);
+            yPos            = deltaY - ( yPos * deltaY);    %changes here
             
             hit = [xPos, yPos];
 
@@ -523,8 +687,8 @@ classdef GUI < handle
             %determine the new min and max display values.
             %X influences the min value & Y influences the max value
 
-            dX              = (hitx - app.dragPoint(1));
-            dY              = (hity - app.dragPoint(3));
+            dX              = (hitx - app.dragPoint(1)) / 3;
+            dY              = (hity - app.dragPoint(3)) / 3;
             if isnan(dX)
                 dX = 0;
             end
@@ -587,28 +751,6 @@ classdef GUI < handle
         
         %% Update buttons
                 
-%         function UpdateAxisInfo(app)
-%             %Updates the axisview buttons to display the correct one.
-%             imID    = app.imagePerAxis(app.axID);
-%             
-%             axInfo  = NiftiUtils.FindOrientation(...
-%                 app.transMatPerImage{imID});
-%             
-%             %Reset the values of the buttons
-%             app.AxialButton.BackgroundColor         = [.96 .96 .96];
-%             app.SagittalButton.BackgroundColor      = [.96 .96 .96];
-%             app.CoronalButton.BackgroundColor       = [.96 .96 .96];
-%             
-%             if     axInfo(5) == 'c'
-%                 app.CoronalButton.BackgroundColor   = [.96 .96 0];
-%             elseif axInfo(5) == 's'
-%                 app.SagittalButton.BackgroundColor  = [.96 .96 0];
-%             else
-%                 app.AxialButton.BackgroundColor     = [.96 .96 0];
-%             end
-% 
-%         end
-
         function UpdateAxisButtons(app)
             %Updates the axisview buttons to display the correct one.
             imID    = app.imagePerAxis(app.axID);
@@ -763,14 +905,8 @@ classdef GUI < handle
         
         %% Cursor stuff
         
-        function SetWatchCursor(app)
-            %Sets the cursor for the UIFigure to a loading icon (watch)
-            set(app.UIFigure, 'Pointer', 'watch')
-        end
-        
-        function SetDrawCursor(app)
-            %Sets the cursor for the UIFigure to a crosshair icon 
-            set(app.UIFigure, 'Pointer', 'crosshair')
+        function SetCursor(app, style)
+            set(app.UIFigure, 'Pointer', style)
         end
         
         function ResetCursor(app)

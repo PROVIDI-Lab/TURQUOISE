@@ -46,8 +46,6 @@ classdef Objects < handle
             GUI.UpdateUOBox(app);
             GUI.AddUOLayer(app, 1, obj.ID)      %TOOD: don't hardcode axes
             GUI.AddUOLayer(app, 2, obj.ID) 
-            Graphics.UpdateAxisParams(app, 1)
-            Graphics.UpdateAxisParams(app, 2)
             Graphics.UpdateImage(app)
             Backups.CreateBackup(app)
         end
@@ -111,6 +109,7 @@ classdef Objects < handle
             Graphics.UpdateUserObjects(app)
         end
 
+        %% Searching the UOs
         function names = GetAllUOsForImage(app, index)
             names = {};
             for i = 1:length(app.userObjects)
@@ -119,6 +118,17 @@ classdef Objects < handle
                     continue
                 end
                 names{end+1} = obj.name;
+            end
+        end
+
+        function IDs = GetAllUOIDsForImage(app, index)
+            IDs = [];
+            for i = 1:length(app.userObjects)
+                obj = app.userObjects{i};
+                if obj.imageIdx ~= index || obj.deleted
+                    continue
+                end
+                IDs(end+1) = obj.ID;
             end
         end
 
@@ -173,6 +183,7 @@ classdef Objects < handle
             slice       = modes(view);
         end
         
+        %% Interacting with the UOs
         function EditUO(app, varargin)
             %When the edit menu in he UOBox contextmenu is called.
 
@@ -496,8 +507,14 @@ classdef Objects < handle
                     "name", obj.name,...
                     "imageIdx", targetIdx)
                 
-            GUI.UpdateUOBox(app)
-            Graphics.UpdateUserObjects(app)
+            
+            
+            %if the image is being displayed, update it
+            for i = 1:length(app.imagePerAxis)
+                if app.imagePerAxis(i) == targetIdx
+                    Graphics.UpdateImageForAxis(app, i)
+                end
+            end
             Backups.CreateBackup(app); 
         end
 
@@ -592,11 +609,9 @@ classdef Objects < handle
                         objects{i}.imageIdx,...
                         objects{i}.type);
                 end
-                
             end
             
         end
-        
         
         %% visibility & interaction
         
