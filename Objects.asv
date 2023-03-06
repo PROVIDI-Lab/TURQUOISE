@@ -586,12 +586,9 @@ classdef Objects < handle
             end
 
             obj = app.userObjects{idx};
-            GUI.DisableControlsStatus(app)
-            [points, mask] = ROI.Interpolate(obj);
+            [mask, points] = ROI.Interpolate(obj);
 
-            app.userObjects{idx}.points = points;
-            app.userObjects{idx}.data   = mask;
-            GUI.RevertControlsStatus(app)
+            app.userObjects{idx};
 
         end
         %% backups stuff

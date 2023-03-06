@@ -254,7 +254,7 @@ classdef MathUtils < handle
             
         end
 
-        function tol = GetDouglasPeckerTolerance(numVert, points)
+        function tol = GetDouglasPeckerTolerance(maskSlice, numVert)
             %Estimates the maximum distance needed to sample the edge in
             %maskSlice in roughly the amount of vertices given in numVert.
 
@@ -262,16 +262,17 @@ classdef MathUtils < handle
             %edge as well as the dimensions. If the shape is found to be
             %more complex, the tolerance is lowered.
 
-            %We estimate a cirkel with roughly the size of the edge
-            xDiam       = max(points(:,1)) - min(points(:,1));
-            yDiam       = max(points(:,2)) - min(points(:,2));
-            circPoints    = (xDiam + yDiam) / 2 * pi;
+            %First we estimate a cirkel filling about 80% of the mask
+            circDiam    = sum(size(maskSlice)) / 2 * 0.8; 
+            circVert    = circDiam * pi;
 
-            %The tolerance is then given by the amount of pixels it would
-            %take to sample this circle in numVert vertices.
-            tol         = circPoints / numVert;
+            %Next, we compare it to the length of the edge in the mask
+            numPoints   = sum(maskSlice(:));
 
-        end        
+            complexity  = numPoints 
+
+
+        
         
     end
     

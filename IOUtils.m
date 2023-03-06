@@ -54,15 +54,15 @@ classdef IOUtils < handle
         function saveUObjs(app, imageId, fn)
         %Saves all the user objects for the current image
         
-            if ~isfolder(fn)
+            %First find all uos for that image
+            UOIDs = Objects.GetAllUOIDsForImage(app, imageId);
+
+            if ~isfolder(fn) && ~isempty(UOIDs)
                 mkdir(fn);
             end
             
-            segProperties   = {};
-            msrProperties   = {};
-            
-            for i    = 1:length(app.userObjects)
-                uObj    = app.userObjects{i};
+            for i    = 1:length(UOIDs)
+                uObj    = app.userObjects{UOIDs(i)};
                 if uObj.imageIdx ~= imageId
                     continue
                 end
@@ -72,24 +72,8 @@ classdef IOUtils < handle
                     delete(fullfile(fn, [uObj.name,'*']))  
                     continue
                 end
-
-                if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
-
-                    %Only write .json for now
-%                     IOUtils.saveSegmentation(app, uObj, fn);
-                    IOUtils.saveSegmentationPoints(uObj, fn);
-                    segProperties{end+1} = uObj.prop;
-                elseif uObj.type == 2
-                    msrProperties{end+1} = uObj.prop;
-                end
-            end
-            if ~isempty(segProperties)
-                IOUtils.saveObjProperties(segProperties, ...
-                    fullfile(fn,'segmentation.csv'));
-            end
-            if ~isempty(msrProperties)
-                IOUtils.saveObjProperties(msrProperties, ...
-                    fullfile(fn,'measurement.csv'));
+                %Only write .json for now
+                IOUtils.saveSegmentationPoints(uObj, fn);
             end
         end
         

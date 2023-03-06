@@ -178,24 +178,16 @@ classdef ROI < handle
                 %Get points by sobel edge detection
                 sEdge   = edge(tmpSlice, 'sobel');
                 [x,y]   = ind2sub(size(sEdge), find(sEdge));
-    
-                %Find boundary pixels in order
-                tmpPoints = bwtraceboundary(sEdge, [x(1), y(1)], 'N');
+                tmpPoints = [x, y];
 
                 %Reduce amount of lines by Douglas-Peucker Algorithm
                 %find the tolerance based on the number of points and the
                 %desired number of vertices
                 tol     = MathUtils.GetDouglasPeckerTolerance( ...
-                    100, tmpPoints);
+                    tmpSlice, 20);
                 tmpPoints = dpsimplify(tmpPoints, tol);
 
-                %add slice dim, swap x and y 
-                tmpPoints = [tmpPoints(:,2),...
-                             tmpPoints(:,1),...
-                             ones(length(tmpPoints), 1) * slice];
 
-                %add points to list
-                newPoints = [newPoints; tmpPoints];
             end
             
             

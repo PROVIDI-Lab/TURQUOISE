@@ -1204,18 +1204,9 @@ classdef GUI < handle
 
         end
 
-        function UpdateProgressDialogue(app, varargin)
-            if nargin == 3
-                msg = varargin{1};
-                val = varargin{2};
-            elseif nargin == 2
-                msg = varargin{1};
-                val = app.progressDlg.Value;
-            end
+        function UpdateProgressDialogue(app, msg)
+            
 
-            app.progressDlg.Message = msg;
-            app.progressDlg.Value   = val;
-        end
         
         
         function DisableAllButtonsAndActions(app)

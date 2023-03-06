@@ -36,6 +36,14 @@ classdef IOUtils < handle
 
             %correct orientation for display in matlab
             nii         = NiftiUtils.PermuteFlip(nii);
+
+            %interpolate image based on reference
+%             rwcImg      = NiftiUtils.MoveToRWC(app, nii);
+%             nii.img     = rwcImg;
+
+%             %for testing
+%             imshowpair(nii.img(:,:,round(size(nii.img, 3)/2)), ...
+%                 rwcImg(:,:,round(size(nii.img, 3)/2)))
             
             app.data{index}         = nii;
             app.d4PerImage(index)   = 1;
@@ -46,12 +54,12 @@ classdef IOUtils < handle
         function saveUObjs(app, imageId, fn)
         %Saves all the user objects for the current image
         
+            %First find all uos for that image
+            UOIDs = Objects.GetAllUOIDsForImage(app, imageId);
+
             if ~isfolder(fn)
                 mkdir(fn);
             end
-            
-            segProperties   = {};
-            msrProperties   = {};
             
             for i    = 1:length(app.userObjects)
                 uObj    = app.userObjects{i};
@@ -64,24 +72,8 @@ classdef IOUtils < handle
                     delete(fullfile(fn, [uObj.name,'*']))  
                     continue
                 end
-
-                if uObj.type == 1 || uObj.type == 3 || uObj.type == 4
-
-                    %Only write .json for now
-%                     IOUtils.saveSegmentation(app, uObj, fn);
-                    IOUtils.saveSegmentationPoints(uObj, fn);
-                    segProperties{end+1} = uObj.prop;
-                elseif uObj.type == 2
-                    msrProperties{end+1} = uObj.prop;
-                end
-            end
-            if ~isempty(segProperties)
-                IOUtils.saveObjProperties(segProperties, ...
-                    fullfile(fn,'segmentation.csv'));
-            end
-            if ~isempty(msrProperties)
-                IOUtils.saveObjProperties(msrProperties, ...
-                    fullfile(fn,'measurement.csv'));
+                %Only write .json for now
+                IOUtils.saveSegmentationPoints(uObj, fn);
             end
         end
         
@@ -150,7 +142,8 @@ classdef IOUtils < handle
             %write new json to disk
             jsonObj     = struct(   'points', obj.points, ...
                                     'type', obj.type, ...
-                                    'viewDim', obj.viewDim);
+                                    'viewDim', obj.viewDim,...
+                                    'comment', obj.comment);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');
@@ -253,13 +246,20 @@ classdef IOUtils < handle
                 viewDim = 3;
             end
 
+            if isfield(data, 'comment')
+                comment = data.comment;
+            else
+                comment = '';
+            end
+
             mask = ROI.PointsToMask(app, points, idx, type, viewDim);
             Objects.AddNewUserObj(app,...
                     "type", type, ...
                     "data", mask,...
                     "points", data.points,...
                     "name", name,...
-                    "imageIdx", idx);
+                    "imageIdx", idx,...
+                    'comment', comment);
         end
         
         function LoadMeasurements(app, name, idx)
