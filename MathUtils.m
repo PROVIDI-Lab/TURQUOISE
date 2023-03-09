@@ -252,26 +252,7 @@ classdef MathUtils < handle
             dist    = abs( (x2-x1)*(y1-y0) - (x1-x0)*(y2-y1)) / ...
                 sqrt((x2-x1)^2 + (y2-y1)^2);
             
-        end
-
-        function tol = GetDouglasPeckerTolerance(numVert, points)
-            %Estimates the maximum distance needed to sample the edge in
-            %maskSlice in roughly the amount of vertices given in numVert.
-
-            %The function takes into account the number of points in the
-            %edge as well as the dimensions. If the shape is found to be
-            %more complex, the tolerance is lowered.
-
-            %We estimate a cirkel with roughly the size of the edge
-            xDiam       = max(points(:,1)) - min(points(:,1));
-            yDiam       = max(points(:,2)) - min(points(:,2));
-            circPoints    = (xDiam + yDiam) / 2 * pi;
-
-            %The tolerance is then given by the amount of pixels it would
-            %take to sample this circle in numVert vertices.
-            tol         = circPoints / numVert;
-
-        end        
+        end 
         
     end
     

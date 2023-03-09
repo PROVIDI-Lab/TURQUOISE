@@ -44,8 +44,8 @@ classdef Objects < handle
             %Add to list            
             app.userObjects{end+1}  = obj;
             GUI.UpdateUOBox(app);
-            GUI.AddUOLayer(app, 1, obj.ID)      %TOOD: don't hardcode axes
-            GUI.AddUOLayer(app, 2, obj.ID) 
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            GUI.AddUOLayer(app, axID, obj.ID)
             Graphics.UpdateImage(app)
             Backups.CreateBackup(app)
         end
@@ -121,11 +121,23 @@ classdef Objects < handle
             end
         end
 
-        function IDs = GetAllUOIDsForImage(app, index)
+        function IDs = GetAllUOIDsForImage(app, varargin)
+            index = varargin{1};
+
+            if nargin == 2
+                selectDeleted = false;
+            elseif nargin == 3
+                selectDeleted = varargin{2};
+            end
+            
             IDs = [];
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
-                if obj.imageIdx ~= index || obj.deleted
+                if obj.imageIdx ~= index
+                    continue
+                end
+
+                if selectDeleted && obj.deleted
                     continue
                 end
                 IDs(end+1) = obj.ID;
@@ -173,14 +185,13 @@ classdef Objects < handle
                 z   = obj.points(:,3); 
             end
             %Find most occurring value
-            [Mx, Fx]    = mode(x);
-            [My, Fy]    = mode(y);
-            [Mz, Fz]    = mode(z);
+            [Mx, ~] = mode(x);
+            [My, ~] = mode(y);
+            [Mz, ~] = mode(z);
             
-            [~,  view]  = max([Fx, Fy, Fz]);
-            
-            modes       = [Mx, My, Mz];
-            slice       = modes(view);
+            view    = obj.viewDim;
+            modes   = [Mx, My, Mz];
+            slice   = modes(view);
         end
         
         %% Interacting with the UOs
@@ -198,6 +209,19 @@ classdef Objects < handle
             end
                         
             obj     = app.userObjects{idx};
+
+            %if object viewdim and current axis view don't match, return
+            if obj.viewDim ~= app.viewPerImage(obj.imageIdx)
+                views = {'a sagittal', 'a coronal', 'an axial'};
+                
+                text = sprintf( ...
+                    strcat( ...
+                    "Can't delete slice in an off-axis projection, ", ...
+                    "switch to %s projection instead."), ...
+                    views{obj.viewDim});
+                msgbox(text)
+                return
+            end
             
             switch obj.type
                 case 1
@@ -426,23 +450,97 @@ classdef Objects < handle
                 app = varargin{2};
                 idx = varargin{3};
             end
+
+            %Prompt the user to make sure that they want to delete
+            answer = questdlg('Really delete?', ...
+                'Deleting', ...
+                'No','Yes','No');
             
+            if strcmp(answer, 'No')
+                return
+            end
+
             idx = Objects.findUOIndex(app, idx);
             if idx == -1
                 return
             end
-            
+            obj = app.userObjects{idx};
+
             %delete / change properties
-            app.userObjects{idx}.deleted = true;
-            app.userObjects{idx}.editing = false;
-            app.userObjects{idx}.renaming = true;
-            app.userObjects{idx}.data = [];
-            app.userObjects{idx}.points = [];
-            app.userObjects{idx}.prop = [];
+            obj.deleted = true;
+            obj.editing = false;
+            obj.renaming = true;
+            obj.data = [];
+            obj.points = [];
+            obj.prop = [];
+
+            %Remove UOLayer in renderer
+            %first find right axis
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            GUI.RemoveUOLayer(app, axID, obj.ID)
 
             GUI.UpdateUOBox(app)
             Graphics.UpdateImage(app)
             Backups.CreateBackup(app); 
+        end
+
+        function DeleteUOSlice(app, varargin)
+            %When the deleteslicemenu in he UOBox contextmenu is called.
+            
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
+            end
+
+            idx = Objects.findUOIndex(app, idx);
+            if idx == -1
+                return
+            end
+
+            obj = app.userObjects{idx};
+            
+            %if object viewdim and current axis view don't match, return
+            if obj.viewDim ~= app.viewPerImage(obj.imageIdx)
+                views = {'a sagittal', 'a coronal', 'an axial'};
+                
+                text = sprintf( ...
+                    strcat( ...
+                    "Can't delete slice in an off-axis projection, ", ...
+                    "switch to %s projection instead."), ...
+                    views{obj.viewDim});
+                msgbox(text)
+                return
+            end
+
+            %find slice
+            slice   = app.slicePerImage{obj.imageIdx}{obj.viewDim};
+            idx     = obj.points(:, obj.viewDim) == slice;
+            obj.points(idx, :) = [];
+
+            %if no more points remain, delete the entire object.
+            if isempty(obj.points)
+                Objects.DeleteUO([], [], app, idx)
+                return
+            end
+            
+            %Remove slice from UO data
+            if obj.viewDim == 1
+                obj.data(slice, :, :) = false;
+            elseif obj.viewDim == 2
+                obj.data(:, slice, :) = false;
+            elseif obj.viewDim == 3
+                obj.data(:, :, slice) = false;
+            end
+
+            GUI.UpdateUOBox(app)
+            Graphics.UpdateImage(app)
+            Backups.CreateBackup(app); 
+
         end
         
         
@@ -495,7 +593,37 @@ classdef Objects < handle
             tm  = app.transMatPerImage{targetIdx};
             xyz = [obj.worldCoords, ones(length(obj.points),1)];
             ijk = tm \ xyz';
-            points = round(ijk(1:3, :))';
+
+            %If the slice thickness is higher in the new image, we might
+            %have multiple ROIs on one slice, causing issues.
+            %Here, we find the closest slice in the case of multiples and
+            %use that.
+            prevSlices      = unique(ijk(obj.viewDim,:));
+            rndPrevSlices   = round(prevSlices);
+            slcDiff         = abs(prevSlices - rndPrevSlices);
+
+            slices = unique(rndPrevSlices);
+
+            %Go over each new slice, add the selected points to a new list.
+            newPoints = [];
+            for i = 1:length(slices)
+                slc = slices(i);
+
+                idx = rndPrevSlices == slc;
+
+                %find prevSlice closest to slc
+                [~, closest]    = min(slcDiff(idx));
+                selection       = prevSlices(idx);
+                prevSlice       = selection(closest);
+
+                %find all points with matching prevSlice
+                pntIdx          = ijk(obj.viewDim, :) == prevSlice;
+                tmpPoints       = ijk(1:3, pntIdx)';
+                newPoints       = [newPoints; tmpPoints];
+            end
+
+
+            points = round(newPoints);
             %create mask
             newMask = ROI.PointsToMask(app, points, targetIdx, obj.type);
                         
@@ -586,9 +714,15 @@ classdef Objects < handle
             end
 
             obj = app.userObjects{idx};
-            [mask, points] = ROI.Interpolate(obj);
+            GUI.DisableControlsStatus(app)
+            [points, mask] = ROI.Interpolate(obj);
 
-            app.userObjects{idx};
+            app.userObjects{idx}.points = points;
+            app.userObjects{idx}.data   = mask;
+
+            app.userObjects{idx}.makeProperties(app);
+            Backups.CreateBackup(app); 
+            GUI.RevertControlsStatus(app)
 
         end
         %% backups stuff
@@ -607,6 +741,8 @@ classdef Objects < handle
                 newObj.imageIdx = obj.imageIdx;
                 newObj.prop     = obj.prop;
                 newObj.ID       = obj.ID;
+                newObj.viewDim  = obj.viewDim;
+                newObj.comment  = obj.comment;
                         
                 bck_objects{i} = newObj;                
             end
@@ -651,7 +787,11 @@ classdef Objects < handle
             
             visible = app.userObjects{idx}.visible;
             app.userObjects{idx}.setVisible(~visible)
-            Graphics.UpdateUserObjects(app)
+
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            
+            set(app.UORenderer{axID}{obj.ID},'CData', ...
+                zeros(100,100));
         end
                 
         function UOId = FindUOUnderMouse(app, hit, varargin)

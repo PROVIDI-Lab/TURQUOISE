@@ -183,11 +183,8 @@ classdef ROI < handle
                 tmpPoints = bwtraceboundary(sEdge, [x(1), y(1)], 'N');
 
                 %Reduce amount of lines by Douglas-Peucker Algorithm
-                %find the tolerance based on the number of points and the
-                %desired number of vertices
-                tol     = MathUtils.GetDouglasPeckerTolerance( ...
-                    100, tmpPoints);
-                tmpPoints = dpsimplify(tmpPoints, tol);
+                %Tolerance hardcoded to 1 seems to give good results.
+                tmpPoints = dpsimplify(tmpPoints, 1);
 
                 %add slice dim, swap x and y 
                 tmpPoints = [tmpPoints(:,2),...

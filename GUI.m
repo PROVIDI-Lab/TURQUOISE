@@ -110,6 +110,12 @@ classdef GUI < handle
                 'ButtonDownFcn',@app.MouseClickedInImage);
         end
 
+        function RemoveUOLayer(app, axID, objID)
+
+            delete(app.UORenderer{axID}{objID})
+
+        end
+
         function SetupCrosshairs(app, the_axis, axID)
             %Plots the crosshairs on each image axis. Crosshairs are
             %updated in Graphics.DrawCrosshairInAxis, which only sets the
@@ -1128,7 +1134,11 @@ classdef GUI < handle
             m3 = uimenu(cm,'Text','Toggle Visibility');
             m4 = uimenu(cm, 'Text', 'More');
 
-            %submenu
+            %submenu - Delete
+            d1 = uimenu(m1, 'Text', 'Delete Slice');
+            d2 = uimenu(m1, "Text", 'Delete ROI');
+
+            %submenu - Other
             s1 = uimenu(m4,'Text','Copy To');
             s2 = uimenu(m4, 'Text', 'Add Comment');
             s3 = uimenu(m4, 'Text', 'Show Histogram');
@@ -1136,14 +1146,18 @@ classdef GUI < handle
 
             drawnow     %Necessary to display the cm
             
+            %callbacks
             m0.MenuSelectedFcn = ...
                 {@Objects.EditUO, app, id};
-            m1.MenuSelectedFcn = ...
-                {@Objects.DeleteUO, app, id};
             m2.MenuSelectedFcn = ...
                 {@Objects.RenameUO, app, id};
             m3.MenuSelectedFcn = ...
                 {@Objects.ToggleVisibleUO, app, id};
+
+            d1.MenuSelectedFcn = ...
+                {@Objects.DeleteUOSlice, app, id};
+            d2.MenuSelectedFcn = ...
+                {@Objects.DeleteUO, app, id};
 
             s1.MenuSelectedFcn = ...
                 {@Objects.CopyUOTo, app, id};

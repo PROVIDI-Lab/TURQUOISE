@@ -82,6 +82,10 @@ classdef Graphics < handle
         %Redraw all visible UserObjects.
         
 
+            if isempty(app.UORenderer{axID})
+                return
+            end
+
             for idx = 1:length(app.userObjects)
                 obj     = app.userObjects{idx};
 
@@ -181,15 +185,16 @@ classdef Graphics < handle
 
             %view = 1, sagittal
             if view == 1 && viewAxis == imageOr
-                maskSlice = squeeze(obj.data(slice,: , :));
+                maskSlice = squeeze(obj.data(:, slice , :));
             elseif view == 1 && viewAxis ~= imageOr
-                maskSlice = flip(rot90(squeeze(obj.data(slice, :, :))), 1);
+                maskSlice = flip(rot90(squeeze(obj.data(:, slice, :))), 1);
 
             %view = 2
             elseif view == 2  && viewAxis == imageOr   
-                maskSlice = squeeze(obj.data(:, slice, :));
+                maskSlice = squeeze(obj.data(slice, :, :));
             elseif view == 2  && viewAxis ~= imageOr   
-                maskSlice = flip(rot90(squeeze(obj.data(:, slice, :))), 1);
+                maskSlice = flip(rot90(squeeze( ...
+                                obj.data(slice, :, :))), 1);
             
             %view = 3, axial
             elseif view == 3 && viewAxis == imageOr

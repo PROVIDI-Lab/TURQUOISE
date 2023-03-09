@@ -50,6 +50,7 @@ classdef Interaction < handle
             
             GUI.UpdateSliceSlider(app)
             Graphics.UpdateImage(app)
+            GUI.InitCrosshair(app)
             Graphics.UpdateAxisParams(app, 1)
             Graphics.UpdateAxisParams(app, 2)
 %             GUI.ResetAxisZoom(app)

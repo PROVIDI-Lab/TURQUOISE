@@ -55,7 +55,7 @@ classdef IOUtils < handle
         %Saves all the user objects for the current image
         
             %First find all uos for that image
-            UOIDs = Objects.GetAllUOIDsForImage(app, imageId);
+            UOIDs = Objects.GetAllUOIDsForImage(app, imageId, false);
 
             if ~isfolder(fn) && ~isempty(UOIDs)
                 mkdir(fn);
