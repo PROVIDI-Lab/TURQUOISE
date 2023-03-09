@@ -666,7 +666,7 @@ classdef Interaction < handle
         
         function PromptName(app, varargin)
             %Called when the user finishes drawing an ROI or measurement.
-    
+
             renameQ = false;
             if nargin == 2
                 renameQ = varargin{1};
@@ -769,7 +769,7 @@ classdef Interaction < handle
             newMask = mask(1:minx, 1:miny, :);
             newIm   = im(1:minx, 1:miny, :);
             
-            values = newIm(newMask == 1);            
+            values = newIm(find(newMask));            
         end
         
         function HideAllTooltips(app)
