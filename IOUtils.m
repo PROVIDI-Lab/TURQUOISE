@@ -19,22 +19,12 @@ classdef IOUtils < handle
             if strcmp(fn(1:2), '* ')
                     fn = fn(3:end);
             end
-<<<<<<< HEAD
 
             if ~contains(fn, '.nii')
                 name = fullfile(fp,[fn '.nii']);
                 if exist(name, 'file') == 0 
                     name = [name '.gz'];
                     %return
-=======
-            if ~contains(fn, '.rmsstudio_reslice.nii')
-                reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii']);
-                if exist(reslice_name, 'file') == 0
-                    reslice_name = fullfile(fp,[fn '.rmsstudio_reslice.nii.gz']);
-                    if exist(reslice_name, 'file') == 0
-                        return
-                    end
->>>>>>> main
                 end
             else
                 name    = fullfile(fp,fn);
@@ -360,16 +350,12 @@ classdef IOUtils < handle
         % TODO: add header checking!!
                         
             files = dir(fullfile(app.current_folder,...
-<<<<<<< HEAD
-                '*.nii*'));
-=======
                 '*.nii'));
 
             cfiles = dir(fullfile(app.current_folder,...
                 '*.nii.gz'));
 
             files = [files; cfiles];
->>>>>>> main
             
             app.studyNames = cell(length(files),1);
             
@@ -377,38 +363,9 @@ classdef IOUtils < handle
 
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-<<<<<<< HEAD
                 hdr = load_untouch_header_only(fullfile(app.current_folder,text));
                 if(hdr.dime.dim(4) == 1) % Only 1 slice
                     files2keep(file_id) = false;
-=======
-                if contains(text, '.rmsstudio_reslice.nii.gz')
-                    app.studyNames{counter} = ...
-                        erase(text, '.rmsstudio_reslice.nii.gz');
-                    counter = counter + 1;
-                elseif contains(text, '.rmsstudio_reslice.nii')
-                    app.studyNames{counter} = ...
-                        erase(text, '.rmsstudio_reslice.nii');
-                    counter = counter + 1;
-                else
-                    %skip for now
-                    
-                    continue
-                    
-                    
-                    %if no _reslice version exists, reslice
-                    reslice_path = fullfile(app.current_folder,...
-                        strrep(text,'.nii','.rmsstudio_reslice.nii'));
-                    if exist(reslice_path,'file')
-                        continue
-                    end
-                    
-                    current_path = fullfile(app.current_folder, text);
-                    IOUtils.ResliceResampleNii(current_path, reslice_path)
-                    app.studyNames{counter} = ...
-                        erase(text, '.nii');
-                    counter = counter + 1;
->>>>>>> main
                 end
 
                 text = erase(text, '.nii.gz');

@@ -101,7 +101,7 @@ classdef Database < handle
             end
             
             %Load the study at the index
-            if index < size(app.dataset,2) && index > 0
+            if index <= size(app.dataset,2) && index > 0
                 IOUtils.PrepareStudy(app, ...
                     fullfile(app.dataset{index},'rmsstudio'))
             end
