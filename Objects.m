@@ -37,6 +37,9 @@ classdef Objects < handle
             if isempty(obj.comment)
                 obj.comment = '';
             end
+            if isempty(obj.profile)
+                obj.profile = app.user_profile;
+            end
 
             
             %Calculate properties
@@ -137,6 +140,10 @@ classdef Objects < handle
                     continue
                 end
 
+                if ~strcmp(app.user_profile, obj.profile)
+                    continue
+                end
+
                 if selectDeleted && obj.deleted
                     continue
                 end
@@ -193,7 +200,8 @@ classdef Objects < handle
             modes   = [Mx, My, Mz];
             slice   = modes(view);
         end
-        
+
+
         %% Interacting with the UOs
         function EditUO(app, varargin)
             %When the edit menu in he UOBox contextmenu is called.
@@ -835,7 +843,7 @@ classdef Objects < handle
 
             %Remove relative viewing axis
             viewDim         = NiftiUtils.FindViewingDimension(app, imID);
-            slice           = ijk(viewDim);
+            slice           = round(ijk(viewDim));
             ijk(viewDim)    = [];
 
              

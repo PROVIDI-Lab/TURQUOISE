@@ -25,48 +25,45 @@ classdef Database < handle
            
            %Create a list of subfolders with the studies
            app.dataset     = [];
-           Database.FindStudies(app, app.datasetPath)
-           Database.AddStudies(app, app.datasetPath)
-           
-           IOUtils.PrepareStudy(app, app.dataset{1})
+           Database.FindPatients(app, app.datasetPath)
+           Database.FindSessions(app, app.datasetPath)
+           Database.SwitchPatient(app, 1)
            GUI.RevertControlsStatus(app)
         end
         
-        function FindStudies(app, fp)
-            %Finds all the subfolders in the database directory and sets
-            %them in the app.
+        function FindPatients(app, fp)
+            %Adds all patients in the database directory to a list
             
             %Go over the first layer, this is likely individual patients
-            folders    = dir(fp);
-            folders    = folders(~ismember({folders.name},{'.','..'}));
-            for i   = 1:length(folders)
-                if folders(i).isdir
-                    
-                    path = fullfile(folders(i).folder, folders(i).name);
-                    
-                    if isfolder(fullfile(path, 'rmsstudio'))
-                        app.dataset{end+1} = path;
-                    else
-                        Database.FindStudies(app, path)
+            folders     = dir(fp);
+            folders     = folders(~ismember({folders.name},{'.','..'}));
+            names       = {folders.name};
+            idx = [folders.isdir];
+            app.PatientsListBox.Items = {names{idx}};            
+        end
+
+        function FindSessions(app, fp)
+            %Adds all patients in the database directory to a list
+
+            for i = 1:length(app.PatientsListBox.Items)
+                folder = app.PatientsListBox.Items{i};
+
+                subfolders = dir(fullfile(fp, folder));
+                subfolders = subfolders( ...
+                    ~ismember({subfolders.name},{'.','..'}));
+                
+                for ii = 1:length(subfolders)
+                    subfolder = subfolders(ii);
+                    rmsPath = fullfile(subfolder.folder, subfolder.name, ...
+                            'rmsstudio');
+                    if exist(rmsPath, 'dir')
+                        app.dataset{end+1} = rmsPath;
                     end
                 end
-            end            
-        end
-        
-        function AddStudies(app, fp)
-            %Add items to listbox
-            
-            app.AvailableStudiesListBox.Items = {};
-            for idx=1:length(app.dataset)
-                text    = app.dataset{idx};
-                text    = erase(text, [fp '\']);
-                text    = erase(text, '\rmsstudio');
-                app.AvailableStudiesListBox.Items{idx} = text;
             end
-            
         end
         
-        function SwitchToStudy(app, varargin)
+        function SwitchPatient(app, varargin)
             %Called when a new study is selected in the availablestudies
             %listbox. Switches to that study.
             %inputs:    app - the RMSStudio app
@@ -83,27 +80,58 @@ classdef Database < handle
             
             if ~isempty(varargin)
                 index   = varargin{1};
-                app.AvailableStudiesListBox.Value =                     ...
-                    app.AvailableStudiesListBox.Items{index};
-            else            
-                %Find index 
-                index   = -1;
-                for idx=1:length(app.dataset)
-                    text    = app.dataset{idx};
-                    text    = erase(text, [app.datasetPath '\']);
-                    text    = erase(text, '\rmsstudio');
-%                     [~,name,~] = fileparts(text);
-                    if strcmp(app.AvailableStudiesListBox.Value, text)
-                        index   = idx;
-                        break;
-                    end
+                app.PatientsListBox.Value =                     ...
+                    app.PatientsListBox.Items{index};
+            end
+
+
+            % update the sessionbox
+            items = {};
+            for i = 1:length(app.dataset)
+                item = app.dataset{i};
+                if contains(item, app.PatientsListBox.Value)
+                    [folder, ~, ~] = fileparts(item);
+                    [~, name, ~] = fileparts(folder);
+                    items{end+1} = name;
                 end
             end
+            app.SessionsListBox.Items = items;
             
             %Load the study at the index
-            if index <= size(app.dataset,2) && index > 0
-                IOUtils.PrepareStudy(app, ...
-                    fullfile(app.dataset{index},'rmsstudio'))
+            Database.SwitchSession(app, 1)
+            
+            GUI.RevertControlsStatus(app)
+        end
+
+        function SwitchSession(app, varargin)
+            %Called when a new study is selected in the availablestudies
+            %listbox. Switches to that study.
+            %inputs:    app - the RMSStudio app
+            %varargin:  optional, the index to switch to.
+            
+            if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+            end
+            
+            GUI.DisableControlsStatus(app)
+            
+            if ~isempty(varargin)
+                index   = varargin{1};
+                app.SessionsListBox.Value =                     ...
+                    app.SessionsListBox.Items{index};
+            end
+
+            %find index in database
+            for i = 1:length(app.dataset)
+            item = app.dataset{i};
+                if contains(item, app.PatientsListBox.Value) && ...
+                        contains(item, app.SessionsListBox.Value)
+                    IOUtils.PrepareStudy(app, app.dataset{i})
+                    break
+                end
             end
             
             GUI.RevertControlsStatus(app)

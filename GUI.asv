@@ -804,9 +804,6 @@ classdef GUI < handle
                 if obj.deleted
                     continue
                 end
-                if ~strcmp(app.user_profile, obj.profile)
-                    continue
-                end
 
                 name     = obj.name;
                 if ~ischar(name)
@@ -836,18 +833,18 @@ classdef GUI < handle
         %Creates a name that fits in the UOBox. 
         %TODO: don't hardcode amount of characters
         
-            %25 characters
-            %DEL#NAME###########slc#viw
-            %  4           14        4   3
+            %28 characters
+            %DEL#NAME##############slc#viw
+            %  4           17        4   3
 
             ddel    = 4 - length(del);
             for i = 1:ddel
                 del = del + " ";
             end
 
-            dname   = 14 - length(name);
+            dname   = 17 - length(name);
             if dname <= 0
-                name = name(1:10) + "... ";
+                name = name(1:13) + "... ";
             else
                 for i = 1:dname
                     name = name + " ";
@@ -870,27 +867,12 @@ classdef GUI < handle
 
         function UpdateProfileBox(app)
             
-            %Clear items
-            app.ProfileListBox.Items     = {};
-            for i = 1:length(app.userObjects)
-                if isempty(app.ProfileListBox.Items)
-                    app.ProfileListBox.Items{1} = ...
-                        app.userObjects{i}.profile;
-                elseif ~any(contains(app.ProfileListBox.Items, ...
-                        app.userObjects{i}.profile))
-                    app.ProfileListBox.Items{end+1} = ...
-                        app.userObjects{i}.profile;
-                end
-            end
+            if isemtpy(app.ProfileListBox.Items)
+                app.ProfileListBox.Items = {app.user_profile};
+            elseif ~any(contains(app.ProfileListBox.Items, ...
+                    app.user_profile))
+                
 
-            profiles = getpref('rmsstudio', 'profiles');
-            for i = 1:length(profiles)
-                if ~any(contains(app.ProfileListBox.Items, ...
-                        profiles{i}))
-                    app.ProfileListBox.Items{end+1} = ...
-                        profiles{i};
-                end
-            end
         end
         
         function UpdateUOVisibility(app, value)

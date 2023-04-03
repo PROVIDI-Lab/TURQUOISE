@@ -17,6 +17,7 @@ classdef UserObj < matlab.mixin.SetGet
        editing      = false     %stores whether the object is being edited
        viewDim
        comment
+       profile
     end
     
     methods        
@@ -41,7 +42,13 @@ classdef UserObj < matlab.mixin.SetGet
                 obj.prop.name       = obj.name;
                 obj.prop.volume     = length(find(L))*VS^3;
 
-                obj.prop.mean       = mean(V(L(:)));
+                try
+                    obj.prop.mean       = mean(V(L(:)));
+                catch
+                    errordlg("Segmentation out of bounds, please redo.")
+                    obj.deleted = true;
+                    return
+                end
                 obj.prop.max        = max(V(L(:)));    
                 obj.prop.min        = min(V(L(:)));
                 obj.prop.std        = std(V(L(:)));    

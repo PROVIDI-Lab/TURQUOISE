@@ -765,8 +765,7 @@ classdef Interaction < handle
         
         function PromptProfile(app)
 
-            newProfile = inputdlg('Enter a new profile');
-            newProfile = newProfile{1};
+            newProfile = inputdlg('', 'Enter a new profile');
             profiles = getpref('rmsstudio', 'profiles');
             
             if any(contains(profiles, newProfile))
@@ -775,8 +774,7 @@ classdef Interaction < handle
             end
 
             profiles{end+1} = newProfile;
-            setpref('rmsstudio', 'profiles', profiles)
-            app.user_profile = newProfile;
+            setpref()
             Interaction.SwitchUserProfile(app)
         end
         

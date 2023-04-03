@@ -160,12 +160,25 @@ classdef IOUtils < handle
                     folder = folder(3:end);
             end
             
-            direc       = fullfile(app.current_folder, folder);
+            if isa(app.user_profile, 'cell')
+                direc       = fullfile(app.current_folder, ...
+                    folder, app.user_profile{1});
+            else
+                direc       = fullfile(app.current_folder, ...
+                    folder, app.user_profile);
+            end
+            
             %First find any segmentations
             segFiles    = dir(fullfile(direc,'**\*.json'));
             for file = segFiles'
+%                 jsonFn  = strrep(file.name,'.nii', '.json');
+%                 if exist(fullfile(direc,jsonFn),'file')
                 IOUtils.loadSegmentationPoints(...
                     app, fullfile(direc,file.name), idx);
+%                 else
+%                     IOUtils.LoadSegmentation(...
+%                         app, fullfile(direc, file.name), idx);
+%                 end
             end
                     
             %Next, load measurements
@@ -211,22 +224,13 @@ classdef IOUtils < handle
             fclose(fid);
             data = jsondecode(txt);
             
-            %Find obj name
             %TODO: more elegantly
             beginPos    = strfind(fn,filesep);
             beginPos    = beginPos(end);
             endPos      = strfind(fn,'-');
             endPos      = endPos(end);
             name        = fn(beginPos + 1: endPos - 1);
-
-            %find obj profile
-            [folder, ~, ~] = fileparts(fn);
-            [~, profile, ~] = fileparts(folder);
-            if contains(app.AvailableimagesListBox.Items{idx}, profile)
-                profile = '';
-            end
             
-            %Load points
             points = data.points;            
             points(any(isnan(points),2),:) = [];
             
@@ -255,8 +259,7 @@ classdef IOUtils < handle
                     "points", data.points,...
                     "name", name,...
                     "imageIdx", idx,...
-                    'comment', comment, ...
-                    'profile', profile);
+                    'comment', comment);
         end
         
         function LoadMeasurements(app, name, idx)
