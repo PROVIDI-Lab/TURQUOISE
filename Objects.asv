@@ -169,6 +169,12 @@ classdef Objects < handle
                     checkProfile = varargin{3};
             end
                     
+            if nargin == 2
+                selectDeleted = true;
+            elseif nargin == 3
+                selectDeleted = varargin{2};
+            end
+            
             idx = [];
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
@@ -176,7 +182,7 @@ classdef Objects < handle
                     continue
                 end
 
-                if checkProfile && ~strcmp(app.user_profile, obj.profile)
+                if ~strcmp(app.user_profile, obj.profile)
                     continue
                 end
 

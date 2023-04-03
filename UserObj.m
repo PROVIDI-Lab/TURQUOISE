@@ -4,7 +4,6 @@ classdef UserObj < matlab.mixin.SetGet
        imageIdx                 %Image on which obj is drawn
        type                     %ROI = 1, measurement = 2, ...
        additive     = true      %Additive or subtractive ROI
-       changed      = true      %Stores whether to redraw
        visible      = true      %Stores whether to display
        data                     %Seg, other
        points                   %ROIPoints, drawing points

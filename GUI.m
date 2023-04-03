@@ -1227,17 +1227,25 @@ classdef GUI < handle
             %Buttons
 
             close(app.progressDlg)
-            app.busyStatus                          = false;
+            app.busyStatus  = false;
             figure(app.UIFigure)    %Request focus back to the uifigure
 
         end
         
         
         % This prevents user interaction
-        function DisableControlsStatus(app)
+        function DisableControlsStatus(app, varargin)
+            title = 'Loading';
+            indeterminate = 'off';
+            if nargin == 2
+                title = varargin{1};
+            elseif nargin == 3
+                title = varargin{1};
+                indeterminate = varargin{2};
+            end
 
             app.progressDlg =  uiprogressdlg(app.UIFigure, 'Title',...
-                'Loading');
+                title, 'Cancelable','on', 'Indeterminate', indeterminate);
             app.busyStatus  = true;
 
         end

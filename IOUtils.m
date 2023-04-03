@@ -55,25 +55,30 @@ classdef IOUtils < handle
         %Saves all the user objects for the current image
         
             %First find all uos for that image
-            UOIDs = Objects.GetAllUOIDsForImage(app, imageId, false);
+            UOIDs = Objects.GetAllUOIdxForImage(app, imageId, false, ...
+                false);
 
             if ~isfolder(fn) && ~isempty(UOIDs)
                 mkdir(fn);
             end
             
-            for i    = 1:length(UOIDs)
-                uObj    = app.userObjects{UOIDs(i)};
-                if uObj.imageIdx ~= imageId
-                    continue
+            for i = UOIDs
+                uObj    = app.userObjects{i};
+
+                profileFn = fullfile(fn, uObj.profile);
+
+                if ~exist(profileFn, 'dir')
+                    mkdir(profileFn)
                 end
 
                 if uObj.deleted
                     %Remove all previous saved data if any
-                    delete(fullfile(fn, [uObj.name,'*']))  
+                    delete(fullfile(profileFn, [uObj.name,'*']))  
                     continue
                 end
                 %Only write .json for now
-                IOUtils.saveSegmentationPoints(uObj, fn);
+                IOUtils.saveSegmentationPoints(uObj, profileFn);
+                %IOUtils.saveSegmentation(app, uObj, profileFn)
             end
         end
         
@@ -84,7 +89,7 @@ classdef IOUtils < handle
         %   fn      - name of the .nii output file
             
             outFn   = fullfile(fn,...
-                        [obj.name, '-segmentation.nii']);
+                        [obj.name, '-segmentation.nii.gz']);
 
             if exist(outFn, 'file')
                 delete(outFn)

@@ -259,6 +259,8 @@ classdef Interaction < handle
         
             key         = event.Key;
             modifier    = event.Modifier;    
+            disp(key)
+            disp(modifier)
             
             if app.busyStatus   %Don't do anything if the app is busy
                 %Only allow ctrl+escape to break
@@ -443,9 +445,7 @@ classdef Interaction < handle
             if isempty(app.studyNames)
                 return
             end
-            GUI.DisableControlsStatus(app)
-            d = uiprogressdlg(app.UIFigure, 'Title','Saving',...
-                'Indeterminate','on');
+            GUI.DisableControlsStatus(app, 'Saving', 'on')
             Study.SaveToDisk(app)
             Study.ToggleUnsavedProgress(app, false);
             GUI.RevertControlsStatus(app)
@@ -697,7 +697,7 @@ classdef Interaction < handle
             
             imID    = app.imagePerAxis(app.axID);
 
-            objs    = Objects.GetAllUOsForImage(app, imID);
+            objs    = Objects.GetAllUONamesForImage(app, imID);
             nameLst = getpref('rmsstudio', 'ROILst');
             app.ROIPromptApp.Show(objs, nameLst, renameQ)
          
