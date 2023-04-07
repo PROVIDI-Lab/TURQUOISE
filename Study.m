@@ -74,7 +74,6 @@ classdef Study < handle
                 d.Value = (length(imList) + 1)/ 2;
                 
                 IOUtils.LoadNii(app, i)
-                IOUtils.LoadUserObjects(app, i);
                 app.imagePerAxis(length(imList) + 1) = i;
                 imList(end+1) = i;
             end                
@@ -144,9 +143,11 @@ classdef Study < handle
             %Image not loaded before
             if isempty(app.data{index})
                 GUI.DisableControlsStatus(app)
+                app.imagePerAxis(app.axID) = index;
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
-                app.imagePerAxis(app.axID) = index;
+                Backups.CreateBackup(app)
+                
                 GUI.DisplayNewImage(app, index)
                 GUI.RevertControlsStatus(app)
                 return

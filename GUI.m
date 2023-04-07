@@ -94,6 +94,10 @@ classdef GUI < handle
         function AddUOLayer(app, axID, objID)
             %Creates new imagesc with UO color and transparency 0
 
+            if axID == 0
+                return
+            end
+
             the_ax  = app.GetAxis(axID);
             rect = round(get(the_ax,'OuterPosition'));
             col = app.colors_list(objID,:);
@@ -890,6 +894,10 @@ classdef GUI < handle
                     app.ProfileListBox.Items{end+1} = ...
                         profiles{i};
                 end
+            end
+
+            if any(strcmp(app.ProfileListBox.Items, app.user_profile))
+                app.ProfileListBox.Value = app.user_profile;
             end
         end
         

@@ -46,11 +46,6 @@ classdef Objects < handle
             obj.makeProperties(app);
             %Add to list            
             app.userObjects{end+1}  = obj;
-            GUI.UpdateUOBox(app);
-            axID = find(app.imagePerAxis == obj.imageIdx);
-            GUI.AddUOLayer(app, axID, obj.ID)
-            Graphics.UpdateImage(app)
-            Backups.CreateBackup(app)
         end
 
         function name = CheckNameUnique(app, name, idx)
@@ -676,13 +671,13 @@ classdef Objects < handle
                     "name", obj.name,...
                     "imageIdx", targetIdx)
                 
-            
+            GUI.UpdateUOBox(app);
             
             %if the image is being displayed, update it
-            for i = 1:length(app.imagePerAxis)
-                if app.imagePerAxis(i) == targetIdx
-                    Graphics.UpdateImageForAxis(app, i)
-                end
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImageForAxis(app, axID)
             end
             Backups.CreateBackup(app); 
         end
@@ -870,6 +865,9 @@ classdef Objects < handle
             
 
             xyz     = NiftiUtils.hitToXYZ(app, hitx, hity, axID);
+            if isempty(xyz)
+                return
+            end
             imID    = app.imagePerAxis(axID);
             tm      = app.transMatPerImage{imID};
             ijk     = NiftiUtils.xyz2ijk(app, tm, xyz, axID);

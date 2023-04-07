@@ -58,6 +58,9 @@ classdef Database < handle
                             'rmsstudio');
                     if exist(rmsPath, 'dir')
                         app.dataset{end+1} = rmsPath;
+                    elseif strcmp(subfolder.name, 'rmsstudio')
+                        app.dataset{end+1} = ...
+                            fullfile(subfolder.folder, subfolder.name);
                     end
                 end
             end
@@ -98,7 +101,9 @@ classdef Database < handle
             app.SessionsListBox.Items = items;
             
             %Load the study at the index
-            Database.SwitchSession(app, 1)
+            if ~isempty(items)
+                Database.SwitchSession(app, items{1})
+            end
             
             GUI.RevertControlsStatus(app)
         end
@@ -119,9 +124,8 @@ classdef Database < handle
             GUI.DisableControlsStatus(app)
             
             if ~isempty(varargin)
-                index   = varargin{1};
-                app.SessionsListBox.Value =                     ...
-                    app.SessionsListBox.Items{index};
+                val   = varargin{1};
+                app.SessionsListBox.Value = val;
             end
 
             %find index in database

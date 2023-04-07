@@ -73,13 +73,10 @@ classdef ROI < handle
                 "points", app.points{app.axID}, ...
                 "name", name)
 
-            obj = app.userObjects{end};
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
-            if axID
-                GUI.AddUOLayer(app, axID, obj.ID)
-                Graphics.UpdateImage(app)
-            end
+            GUI.AddUOLayer(app, axID, obj.ID)
+            Graphics.UpdateImage(app)
             Backups.CreateBackup(app)
         end        
         
@@ -275,14 +272,11 @@ classdef ROI < handle
                     "data", mask, ...
                     "points", points, ...
                     "name", name{1})
-
-            obj = app.userObjects{end};
+            
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
-            if axID
-                GUI.AddUOLayer(app, axID, obj.ID)
-                Graphics.UpdateImage(app)
-            end
+            GUI.AddUOLayer(app, axID, obj.ID)
+            Graphics.UpdateImage(app)
             Backups.CreateBackup(app)
                 
             %Remove polygon
@@ -349,15 +343,6 @@ classdef ROI < handle
                     "data", mask, ...
                     "points", points, ...
                     "name", name{1})
-
-            obj = app.userObjects{end};
-            GUI.UpdateUOBox(app);
-            axID = find(app.imagePerAxis == obj.imageIdx);
-            if axID
-                GUI.AddUOLayer(app, axID, obj.ID)
-                Graphics.UpdateImage(app)
-            end
-            Backups.CreateBackup(app)
                 
             %Remove polygon
             delete(roi)

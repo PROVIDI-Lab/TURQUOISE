@@ -68,12 +68,10 @@ classdef Interaction < handle
             GUI.UpdateUOBox(app)
 
             %Draw new UORenderer layers
-            %TODO" don't hardode axes
-            GUI.InitUORenderer(app, 1)
-            GUI.InitUORenderer(app, 2)
+            GUI.InitUORenderer(app, app.axID)
                         
             %Update to the new image
-            Graphics.UpdateAxes(app)
+            Graphics.UpdateImage(app)
 
         end
         
@@ -481,10 +479,8 @@ classdef Interaction < handle
             obj = app.userObjects{end};
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
-            if axID
-                GUI.AddUOLayer(app, axID, obj.ID)
-                Graphics.UpdateImage(app)
-            end
+            GUI.AddUOLayer(app, axID, obj.ID)
+            Graphics.UpdateImage(app)
             Backups.CreateBackup(app)
             
             %Switch to new labels
@@ -767,7 +763,6 @@ classdef Interaction < handle
                  proceed = true;
               case 'No'
                  proceed = true;
-                 Study.ToggleUnsavedProgress(app, false);
               case 'Cancel'
                  proceed = false;
             end            

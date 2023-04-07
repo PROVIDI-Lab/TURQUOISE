@@ -58,6 +58,8 @@ classdef Database < handle
                             'rmsstudio');
                     if exist(rmsPath, 'dir')
                         app.dataset{end+1} = rmsPath;
+                    elseif strcmp(subfolder.name, ' rmsstudio')
+                        app.dataset{end+1}
                     end
                 end
             end
@@ -82,19 +84,6 @@ classdef Database < handle
                 index   = varargin{1};
                 app.PatientsListBox.Value =                     ...
                     app.PatientsListBox.Items{index};
-            else            
-                %Find index 
-                index   = -1;
-                for idx=1:length(app.PatientsListBox.Items)
-                    text    = app.PatientsListBox.Items{idx};
-                    
-                    if contains(text, app.PatientsListBox.Value)
-                        index   = idx;
-                        break;
-                    end
-                end
-                app.PatientsListBox.Value =                     ...
-                    app.PatientsListBox.Items{index};
             end
 
 
@@ -103,7 +92,7 @@ classdef Database < handle
             for i = 1:length(app.dataset)
                 item = app.dataset{i};
                 if contains(item, app.PatientsListBox.Value)
-                    [folder, ~, ~] = filepasrts(item);
+                    [folder, ~, ~] = fileparts(item);
                     [~, name, ~] = fileparts(folder);
                     items{end+1} = name;
                 end
@@ -111,7 +100,7 @@ classdef Database < handle
             app.SessionsListBox.Items = items;
             
             %Load the study at the index
-            IOUtils.PrepareStudy(app, items{1})
+            Database.SwitchSession(app, items{1})
             
             GUI.RevertControlsStatus(app)
         end
@@ -132,39 +121,19 @@ classdef Database < handle
             GUI.DisableControlsStatus(app)
             
             if ~isempty(varargin)
-                index   = varargin{1};
-                app.PatientsListBox.Value =                     ...
-                    app.PatientsListBox.Items{index};
-            else            
-                %Find index 
-                index   = -1;
-                for idx=1:length(app.PatientsListBox.Items)
-                    text    = app.PatientsListBox.Items{idx};
-                    
-                    if contains(text, app.PatientsListBox.Value)
-                        index   = idx;
-                        break;
-                    end
-                end
-                app.PatientsListBox.Value =                     ...
-                    app.PatientsListBox.Items{index};
+                val   = varargin{1};
+                app.SessionsListBox.Value = val;
             end
 
-
-            % update the sessionbox
-            items = {};
+            %find index in database
             for i = 1:length(app.dataset)
-                item = app.dataset{i};
-                if contains(item, app.PatientsListBox.Value)
-                    [folder, ~, ~] = filepasrts(item);
-                    [~, name, ~] = fileparts(folder;)
-                    items{end+1} = name;
+            item = app.dataset{i};
+                if contains(item, app.PatientsListBox.Value) && ...
+                        contains(item, app.SessionsListBox.Value)
+                    IOUtils.PrepareStudy(app, app.dataset{i})
+                    break
                 end
             end
-            app.SessionsListBox.Items = items;
-            
-            %Load the study at the index
-            IOUtils.PrepareStudy(app, items{1})
             
             GUI.RevertControlsStatus(app)
         end

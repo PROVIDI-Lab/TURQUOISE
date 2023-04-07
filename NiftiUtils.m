@@ -590,6 +590,11 @@ classdef NiftiUtils < handle
             end
 
             imID            = app.imagePerAxis(axID);
+            if isempty(app.slicePerImage{imID})
+                xyz = [];
+                return
+            end
+
             viewAxis        = app.viewPerImage(imID); 
             k               = app.slicePerImage{imID}{viewAxis};
             ijkView         = NiftiUtils.FindViewingDimension(app, imID);

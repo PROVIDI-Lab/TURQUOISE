@@ -170,7 +170,7 @@ classdef IOUtils < handle
             segFiles    = dir(fullfile(direc,'**\*.json'));
             for file = segFiles'
                 IOUtils.loadSegmentationPoints(...
-                    app, fullfile(direc,file.name), idx);
+                    app, fullfile(file.folder, file.name), idx);
             end
                     
             %Next, load measurements
@@ -287,6 +287,7 @@ classdef IOUtils < handle
                     "points", [P11, P12, P13, P21, P22, P23], ...
                     "name", table.Measurement(line_id),...
                     "imageIdx", idx);
+                
             end
         end
         
