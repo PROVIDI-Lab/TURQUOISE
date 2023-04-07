@@ -403,7 +403,7 @@ classdef GUI < handle
             %find i&j image coordinates of xyz hit
             imID        = app.imagePerAxis(axID);
             tm          = app.transMatPerImage{imID};
-            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+            ijk         = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
 
             %Remove relative viewing axis
             viewDim     = NiftiUtils.FindViewingDimension(app, imID);
@@ -1095,7 +1095,12 @@ classdef GUI < handle
             %Find ijk
             imID        = app.imagePerAxis(axID);
             tm          = app.transMatPerImage{imID};
-            ijk         = NiftiUtils.xyz2ijk(tm, xyz);
+            ijk         = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
+            
+            disp(axID)
+            disp(xyz)
+            disp(ijk)
+            disp(tm)
 
             %Remove relative viewing axis
             viewAxis    = app.viewPerImage(imID);

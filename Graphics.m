@@ -156,11 +156,11 @@ classdef Graphics < handle
             elseif view == 3 && viewAxis == imageOr
                 set(app.imageRenderer{axID},'CData', ...
                     squeeze(app.data{imID}.img(:, :, ...
-                    max(end - slice, 1), d4)));
+                    slice, d4)));
             elseif view == 3 && viewAxis ~= imageOr
                 set(app.imageRenderer{axID},'CData', ...
                     rot90(squeeze(app.data{imID}.img(:, :, ...
-                    max(end - slice, 1), d4))));
+                    slice, d4))));
             end                                     
         end
         

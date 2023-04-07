@@ -552,7 +552,7 @@ classdef NiftiUtils < handle
             xyz = xyz(1:3);
         end
 
-        function ijk = xyz2ijk(app, tm, xyz, axID)
+        function ijk = xyz2ijk(tm, xyz)
             %Converts world coordinates to image coordinates with the help
             %of the image transformation matrix.
 
@@ -567,17 +567,7 @@ classdef NiftiUtils < handle
             ijk = tm \ xyz;
             ijk = ijk(1:3);
 
-            imID            = app.imagePerAxis(axID);
-            viewDim = NiftiUtils.FindViewingDimension(app, imID);
-            
-            if viewDim == 3
-                return
-            end
-
-            or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5));
-            sz          = size(app.data{imID}.img, imageOr);
-            ijk(3)      = sz - ijk(3);
+            ijkView         = NiftiUtils.FindViewingDimension(app, imID);
 
         end
 

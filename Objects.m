@@ -872,7 +872,7 @@ classdef Objects < handle
             xyz     = NiftiUtils.hitToXYZ(app, hitx, hity, axID);
             imID    = app.imagePerAxis(axID);
             tm      = app.transMatPerImage{imID};
-            ijk     = NiftiUtils.xyz2ijk(tm, xyz);
+            ijk     = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
 
             %Remove relative viewing axis
             viewDim         = NiftiUtils.FindViewingDimension(app, imID);
