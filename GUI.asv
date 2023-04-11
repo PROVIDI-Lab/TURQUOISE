@@ -931,17 +931,8 @@ classdef GUI < handle
         function ToggleUOPresence(app, idx)
             %Toggles the '* ' prefix of items in app.AvailableImagesListbox
             %to indicate whether UOs exist in that file.
-
-            if ~app.hasUO(idx)
-                style = uistyle("Icon", "uoIcon.png");
-                addStyle(app.AvailableimagesListBox, style, "item", idx)
-            else
-                style = uistyle("Icon", "");
-                addStyle(app.AvailableImagesListBox, style, "item", idx)
-            end
-
-            app.hasUO(idx) = ~app.hasUO(idx);
-
+            
+            
 
             item = app.AvailableimagesListBox.Items{idx};
             if strcmp(item(1:2), '* ')

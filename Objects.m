@@ -892,7 +892,7 @@ classdef Objects < handle
                 if obj.type == 1 || obj.type == 3 || obj.type == 4
                     
                     if(viewDim == 3)
-                        maskSlc = obj.data(:,:,slice);
+                        maskSlc = obj.data(:,:,max(end - slice, 1));
                     elseif(viewDim == 2)
                         maskSlc = obj.data(:,slice,:);
                         maskSlc = permute(squeeze(maskSlc),[2,1]);

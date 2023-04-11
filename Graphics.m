@@ -197,9 +197,10 @@ classdef Graphics < handle
             
             %view = 3, axial
             elseif view == 3 && viewAxis == imageOr
-                maskSlice = squeeze(obj.data(:, :, slice));
+                maskSlice = squeeze(obj.data(:, :, max(end - slice, 1)));
             elseif view == 3 && viewAxis ~= imageOr
-                maskSlice = rot90(squeeze(obj.data(:, :, slice)));
+                maskSlice = rot90(...
+                    squeeze(obj.data(:, :, max(end - slice, 1))));
             end 
 
             col = app.colors_list(obj.ID,:);

@@ -22,6 +22,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
+            app.hasUO               = false(nImages, 1);
             app.imagePerAxis        = [1, 2];
             app.slicePerImage       = cell(nImages, 1);
             app.viewPerImage        = ones(1,nImages);
@@ -97,7 +98,7 @@ classdef Study < handle
                 folder      = app.studyNames{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
-                files       = dir(fullfile(direc, '*.json')); 
+                files       = dir(fullfile(direc, '**\*.json')); 
                 if isempty(files)
                     continue
                 end
