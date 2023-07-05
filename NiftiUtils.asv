@@ -241,7 +241,7 @@ classdef NiftiUtils < handle
         
         end
 
-        function viewDim = FindViewingDimension(app, imID)
+        function viewDim = FindViewingDimension(app, imID, varargin)
             %Returns the dimension needed for a certain view, given the
             %image orientation and a certain projection.
             %e.g. an axial image with a sagittal projection will have a
@@ -250,16 +250,39 @@ classdef NiftiUtils < handle
             % You can find this from the viewing axis, and the image 
             % orientation as follows:
             %                           viewing axis
-            %                   sag         cor         ax
-            %           sag     k           i           j
-            %im Orr     cor     i           k           j
+            %                   cor         sag         ax
+            %           cor     k           j           i
+            %im Orr     sag     j           k           i
             %           ax      i           j           k
+
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            viewAxis    = app.viewPerImage(imID);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+
+            %if viewaxis is specified in varargin, use that. if not, use
+            %viewPerImage
+            if nargin == 2
+                viewAxis    = app.viewPerImage(imID);
+            else
+                viewAxis    = varargin{1};
+            end
+
+            imageOr     = strfind('csa', or(5)); 
+            or_Mat      = [3,2,1; 2,3,1; 1,2,3];
             viewDim     = or_Mat(imageOr, viewAxis);
+        end
+
+        function proj = findProjectionFromViewDim(app, imID, objViewDim)
+            %Takes the imID and the viewdim of the object to find out what
+            %projection was used to draw the object.
+
+            %e.g. if the image orientation is sagittal, and the viewdim is
+            %3, then the object was drawn in a sagittal projection.
+
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('csa', or(5)); 
+            projMat     = [3,2,1; 3,1,2; 1,2,3];
+            proj        = projMat(imageOr, objViewDim);
         end
 
         function [xq,yq,zq] = GetDisplayGrid(app, axID)
@@ -275,8 +298,8 @@ classdef NiftiUtils < handle
             viewAxis    = app.viewPerImage(imID); 
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
+            imageOr     = strfind('csa', or(5)); 
+            or_Mat      = [3,2,1; 2,3,1; 1,2,3];
             view        = or_Mat(imageOr, viewAxis);    %final projection
             slice       = app.slicePerImage{imID}{viewAxis};
 
@@ -396,7 +419,7 @@ classdef NiftiUtils < handle
             imAxes              = [1,2,3];
             imAxes(view)        = [];
             halfPoint           = ones(4,1);
-            halfPoint([imAxes]) = [resx/2, resy/2];
+            halfPoint(imAxes)   = [resx/2, resy/2];
             halfPoint(view)     = slice;    %scroll through view axis
 
             halfPointDist       = tm * halfPoint;
@@ -552,7 +575,7 @@ classdef NiftiUtils < handle
             xyz = xyz(1:3);
         end
 
-        function ijk = xyz2ijk(tm, xyz)
+        function ijk = xyz2ijk(app, tm, xyz, axID)
             %Converts world coordinates to image coordinates with the help
             %of the image transformation matrix.
 
@@ -567,7 +590,17 @@ classdef NiftiUtils < handle
             ijk = tm \ xyz;
             ijk = ijk(1:3);
 
-            ijkView         = NiftiUtils.FindViewingDimension(app, imID);
+            imID            = app.imagePerAxis(axID);
+            viewDim = NiftiUtils.FindViewingDimension(app, imID);
+            
+            if viewDim == 3
+                return
+            end
+
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('sca', or(5));
+            sz          = size(app.data{imID}.img, imageOr);
+            ijk(3)      = sz - ijk(3);
 
         end
 
@@ -580,14 +613,21 @@ classdef NiftiUtils < handle
             end
 
             imID            = app.imagePerAxis(axID);
+            if isempty(app.slicePerImage{imID})
+                xyz = [];
+                return
+            end
+
             viewAxis        = app.viewPerImage(imID); 
             k               = app.slicePerImage{imID}{viewAxis};
             ijkView         = NiftiUtils.FindViewingDimension(app, imID);
 
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5));
+            imageOr     = strfind('csa', or(5));
             sz          = size(app.data{imID}.img, imageOr);
+
+            
 
 %             disp([sz, i, j, k, sz - i])
 

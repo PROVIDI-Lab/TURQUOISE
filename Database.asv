@@ -26,6 +26,14 @@ classdef Database < handle
            %Create a list of subfolders with the studies
            app.dataset     = [];
            Database.FindPatients(app, app.datasetPath)
+
+           %check if any patients were found. If not, throw exception
+           if isempty(app.PatientsListBox.Items)
+               errordlg(strjoin('No patients were found. ', ...
+                   'Check if folder is accessible.'));
+               GUI.RevertControlsStatus(app)
+               return
+           end
            Database.FindSessions(app, app.datasetPath)
            Database.SwitchPatient(app, 1)
            GUI.RevertControlsStatus(app)
@@ -39,7 +47,7 @@ classdef Database < handle
             folders     = folders(~ismember({folders.name},{'.','..'}));
             names       = {folders.name};
             idx = [folders.isdir];
-            app.PatientsListBox.Items = {names{idx}};            
+            app.PatientsListBox.Items = names(idx);            
         end
 
         function FindSessions(app, fp)
@@ -58,8 +66,9 @@ classdef Database < handle
                             'rmsstudio');
                     if exist(rmsPath, 'dir')
                         app.dataset{end+1} = rmsPath;
-                    elseif strcmp(subfolder.name, ' rmsstudio')
-                        app.dataset{end+1}
+                    elseif strcmp(subfolder.name, 'rmsstudio')
+                        app.dataset{end+1} = ...
+                            fullfile(subfolder.folder, subfolder.name);
                     end
                 end
             end
@@ -100,7 +109,9 @@ classdef Database < handle
             app.SessionsListBox.Items = items;
             
             %Load the study at the index
-            Database.SwitchSession(app, items{1})
+            if ~isempty(items)
+                Database.SwitchSession(app, items{1})
+            end
             
             GUI.RevertControlsStatus(app)
         end

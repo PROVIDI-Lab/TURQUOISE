@@ -22,6 +22,7 @@ classdef Study < handle
             
             %Initiatalize study variables
             app.userObjects         = {};
+            app.hasUO               = false(nImages, 1);
             app.imagePerAxis        = [1, 2];
             app.slicePerImage       = cell(nImages, 1);
             app.viewPerImage        = ones(1,nImages);
@@ -46,17 +47,14 @@ classdef Study < handle
             
             %Load the first two images (preferably with UOs attached)
             imList = [];
-            for i = 1:length(app.studyNames)
+            for i = find(app.hasUO)'
                 if length(imList) >= 2
                     break
                 end
-                item = app.AvailableimagesListBox.Items{i};
-                if strcmp(item(1:2), '* ')
-                        
-                    IOUtils.LoadNii(app, i)
-                    app.imagePerAxis(length(imList) + 1) = i;
-                    imList(end+1) = i;
-                end
+
+                IOUtils.LoadNii(app, i)
+                app.imagePerAxis(length(imList) + 1) = i;
+                imList(end+1) = i;
             end
             
             %fill the other images
@@ -74,7 +72,6 @@ classdef Study < handle
                 d.Value = (length(imList) + 1)/ 2;
                 
                 IOUtils.LoadNii(app, i)
-                IOUtils.LoadUserObjects(app, i);
                 app.imagePerAxis(length(imList) + 1) = i;
                 imList(end+1) = i;
             end                
@@ -98,13 +95,11 @@ classdef Study < handle
                 folder      = app.studyNames{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
-                files       = dir(fullfile(direc, '*.json')); 
+                files       = dir(fullfile(direc, '**\*.json')); 
                 if isempty(files)
                     continue
                 end
                 
-                %More files found -> UOs probably exist
-                %TODO, don't store this in availabnleImagesListbox...
                 GUI.ToggleUOPresence(app, idx)                
             end
             
@@ -115,12 +110,7 @@ classdef Study < handle
             %User-made objects are written to either .nii or .csv files.
             
             for imageId=1:length(app.studyNames)
-                fn      = app.studyNames{imageId};
-                
-                if strcmp(fn(1:2), '* ')
-                    fn = fn(3:end);
-                end
-                
+                fn      = app.studyNames{imageId};                
                 outfn   = fullfile(app.current_folder,              ...
                                         fn);
                                      
@@ -144,9 +134,11 @@ classdef Study < handle
             %Image not loaded before
             if isempty(app.data{index})
                 GUI.DisableControlsStatus(app)
+                app.imagePerAxis(app.axID) = index;
                 IOUtils.LoadNii(app, index)
                 IOUtils.LoadUserObjects(app, index)
-                app.imagePerAxis(app.axID) = index;
+                Backups.CreateBackup(app)
+                
                 GUI.DisplayNewImage(app, index)
                 GUI.RevertControlsStatus(app)
                 return

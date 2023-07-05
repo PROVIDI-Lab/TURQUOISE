@@ -43,8 +43,10 @@ classdef Interaction < handle
             end
             
             %Switch slice and view       
-            obj                         = app.userObjects{index};
-            [view, slice]               = Objects.GetUOViewAndSlice(obj);
+            obj             = app.userObjects{index};
+            [view, slice]   = Objects.GetUOViewAndSlice(obj);
+            view            = NiftiUtils.findProjectionFromViewDim( ...
+                    app, obj.imageIdx, view);
             app.viewPerImage(app.imID) = view;
             app.slicePerImage{app.imID}{view}    = slice;
             
@@ -261,8 +263,6 @@ classdef Interaction < handle
         
             key         = event.Key;
             modifier    = event.Modifier;    
-            disp(key)
-            disp(modifier)
             
             if app.busyStatus   %Don't do anything if the app is busy
                 %Only allow ctrl+escape to break
@@ -289,9 +289,9 @@ classdef Interaction < handle
                     case 'f12'
                         Interaction.Debug(app)
                     case 's'
-                        Interaction.ChangeViewAxis(app, 1)
-                    case 'c'
                         Interaction.ChangeViewAxis(app, 2)
+                    case 'c'
+                        Interaction.ChangeViewAxis(app, 1)
                     case 'a'
                         Interaction.ChangeViewAxis(app, 3)
                     case 'q'
@@ -360,17 +360,13 @@ classdef Interaction < handle
         
         function ChangeViewAxis(app, viewAxis)
         %Switches viewAxis of the current UIAxis to the specified one
-        %sagittal = 1, coronal = 2, axial = 3
+        %coronal = 1, sagittal = 2, axial = 3
             app.viewPerImage(app.imID) = viewAxis;
-            try
-                if isempty(app.slicePerImage{app.imID}{viewAxis})
-                    app.slicePerImage{app.imID}{viewAxis} = ...
-                        round(size(app.data{app.imID}.img, viewAxis)/2);
-                end
-            catch
-                app.slicePerImage{app.imID}{viewAxis} = ...
-                        round(size(app.data{app.imID}.img, viewAxis)/2);
-            end
+
+            %Update image slice
+            % viewDim = NiftiUtils.FindViewingDimension(app, app.imID);
+            % app.slicePerImage{app.imID}{viewAxis} = ...
+            %             round(size(app.data{app.imID}.img, viewDim)/2);
 
             GUI.DisableControlsStatus(app)
             GUI.UpdateSliceSlider(app)
@@ -468,12 +464,14 @@ classdef Interaction < handle
         
         function LoadNewLabels(app)
             %Loads a new segmentation for the current image.
+
+            %TODO: move to IOUtils
             defPath         = strcat(app.filepath, "\.rmsstudio");
             [file, path]    = uigetfile('*.nii',                        ...
                                 'Load Segmentation',                    ...
                                 defPath);
             fp              = fullfile(path, file);
-            if ~exist(fp)
+            if ~exist(fp, "file")
                 return
             end
             
@@ -603,18 +601,18 @@ classdef Interaction < handle
                        [300 300 250 150],                               ...
                        'Name',                                          ...
                        'Select Target');
-            txt = uicontrol('Parent',d,                                 ...
+            uicontrol('Parent',d,                                 ...
                 'Style','text',                                         ...
                 'Position',[20 80 210 40],                              ...
                 'String','Select the registration target');
             
-            popup = uicontrol('Parent',d,                               ...
+            uicontrol('Parent',d,                               ...
                 'Style','popup',                                        ...
                 'Position',[75 70 100 25],                              ...
                 'String',app.studyNames,              ...
                 'Callback',@popup_callback);
             
-            btn = uicontrol('Parent',d,                                 ...
+            uicontrol('Parent',d,                                 ...
                 'Position',[89 20 70 25],                               ...
                 'String','Align!',                                      ...
                 'Callback','delete(gcf)');
@@ -626,7 +624,7 @@ classdef Interaction < handle
             app.UIFigure.Visible = 'on';
             GUI.RevertControlsStatus(app);
             
-            function popup_callback(popup,event)
+            function popup_callback(popup, ~)
                 idx = popup.Value;
                 popup_items = popup.String;
                 % This code uses dot notation to get properties.
@@ -660,8 +658,9 @@ classdef Interaction < handle
                 slice = 1;
             end
             %TODO: view_axis per image
-            if(slice > imgSize(app.viewPerImage(imID))) 
-                slice = imgSize(app.viewPerImage(imID));
+            viewDim = NiftiUtils.FindViewingDimension(app, imID);
+            if slice > imgSize(viewDim)
+                slice = imgSize(viewDim);
             end
             
             app.slicePerImage{imID}{view}   = slice;
@@ -718,19 +717,19 @@ classdef Interaction < handle
             %to which image the object should be copied. 
                         
             d = dialog('Position',[300 300 250 150],'Name','Select One');
-            txt = uicontrol('Parent',d,...
+            uicontrol('Parent',d,...
                    'Style','text',...
                    'Position',[20 80 210 40],...
                    'String','Copy to which image');
 
-            popup = uicontrol(...
+            uicontrol(...
                    'Parent',    d,...
                    'Style',     'popup',...
                    'Position',  [75 70 100 25],...
                    'String',    app.studyNames,...
                    'Callback',  @popup_callback);
 
-            btn = uicontrol('Parent',d,...
+            uicontrol('Parent',d,...
                    'Position',[89 20 70 25],...
                    'String','Select',...
                    'Callback',@select);
@@ -741,11 +740,11 @@ classdef Interaction < handle
             % Wait for d to close before running to completion
             uiwait(d);
 
-                function popup_callback(popup,event)
+                function popup_callback(popup,~)
                    choice = popup.Value;
                 end
                
-                function select(btn, event)
+                function select(btn, ~)
                    popupItem  = btn.Parent.Children(2);
                    choice  = popupItem.Value;
                    delete(gcf);
@@ -814,7 +813,7 @@ classdef Interaction < handle
             newMask = mask(1:minx, 1:miny, :);
             newIm   = im(1:minx, 1:miny, :);
             
-            values = newIm(find(newMask));            
+            values = newIm(newMask);            
         end
         
         function HideAllTooltips(app)

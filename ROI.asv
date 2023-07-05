@@ -12,19 +12,22 @@ classdef ROI < handle
             % app.drawing. 
             
             imID    = app.imagePerAxis(app.axID);
-            view    = app.viewPerImage(imID);
-            slice   = app.slicePerImage{imID}{view};
+            viewDim = NiftiUtils.FindViewingDimension(app, imID);
+
+            viewAxis    = app.viewPerImage(imID);
+            slice       = app.slicePerImage{imID}{viewAxis};
 
             %add new point
-            if(view == 3)
-                app.points{app.axID} = ...
-                    [app.points{app.axID}; hitx hity slice];
-            elseif(view == 2)
-                app.points{app.axID} = ...
-                    [app.points{app.axID}; hitx slice hity];
-            elseif(view == 1)
-                app.points{app.axID} = ...
-                    [app.points{app.axID}; slice hitx hity];
+            switch viewDim
+                case 1
+                    app.points{app.axID} = ...
+                        [app.points{app.axID}; slice hitx hity];
+                case 2
+                    app.points{app.axID} = ...
+                        [app.points{app.axID}; hitx slice hity];
+                case 3
+                    app.points{app.axID} = ...
+                        [app.points{app.axID}; hitx hity slice];
             end
 
         end
@@ -36,12 +39,13 @@ classdef ROI < handle
             if isempty(ROIName) || size(app.points{app.axID},1) <= 3
                	return
             end
-            app.points{app.axID}  = ROI.ValidatePoints(app, ...
-                                        app.points{app.axID});
+            
+            %Checks if points should be adapted to match image orientation
+            validatedPts = ROI.ValidatePoints(app);
 
             %Check if a new ROI should be made
             if newROI
-                ROI.CreateSegmentation(app, ROIName)
+                ROI.CreateSegmentation(app, ROIName, validatedPts)
                 app.points{app.axID} = [];
                 Graphics.DeleteAllTempDrawings(app);
                 return
@@ -54,7 +58,7 @@ classdef ROI < handle
                 if strcmp(obj.name, ROIName) && ...
                         obj.imageIdx == imID && ...
                         obj.deleted ~= 1
-                    Objects.AddToUO(app, obj.ID)
+                    Objects.AddToUO(app, obj.ID, validatedPts)
                     break
                 end
             end
@@ -64,19 +68,25 @@ classdef ROI < handle
             
         end
         
-        function CreateSegmentation(app, name)
+        function CreateSegmentation(app, name, pts)
         %Creates a segmentation from a collection of points.
+            
+            mask = ROI.PointsToMask(...
+                app, pts, app.imagePerAxis(app.axID), 1);
+        
             Objects.AddNewUserObj(app,...
                 "type", 1, ...
-                "data", ROI.PointsToMask(...
-                app, app.points{app.axID}, app.imagePerAxis(app.axID), 1),...
+                "data", mask,...
                 "points", app.points{app.axID}, ...
                 "name", name)
 
+            obj = app.userObjects{end};
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
-            GUI.AddUOLayer(app, axID, obj.ID)
-            Graphics.UpdateImage(app)
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImage(app)
+            end
             Backups.CreateBackup(app)
         end        
         
@@ -98,7 +108,7 @@ classdef ROI < handle
             %Find image orientation
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5)); 
+            imageOr     = strfind('csa', or(5)); 
         
             %preallocate the mask
             mask    = false(size(app.data{imID}.img));
@@ -130,10 +140,20 @@ classdef ROI < handle
                 maskSz          = size(app.data{imID}.img);
                 maskSz(viewDim) = [];
                 maskSlc         = false(maskSz(1), maskSz(2));
-                if imageOr == viewDim
+
+                %the maskslice needs to be flipped / transposed sometimes.
+                %A better overview of this is given in the 
+                % MathUtils.ApplyProjection() function
+                if (viewDim == 3 && imageOr == 3) ||...
+                   (viewDim == 3 && imageOr == 1) ||...
+                   (viewDim == 2 && imageOr == 1) ||...
+                   (viewDim == 1 && imageOr == 2) ||...
+                   (viewDim == 2 && imageOr == 2)
                     maskSlc         = roipoly(maskSlc, xi, yi);
+                % elseif 
+                %     maskSlc         = flip(roipoly(maskSlc, xi, yi),2);
                 else
-                    maskSlc         = roipoly(maskSlc, yi, xi);
+                    maskSlc         = flip(roipoly(maskSlc, yi, xi),2);
                 end
                   
                 mask            = ROI.AddSliceToMask(...
@@ -206,16 +226,76 @@ classdef ROI < handle
 
         end
 
-        function points = ValidatePoints(app, points)
-        %Makes sure that all points are valid.
-       
-            sz  = size(...
-                app.data{app.imID}.img(:,:,:,...
-                app.d4PerImage(app.imID)));
-            points(:,1)     = min(points(:,1), sz(2));
-            points(:,2)     = min(points(:,2), sz(1));
-            points(:,3)     = min(points(:,3), sz(3));
-            points          = max(points,1);
+        function pts = ValidatePoints(app, varargin)
+        %Makes sure that all points match with the image orientation and
+        %projection
+
+            if nargin == 1
+                pts     = app.points{app.axID};
+            else
+                pts     = varargin{1};
+            end
+
+            %Get some orientation info
+            imID    = app.imagePerAxis(app.axID);
+            view    = app.viewPerImage(imID);
+            tm      = app.transMatPerImage{imID};
+            or      = NiftiUtils.FindOrientation(tm);
+            imageOr = strfind('csa', or(5)); 
+
+            %There are some siturations where the viewing dimension
+            %(=slice) and / or hity should be inverted
+            %The situtions are listed in the following table. 
+            
+            invAxisTable =  [0,0,1; 0,0,1; 0,0,0];
+            flipHitYTable = [0,0,1; 0,1,0; 0,0,0];
+            flipHitXTable = [0,0,0; 1,0,0; 0,0,0];
+            rotateXYTable = [0,0,0; 0,1,0; 0,0,0];
+
+            %The table is in the following order (csa csa csa) where the
+            %choice of the triplet is based on the image orientation and
+            %the choice within the triplet is the viewPerImage.
+
+            shouldInvert    = invAxisTable(imageOr, view);
+            shouldFlip      = flipHitYTable(imageOr, view);
+            shouldFlipX     = flipHitXTable(imageOr, view);
+            shouldRotate    = rotateXYTable(imageOr, view);
+            sz              = size(app.data{imID}.img);
+
+            if shouldInvert
+                if view == 3
+                    dim     = sz(1);    
+                    pts(:,1) = dim - pts(:,1);
+                else %otherwise, sagittal view
+                    dim = sz(3);
+                    pts(:,3) = dim - pts(:,3);
+                end
+            end
+
+            if shouldFlip
+                if view == 2 %sagittal view
+                    dim     = sz(1);    
+                    pts(:,1)= dim - pts(:,1);
+                elseif view == 3 && imageOr == 2
+                    dim     = sz(1);    
+                    pts(:,3)= dim - pts(:,3);
+                else %otherwise, 3rd dimension
+                    dim     = sz(3);    
+                    pts(:,3)= dim - pts(:,3);
+                end
+            end
+
+            if shouldFlipX
+                dim     = sz(3);    
+                pts(:,1)= dim - pts(:,1);
+            end
+
+
+            if shouldRotate
+                tmp = pts(:,1);
+                pts(:,1) = pts(:,2);
+                pts(:,2) = tmp;
+            end
         end
         
         function [view, slice] = GetViewAndSlice(points)
@@ -272,11 +352,14 @@ classdef ROI < handle
                     "data", mask, ...
                     "points", points, ...
                     "name", name{1})
-            
+
+            obj = app.userObjects{end};
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
-            GUI.AddUOLayer(app, axID, obj.ID)
-            Graphics.UpdateImage(app)
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImage(app)
+            end
             Backups.CreateBackup(app)
                 
             %Remove polygon
@@ -343,6 +426,15 @@ classdef ROI < handle
                     "data", mask, ...
                     "points", points, ...
                     "name", name{1})
+
+            obj = app.userObjects{end};
+            GUI.UpdateUOBox(app);
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImage(app)
+            end
+            Backups.CreateBackup(app)
                 
             %Remove polygon
             delete(roi)

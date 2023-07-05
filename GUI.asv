@@ -112,6 +112,9 @@ classdef GUI < handle
 
             set(app.UORenderer{axID}{objID},...
                 'ButtonDownFcn',@app.MouseClickedInImage);
+
+            %restore any changes to the axis
+            Graphics.UpdateAxisParams(app, axID)
         end
 
         function RemoveUOLayer(app, axID, objID)
@@ -178,16 +181,25 @@ classdef GUI < handle
 
             GUI.UpdateAxisButtons(app);
             
+            %find image dimension in order: cor, sag, ax
+            tm          = app.transMatPerImage{index};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('csa', or(5)); 
+            imSize = round(size(app.data{index}.img)/2); 
+
+            if imageOr == 1 %cor
+                imSize = flip(imSize);
+            elseif imageOr == 2 %sag
+                imSize = [imSize(2:3) imSize(1)];
+            end
+            app.slicePerImage{app.imID} = num2cell(imSize);
+                    
             uoIdx = Objects.FindUoForImage(app, index);
             if uoIdx ~= -1
                 uo = app.userObjects{uoIdx};
                 [view, slice]   = Objects.GetUOViewAndSlice(uo);
                 app.viewPerImage(index) = view;
                 app.slicePerImage{index}{view} = slice;
-            else
-                view = app.viewPerImage(index);
-                app.slicePerImage{index}{view}    = round(size(...
-                                            app.data{index}.img,3)/2);
             end
             
             %Update all GUI elements
@@ -771,9 +783,9 @@ classdef GUI < handle
             app.SagittalButton.BackgroundColor      = [.96 .96 .96];
             app.CoronalButton.BackgroundColor       = [.96 .96 .96];
             
-            if     view == 2
+            if     view == 1
                 app.CoronalButton.BackgroundColor   = [.96 .96 0];
-            elseif view == 1
+            elseif view == 2
                 app.SagittalButton.BackgroundColor  = [.96 .96 0];
             elseif view == 3
                 app.AxialButton.BackgroundColor     = [.96 .96 0];
@@ -818,7 +830,9 @@ classdef GUI < handle
                 end
 
                 [view, slice]   = Objects.GetUOViewAndSlice(obj);
-                views           = {'Sag', 'Cor', 'Ax'};
+                view            = NiftiUtils.findProjectionFromViewDim(...
+                    app, obj.imageIdx, view);
+                views           = {'Cor', 'Sag', 'Ax'};
                 view            = views{view};
                 types           = {'POL', 'MSR', 'CIR', 'ELL'};
                 type            = types{obj.type};
@@ -931,16 +945,18 @@ classdef GUI < handle
         function ToggleUOPresence(app, idx)
             %Toggles the '* ' prefix of items in app.AvailableImagesListbox
             %to indicate whether UOs exist in that file.
-            
-            
 
-            item = app.AvailableimagesListBox.Items{idx};
-            if strcmp(item(1:2), '* ')
-                app.AvailableimagesListBox.Items{idx} = item(3:end);
-            else
-                app.AvailableimagesListBox.Items{idx} = ['* ' item];
+            v = strsplit(version, '.');
+            if str2num(v{1}) >= 9 && str2num(v{2}) > 13
+                if ~app.hasUO(idx)
+                    style = uistyle("Icon", "uoIcon.png");
+                    addStyle(app.AvailableimagesListBox, style, "item", idx)
+                else
+                    style = uistyle("Icon", "");
+                    addStyle(app.AvailableImagesListBox, style, "item", idx)
+                end
             end
-            
+            app.hasUO(idx) = ~app.hasUO(idx);
         end
         
         %% Cursor stuff

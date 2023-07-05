@@ -30,7 +30,7 @@ classdef Objects < handle
             if isempty(obj.ID)
                 obj.ID          = length(app.userObjects) + 1;
             end
-            if isempty(obj.viewDim)
+            if isempty(obj.viewDim) %might be a problem when loading
                 obj.viewDim     = NiftiUtils.FindViewingDimension(...
                     app, obj.imageIdx);
             end
@@ -76,12 +76,16 @@ classdef Objects < handle
             name    = strcat(baseName, num2str(counter), modeSig);
         end
 
-        function AddToUO(app, ID)
+        function AddToUO(app, ID, pts)
             %Adds points & data to existing ROI. 
+            %The 'pts' input can have altered points, based on image
+            %orientation and projection. It should only be used to create
+            %the mask.
+
             obj         = app.userObjects{ID};
             obj.points  = [obj.points; app.points{app.axID}];
             obj.data    = obj.data + ROI.PointsToMask(...
-                app, app.points{app.axID}, app.imagePerAxis(app.axID), 1);
+                app, pts, app.imagePerAxis(app.axID), 1);
             obj.data(obj.data > 1) = 1;
             obj.makeProperties(app);
             
@@ -215,13 +219,10 @@ classdef Objects < handle
         %at the given index.
         
             %Find index of corresponding segmentation
-            if ~isempty(obj.data)
-                [x,y,z]     = ind2sub(size(obj.data),find(obj.data == 1));
-            else
-                x   = obj.points(:,1); 
-                y   = obj.points(:,2); 
-                z   = obj.points(:,3); 
-            end
+            x   = obj.points(:,1); 
+            y   = obj.points(:,2); 
+            z   = obj.points(:,3); 
+
             %Find most occurring value
             [Mx, ~] = mode(x);
             [My, ~] = mode(y);
@@ -250,8 +251,9 @@ classdef Objects < handle
             obj     = app.userObjects{idx};
 
             %if object viewdim and current axis view don't match, return
-            if obj.viewDim ~= app.viewPerImage(obj.imageIdx)
-                views = {'a sagittal', 'a coronal', 'an axial'};
+            if obj.viewDim ~= NiftiUtils.FindViewingDimension(...
+                    app, obj.imageIdx)
+                views = {'a coronal', 'a sagittal', 'an axial'};
                 
                 text = sprintf( ...
                     strcat( ...
@@ -282,7 +284,8 @@ classdef Objects < handle
             Graphics.UpdateUserObjects(app);
 
             %select only points from the current slice
-            slice = app.slicePerImage{obj.imageIdx}{obj.viewDim};
+            slice = app.slicePerImage{obj.imageIdx}{...
+                app.viewPerImage(app.imID)};
             slcPoints = points(points(:,obj.viewDim) == slice, :);
             slcPoints(:,obj.viewDim) = [];
             
@@ -315,25 +318,39 @@ classdef Objects < handle
                 return
             end
 
-            newPoints  = polygon.Position;
+            tmp  = polygon.Position;
+
+            %get orientation info
+            viewDim     = app.userObjects{idx}.viewDim;
+            view    = app.viewPerImage(app.imID);
             
-            view    = app.userObjects{idx}.viewDim;
-            slice   = app.slicePerImage{app.imID}{view};            
-            newPoints  = [newPoints, ones(size(newPoints(:,1)))*slice];
+            %Add slice position to the points in the right column
+            slice   = app.slicePerImage{app.imID}{view};     
+            newPoints  = zeros(length(tmp), 3);
+            newPoints(:,viewDim) = slice;
+
+            columns     = [1,2,3];
+            columns(viewDim) = [];
+            newPoints(:,columns(1))    = tmp(:,1);
+            newPoints(:,columns(2))    = tmp(:,2);
             newPoints  = round(newPoints);
 
             %first remove all the old points
-            sliceIdx = app.userObjects{idx}.points(:, view) == slice;
+            sliceIdx = app.userObjects{idx}.points(:, viewDim) == slice;
             app.userObjects{idx}.points(sliceIdx, :) = [];
             app.userObjects{idx}.points = ...
                 [app.userObjects{idx}.points; newPoints];
             app.userObjects{idx}.makeProperties(app);
             
             %Create new mask
-            app.userObjects{idx}.createMask(app)
+            adaptedPts = ROI.ValidatePoints(app, newPoints);
+            app.userObjects{idx}.createMask(app, adaptedPts)
             
             %turn mask back on
             app.userObjects{idx}.setVisible(true)
+
+            %toggle off editing
+            app.userObjects{idx}.editing = 0;
             
             %Remove polygon
             delete(polygon)
@@ -542,7 +559,7 @@ classdef Objects < handle
             
             %if object viewdim and current axis view don't match, return
             if obj.viewDim ~= app.viewPerImage(obj.imageIdx)
-                views = {'a sagittal', 'a coronal', 'an axial'};
+                views = {'a coronal', 'a sagittal', 'an axial'};
                 
                 text = sprintf( ...
                     strcat( ...
@@ -847,6 +864,10 @@ classdef Objects < handle
             
             hity = round(hit.IntersectionPoint(1));
             hitx = round(hit.IntersectionPoint(2));
+
+            if hitx <= 0 || hity <= 0
+                return
+            end
             
             if isnan(hitx) || isnan(hity)
                 return
@@ -863,20 +884,14 @@ classdef Objects < handle
                 axID = varargin{1};
             end
             
-
-            xyz     = NiftiUtils.hitToXYZ(app, hitx, hity, axID);
-            if isempty(xyz)
-                return
-            end
-            imID    = app.imagePerAxis(axID);
-            tm      = app.transMatPerImage{imID};
-            ijk     = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
-
-            %Remove relative viewing axis
-            viewDim         = NiftiUtils.FindViewingDimension(app, imID);
-            slice           = round(ijk(viewDim));
-            ijk(viewDim)    = [];
-
+            %Get orientation info
+            imID        = app.imagePerAxis(axID);
+            viewAxis    = app.viewPerImage(imID);
+            slice       = app.slicePerImage{imID}{viewAxis};
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('csa', or(5)); 
+            
              
             %Go over all UOs in reverse order
             for i = flip(1:length(app.userObjects))
@@ -891,23 +906,14 @@ classdef Objects < handle
                 
                 if obj.type == 1 || obj.type == 3 || obj.type == 4
                     
-                    if(viewDim == 3)
-                        maskSlc = obj.data(:,:,max(end - slice, 1));
-                    elseif(viewDim == 2)
-                        maskSlc = obj.data(:,slice,:);
-                        maskSlc = permute(squeeze(maskSlc),[2,1]);
-                    elseif(viewDim == 1)
-                        maskSlc = obj.data(slice,:,:);
-                        maskSlc = permute(squeeze(maskSlc),[2,1]);
-                    end
-
-                    try
-                        if maskSlc(ijk(1), ijk(2))
-                            UOId = obj.ID; 
-                            return
-                        end
-                    catch
+                    maskSlc = MathUtils.ApplyProjection(obj.data,...
+                        imageOr, viewAxis, slice);
+                    if hitx > size(maskSlc, 1) || hity > size(maskSlc,2)
                         continue
+                    end
+                    if maskSlc(hitx, hity)
+                        UOId = obj.ID; 
+                        return
                     end
 
                 elseif obj.type == 2

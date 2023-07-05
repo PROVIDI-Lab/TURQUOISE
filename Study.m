@@ -47,17 +47,14 @@ classdef Study < handle
             
             %Load the first two images (preferably with UOs attached)
             imList = [];
-            for i = 1:length(app.studyNames)
+            for i = find(app.hasUO)'
                 if length(imList) >= 2
                     break
                 end
-                item = app.AvailableimagesListBox.Items{i};
-                if strcmp(item(1:2), '* ')
-                        
-                    IOUtils.LoadNii(app, i)
-                    app.imagePerAxis(length(imList) + 1) = i;
-                    imList(end+1) = i;
-                end
+
+                IOUtils.LoadNii(app, i)
+                app.imagePerAxis(length(imList) + 1) = i;
+                imList(end+1) = i;
             end
             
             %fill the other images
@@ -103,8 +100,6 @@ classdef Study < handle
                     continue
                 end
                 
-                %More files found -> UOs probably exist
-                %TODO, don't store this in availabnleImagesListbox...
                 GUI.ToggleUOPresence(app, idx)                
             end
             
@@ -115,12 +110,7 @@ classdef Study < handle
             %User-made objects are written to either .nii or .csv files.
             
             for imageId=1:length(app.studyNames)
-                fn      = app.studyNames{imageId};
-                
-                if strcmp(fn(1:2), '* ')
-                    fn = fn(3:end);
-                end
-                
+                fn      = app.studyNames{imageId};                
                 outfn   = fullfile(app.current_folder,              ...
                                         fn);
                                      
@@ -190,7 +180,7 @@ classdef Study < handle
                 app.transMatPerImage{i} = tm;
                 or  = NiftiUtils.FindOrientation(tm);
                 app.viewPerImage(i) = ...
-                    strfind('sca',or(5)); %1 = sag, 2=cor, 3=axial
+                    strfind('csa',or(5)); %1 = cor, 2=sag, 3=axial
 
                 refs(:,i) =...
                     NiftiUtils.GetRefHalfway(hdr);

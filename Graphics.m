@@ -123,45 +123,18 @@ classdef Graphics < handle
                 
             imID        = app.imagePerAxis(axID);
             d4          = app.d4PerImage(imID);
-            viewAxis    = app.viewPerImage(imID); 
+            viewAxis    = app.viewPerImage(imID); %1=cor, 2=sag, 3=ax
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-
+            imageOr     = strfind('csa', or(5)); %1=cor, 2=sag, 3=ax
             slice       = app.slicePerImage{imID}{viewAxis};
 
-            %When imageor ~= viewaxis, the image needs to be rotated.
-            %We don't initialize the image, to save time
+            imSlice     = MathUtils.ApplyProjection(...
+                app.data{imID}.img(:,:,:,d4), imageOr, viewAxis, slice);
+            % figure;
+            % imshow(imSlice,[])
+            set(app.imageRenderer{axID}, 'CData', imSlice);
 
-            %view = 1, sagittal
-            if view == 1 && viewAxis == imageOr
-                set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(:, slice, :, d4)));
-            elseif view == 1 && viewAxis ~= imageOr
-                set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(app.data{imID}.img(:, slice, :, d4))));
-
-            %view = 2 
-            elseif view == 2  && viewAxis == imageOr   
-                set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(slice, :, :, d4)));
-            elseif view == 2  && viewAxis ~= imageOr   
-                set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(...
-                        app.data{imID}.img(slice, :, :, d4))));
-            
-            %view = 3, axial - flip??!
-            elseif view == 3 && viewAxis == imageOr
-                set(app.imageRenderer{axID},'CData', ...
-                    squeeze(app.data{imID}.img(:, :, ...
-                    slice, d4)));
-            elseif view == 3 && viewAxis ~= imageOr
-                set(app.imageRenderer{axID},'CData', ...
-                    rot90(squeeze(app.data{imID}.img(:, :, ...
-                    slice, d4))));
-            end                                     
         end
         
         
@@ -173,35 +146,11 @@ classdef Graphics < handle
             viewAxis    = app.viewPerImage(imID); 
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5)); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);
-
+            imageOr     = strfind('csa', or(5)); 
             slice       = app.slicePerImage{imID}{viewAxis};
 
-            %When imageor ~= viewaxis, the image needs to be rotated.
-            %We don't initialize the image, to save time
-
-            %view = 1, sagittal
-            if view == 1 && viewAxis == imageOr
-                maskSlice = squeeze(obj.data(:, slice , :));
-            elseif view == 1 && viewAxis ~= imageOr
-                maskSlice = flip(rot90(squeeze(obj.data(:, slice, :))), 1);
-
-            %view = 2
-            elseif view == 2  && viewAxis == imageOr   
-                maskSlice = squeeze(obj.data(slice, :, :));
-            elseif view == 2  && viewAxis ~= imageOr   
-                maskSlice = flip(rot90(squeeze( ...
-                                obj.data(slice, :, :))), 1);
-            
-            %view = 3, axial
-            elseif view == 3 && viewAxis == imageOr
-                maskSlice = squeeze(obj.data(:, :, max(end - slice, 1)));
-            elseif view == 3 && viewAxis ~= imageOr
-                maskSlice = rot90(...
-                    squeeze(obj.data(:, :, max(end - slice, 1))));
-            end 
+            maskSlice   = MathUtils.ApplyProjection(...
+                obj.data, imageOr, viewAxis, slice);
 
             col = app.colors_list(obj.ID,:);
 
@@ -288,16 +237,55 @@ classdef Graphics < handle
             if(~isempty(app.points{app.axID}))
                 tmp = app.points{app.axID};
                 
-                %only plot points on current slice
+                %Find slice
                 imID        = app.imagePerAxis(axID);
-                view        = app.viewPerImage(imID);
-                slice       = app.slicePerImage{imID}{view};
+                tm          = app.transMatPerImage{imID};
+                or          = NiftiUtils.FindOrientation(tm);
+                viewAxis    = app.viewPerImage(imID);
+                imageOr     = strfind('csa', or(5)); 
+                or_Mat      = [3,2,1; 2,3,1; 1,2,3];
+                view        = or_Mat(imageOr, viewAxis);
+                slice       = app.slicePerImage{imID}{viewAxis};
+
+                % %There are some siturations where the viewing dimension
+                % %(=slice) and / or hity should be inverted
+                % %The situtions are listed in the following table. 
+                % 
+                % invAxisTable =  [0,0,1; 0,0,1; 0,0,0];
+                % flipHitYTable = [0,0,1; 1,0,1; 0,0,0];
+                % 
+                % %The table is in the following order (csa csa csa) where the
+                % %choice of the triplet is based on the image orientation and
+                % %the choice within the triplet is the viewPerImage.
+                % 
+                % tm          = app.transMatPerImage{imID};
+                % or          = NiftiUtils.FindOrientation(tm);
+                % imageOr     = strfind('csa', or(5)); 
+                % 
+                % shouldInvert    = invAxisTable(imageOr, viewAxis);
+                % shouldFlip      = flipHitYTable(imageOr, viewAxis);
+                % sz              = size(app.data{imID}.img);
+                % 
+                % if shouldInvert
+                %     dim     = sz(1);
+                %     slice   = dim - slice;
+                % end
                 
+                %find points with matching slice
                 idx             = tmp(:, view) ~= slice;
                 tmp(idx,:)      = [];
                 tmp(:, view)    = [];
                 x               = tmp(:,1);
                 y               = tmp(:,2);
+
+                % %flip y if necessary
+                % sz(view) = [];
+                % if shouldFlip
+                %     dim     = sz(2);
+                %     y    = dim - y;
+                % end
+               
+                %plot points
                 hold(the_axis,'on');
                 h = plot(the_axis, x, y, '.-g',...
                     'HitTest',                              ...
@@ -459,14 +447,23 @@ classdef Graphics < handle
 
             the_axis    = app.GetAxis(axID);
             imID        = app.imagePerAxis(axID);
-            view        = app.viewPerImage(imID);
+            viewDim     = NiftiUtils.FindViewingDimension(app, app.imID);
+            sz          = size(app.imageRenderer{axID}.CData);
 
-            the_axis.XLim = [0, size(app.imageRenderer{axID}.CData, 2)];
-            the_axis.YLim = [0, size(app.imageRenderer{axID}.CData, 1)];
+            the_axis.XLim = [0, sz(2)];
+            the_axis.YLim = [0, sz(1)];
 
             pixdim = app.data{imID}.hdr.dime.pixdim(2:4);
-            pixdim(view) = [];
-            daspect(the_axis,[flip(pixdim) 1])
+            pixdim(viewDim) = [];
+            
+            if sz(2) > sz(1)
+                daspect(the_axis,[max(pixdim), min(pixdim) 1])
+            elseif sz(2) < sz(1)
+                daspect(the_axis,[min(pixdim), max(pixdim) 1])
+            else
+                daspect(the_axis, [1,1,1])
+            end
+
 
             Graphics.UpdateOrientationInfoOnAxis(app, axID)
 

@@ -253,6 +253,82 @@ classdef MathUtils < handle
                 sqrt((x2-x1)^2 + (y2-y1)^2);
             
         end 
+
+
+        function slice = ApplyProjection(arr, imOrr, proj, idx)
+
+            %Takes a 3D array and returns a slice from a certain projection
+            %at a certain index.
+
+            %input:
+            %arr,    3d array
+            %imOrr,  orientation of the array. 1=cor, 2= sag, 3 = ax
+            %proj,   projection 1=cor, 2= sag, 3 = ax
+
+            %The projection is gained as follows:
+
+            %imOrr  projection  axis    other steps
+            %cor    cor         3       -
+            %cor    sag         2       -
+            %cor    ax          1       invert axis, rotate90, flip y.
+
+            %sag    cor         2       flip y.
+            %sag    sag         3       -
+            %sag    ax          1       invert axis, flip y.
+
+            %ax     cor         1       invert axis, rotate 90
+            %ax     sag         2       rotate 90
+            %ax     ax          3       -
+
+
+            axTable =   [3,2,1; 2,3,1; 1,2,3];
+            invTable =  [0,0,1; 0,0,1; 0,0,0];
+            rotTable =  [0,0,1; 0,0,0; 1,1,0];
+            flipTable = [0,0,1; 0,0,0; 0,0,0];
+            flipXTable= [0,0,0; 1,0,0; 0,0,0];
+
+            ax  = axTable(imOrr, proj);
+            inv = invTable(imOrr, proj);
+            rot = rotTable(imOrr, proj);
+            flp = flipTable(imOrr, proj);
+            flpx= flipXTable(imOrr, proj);
+
+            if inv
+                switch ax
+                    case 1
+                        slice = arr(end-idx, :, :);
+                    case 2
+                        slice = arr(:, end-idx, :);
+                    case 3
+                        slice = arr(:, :, end-idx);
+                end
+            else
+                switch ax
+                    case 1
+                        slice = arr(idx, :, :);
+                    case 2
+                        slice = arr(:, idx, :);
+                    case 3
+                        slice = arr(:, :, idx);
+                end
+            end
+
+            slice = squeeze(slice);
+
+            if rot
+                slice = rot90(slice);
+            end
+
+            if flp
+                slice = flip(slice);
+            end
+
+            if flpx
+                slice = flip(slice,2);
+            end
+
+        end
+
         
     end
     
