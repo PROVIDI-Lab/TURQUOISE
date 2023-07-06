@@ -52,17 +52,19 @@ classdef Objects < handle
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
+            %Remove any +/- notation from name
+            [baseName, modeSig] = Objects.SplitModeFromUOName(name);
+
             names = Objects.GetAllUONamesForImage(app, idx);
             uniqueName = true;
-            counter = 0;
             for i = 1:length(names)
                 objName = names{i};
+                [baseObjName, ~] = Objects.SplitModeFromUOName(objName);
                 
-                if contains(objName, name)
-                    if strcmp(objName, name)
+                if contains(baseObjName, baseName)
+                    if strcmp(baseObjName, baseName)
                         uniqueName = false;
                     end
-                    counter = counter + 1;
                 end                
             end
 
@@ -71,9 +73,23 @@ classdef Objects < handle
             end
 
             %name not unique, add number before mode signifier
-            baseName   = name(1:end-2);
-            modeSig    = name(end-1:end);
+            counter = 1;
             name    = strcat(baseName, num2str(counter), modeSig);
+            while any(ismember(names, name))
+                counter = counter + 1;
+                name    = strcat(baseName, num2str(counter), modeSig);
+            end
+        end
+
+        function [base, mode] = SplitModeFromUOName(name)
+            mode = '';
+            if contains(name, ' +')
+                base = strrep(name, ' +', '');
+                mode = ' +';
+            elseif contains(name, ' -')
+                base = strrep(name, ' -', '');
+                mode = ' -';
+            end
         end
 
         function AddToUO(app, ID, pts)
@@ -558,7 +574,10 @@ classdef Objects < handle
             obj = app.userObjects{idx};
             
             %if object viewdim and current axis view don't match, return
-            if obj.viewDim ~= app.viewPerImage(obj.imageIdx)
+            projection = NiftiUtils.findProjectionFromViewDim( ...
+                app, obj.imageIdx, obj.viewDim);
+
+            if projection ~= app.viewPerImage(obj.imageIdx)
                 views = {'a coronal', 'a sagittal', 'an axial'};
                 
                 text = sprintf( ...
@@ -571,9 +590,9 @@ classdef Objects < handle
             end
 
             %find slice
-            slice   = app.slicePerImage{obj.imageIdx}{obj.viewDim};
-            idx     = obj.points(:, obj.viewDim) == slice;
-            obj.points(idx, :) = [];
+            slice   = app.slicePerImage{obj.imageIdx}{projection};
+            pIdx     = obj.points(:, obj.viewDim) == slice;
+            obj.points(pIdx, :) = [];
 
             %if no more points remain, delete the entire object.
             if isempty(obj.points)
