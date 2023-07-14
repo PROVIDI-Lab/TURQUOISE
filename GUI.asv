@@ -66,6 +66,7 @@ classdef GUI < handle
             colormap(the_ax,'gray');
             axis(the_ax,'off');
             the_ax.BackgroundColor = 'k';
+            the_ax.Toolbar = [];
 
             GUI.SetupCrosshairs(app, the_ax, axID)
         end
@@ -1078,8 +1079,8 @@ classdef GUI < handle
         GUI.CrosshairPerAxis(app, 1, xyz)
         GUI.CrosshairPerAxis(app, 2, xyz)
 
-        Graphics.ResetCrosshairsInAxis(app, 1)
-        Graphics.ResetCrosshairsInAxis(app, 2)
+        Graphics.ToggleCrosshairsInAxis(app, 1, 'off')
+        Graphics.ToggleCrosshairsInAxis(app, 2, 'off')
         end
 
 
@@ -1109,6 +1110,9 @@ classdef GUI < handle
             %Draw crosshair for each axis   -TODO: don't hardcode axes
             GUI.CrosshairPerAxis(app, 1, xyz)
             GUI.CrosshairPerAxis(app, 2, xyz)
+
+            %set/reset activity timer
+            Interaction.ToggleInteractionTimer(app)
 
         end
 

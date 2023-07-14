@@ -255,37 +255,40 @@ classdef MathUtils < handle
         end 
 
 
-        function slice = ApplyProjection(arr, imOrr, proj, idx)
+        function slice = ApplyProjection(app, imQ, ID, d4, ...
+                imOrr, proj, idx)
 
             %Takes a 3D array and returns a slice from a certain projection
             %at a certain index.
-
+            %
             %input:
-            %arr,    3d array
+            %app,   RMSstudio pointer
+            %imQ,   True if loading an image, false if loading an ROI
+            %ID,    imID or ROI ID
+            %d4,    4th axis if loading an image
             %imOrr,  orientation of the array. 1=cor, 2= sag, 3 = ax
             %proj,   projection 1=cor, 2= sag, 3 = ax
-
+            %
             %The projection is gained as follows:
-
             %imOrr  projection  axis    other steps
             %cor    cor         3       -
             %cor    sag         2       -
             %cor    ax          1       invert axis, rotate90, flip y.
-
+            %
             %sag    cor         2       flip y.
             %sag    sag         3       -
             %sag    ax          1       invert axis, flip y.
-
+            %
             %ax     cor         1       invert axis, rotate 90
             %ax     sag         2       rotate 90
             %ax     ax          3       -
 
 
-            axTable =   [3,2,1; 2,3,1; 1,2,3];
-            invTable =  [0,0,1; 0,0,1; 0,0,0];
-            rotTable =  [0,0,1; 0,0,0; 1,1,0];
-            flipTable = [0,0,1; 0,0,0; 0,0,0];
-            flipXTable= [0,0,0; 1,0,0; 0,0,0];
+            axTable     = [3,2,1; 2,3,1; 1,2,3];
+            invTable    = [0,0,1; 0,0,1; 0,0,0];
+            rotTable    = [0,0,1; 0,0,0; 1,1,0];
+            flipTable   = [0,0,1; 0,0,0; 0,0,0];
+            flipXTable  = [0,0,0; 1,0,0; 0,0,0];
 
             ax  = axTable(imOrr, proj);
             inv = invTable(imOrr, proj);
@@ -293,23 +296,45 @@ classdef MathUtils < handle
             flp = flipTable(imOrr, proj);
             flpx= flipXTable(imOrr, proj);
 
-            if inv
-                switch ax
-                    case 1
-                        slice = arr(end-idx, :, :);
-                    case 2
-                        slice = arr(:, end-idx, :);
-                    case 3
-                        slice = arr(:, :, end-idx);
+            if imQ  %Loading an image
+                if inv  %invert axis
+                    switch ax
+                        case 1
+                            slice = app.data{ID}.img(end-idx, :, :, d4);
+                        case 2
+                            slice = app.data{ID}.img(:, end-idx, :, d4);
+                        case 3
+                            slice = app.data{ID}.img(:, :, end-idx, d4);
+                    end
+                else
+                    switch ax
+                        case 1
+                            slice = app.data{ID}.img(idx, :, :, d4);
+                        case 2
+                            slice = app.data{ID}.img(:, idx, :, d4);
+                        case 3
+                            slice = app.data{ID}.img(:, :, idx, d4);
+                    end
                 end
-            else
-                switch ax
-                    case 1
-                        slice = arr(idx, :, :);
-                    case 2
-                        slice = arr(:, idx, :);
-                    case 3
-                        slice = arr(:, :, idx);
+            else    %Loading an ROI
+                if inv
+                    switch ax
+                        case 1
+                            slice = app.userObjects{ID}.data(end-idx, :, :);
+                        case 2
+                            slice = app.userObjects{ID}.data(:, end-idx, :);
+                        case 3
+                            slice = app.userObjects{ID}.data(:, :, end-idx);
+                    end
+                else
+                    switch ax
+                        case 1
+                            slice = app.userObjects{ID}.data(idx, :, :);
+                        case 2
+                            slice = app.userObjects{ID}.data(:, idx, :);
+                        case 3
+                            slice = app.userObjects{ID}.data(:, :, idx);
+                    end
                 end
             end
 

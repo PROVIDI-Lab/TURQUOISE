@@ -210,9 +210,6 @@ classdef Interaction < handle
             %Dragging the crosshair
             if app.buttonDown
                 app.buttonDown = false;
-                %TODO: don't hardcode axes
-                Graphics.ResetCrosshairsInAxis(app, 1)
-                Graphics.ResetCrosshairsInAxis(app, 2)
                 return
             end
         
@@ -242,6 +239,7 @@ classdef Interaction < handle
                 return
             end
 
+
             if isempty(app.dragPoint)
                 GUI.MouseHover(app, hit)                
                 return
@@ -254,6 +252,30 @@ classdef Interaction < handle
             elseif app.drawing.mode == 7    %dragging
                 GUI.DragAxis(app, hit)
             end            
+        end
+
+        function ToggleInteractionTimer(app)
+            %If the user scrolls through the image, this timer is started.
+            %If it goes off, the images will be rendered at a higher
+            %quality and the crosshairs will disappear. If this function is
+            %called, it will either reset or start the timer.     
+
+            if strcmp(app.interactionTimer.Running, 'on')
+                stop(app.interactionTimer)
+                start(app.interactionTimer)
+                return
+            else
+                start(app.interactionTimer)
+            end
+
+            Graphics.SetMotionGraphics(app)
+
+        end
+
+        function TimerCallback(~, ~, app)
+
+            stop(app.interactionTimer)
+            Graphics.SetStaticGraphics(app)
         end
         
         %% Keypresses

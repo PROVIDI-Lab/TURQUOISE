@@ -101,7 +101,7 @@ classdef Graphics < handle
 
                 switch obj.type 
                    case {1, 3, 4}
-                       Graphics.DrawROIInAxis(app, axID, obj)
+                       Graphics.DrawROIInAxis(app, axID, obj, idx)
                    case 2
                        Graphics.DrawMeasurementInAxis(...
                            app, axID, obj)
@@ -130,7 +130,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{viewAxis};
 
             imSlice     = MathUtils.ApplyProjection(...
-                app.data{imID}.img(:,:,:,d4), imageOr, viewAxis, slice);
+                app, true, imID, d4, imageOr, viewAxis, slice);
             % figure;
             % imshow(imSlice,[])
             set(app.imageRenderer{axID}, 'CData', imSlice);
@@ -139,7 +139,7 @@ classdef Graphics < handle
         
         
         %% Individual User Object draw methods
-        function DrawROIInAxis(app, axID, obj)          
+        function DrawROIInAxis(app, axID, obj, idx)          
         %This draws the mask of a visible segmentation stored in obj.
 
             imID        = app.imagePerAxis(axID);
@@ -150,7 +150,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{viewAxis};
 
             maskSlice   = MathUtils.ApplyProjection(...
-                obj.data, imageOr, viewAxis, slice);
+                false, idx, 1, imageOr, viewAxis, slice);
 
             col = app.colors_list(obj.ID,:);
 
@@ -335,17 +335,17 @@ classdef Graphics < handle
 
         function DrawCrosshairInAxis(app, axID, ijk, sz)
 
-            if ~app.buttonDown
-                if strcmp(app.crosshairTimer.Running, 'on')
-                    stop(app.crosshairTimer)
-                    start(app.crosshairTimer)
-                else
-                    start(app.crosshairTimer)
-                end
-            end
-
-            app.crosshairRenderer{axID}(1).Visible = 'on';
-            app.crosshairRenderer{axID}(2).Visible = 'on';
+            % if ~app.buttonDown
+            %     if strcmp(app.crosshairTimer.Running, 'on')
+            %         stop(app.crosshairTimer)
+            %         start(app.crosshairTimer)
+            %     else
+            %         start(app.crosshairTimer)
+            %     end
+            % end
+            % 
+            % app.crosshairRenderer{axID}(1).Visible = 'on';
+            % app.crosshairRenderer{axID}(2).Visible = 'on';
 
             set(app.crosshairRenderer{axID}(1), 'XData',...
                 [1, sz(1)]);
@@ -359,18 +359,38 @@ classdef Graphics < handle
 
         end
 
-        function ResetCrosshairsInAxis(app, axID)
+        function SetMotionGraphics(app)
+            %When the user is scrolling through the image, changes settings
+            %to display smoother animations.
 
-            app.crosshairRenderer{axID}(1).Visible = 'off';
-            app.crosshairRenderer{axID}(2).Visible = 'off';
+            %TODO: for each axis...
+
+            Graphics.ToggleCrosshairsInAxis(app, 1, 'on')
+            Graphics.ToggleCrosshairsInAxis(app, 2, 'on')
+
+            set(app.imageRenderer{1}, "MaxRenderedResolution", 256)
+            set(app.imageRenderer{2}, "MaxRenderedResolution", 256)
+
         end
 
-        function ResetCrosshairs(~, ~, app)
-            %todo: don't hardcode axes...
+        function SetStaticGraphics(app)
+            %When the user stops scrolling, changes settings back to
+            %display static, high-detail graphics.
 
-            Graphics.ResetCrosshairsInAxis(app, 1)
-            Graphics.ResetCrosshairsInAxis(app, 2)
-            stop(app.crosshairTimer)
+            %TODO: for each axis...
+
+            Graphics.ToggleCrosshairsInAxis(app, 1, 'off')
+            Graphics.ToggleCrosshairsInAxis(app, 2, 'off')
+
+            set(app.imageRenderer{1}, "MaxRenderedResolution", "None")
+            set(app.imageRenderer{2}, "MaxRenderedResolution", "None")
+
+        end
+
+        function ToggleCrosshairsInAxis(app, axID, state)
+
+            app.crosshairRenderer{axID}(1).Visible = state;
+            app.crosshairRenderer{axID}(2).Visible = state;
         end
 
                         
