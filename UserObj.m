@@ -14,7 +14,7 @@ classdef UserObj < matlab.mixin.SetGet
        deleted      = false     %Stores if the userObj has been deleted
        renaming     = false     %Stores whether the object is to be renamed
        editing      = false     %stores whether the object is being edited
-       viewDim
+       viewDim                  %Stores the viewing dimension
        comment
        profile
     end

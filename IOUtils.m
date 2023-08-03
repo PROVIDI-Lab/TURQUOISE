@@ -194,9 +194,17 @@ classdef IOUtils < handle
             endPos      = strfind(fn,'-');
             endPos      = endPos(end);
             name        = fn(beginPos + 1 : endPos - 1);
+
+            %Get polygon points from the label
+            %Assume that the viewdim is the same as the image orientation
+            %TODO: prompt user?
+            viewDim = 3;
+            points = ROI.MaskToPoints(nii.img, [-1,-1,-1], viewDim);
+
             
             Objects.AddNewUserObj(app,...
                     "type", 1, ...
+                    "points", points, ... 
                     "data", nii.img,...
                     "name", name,...
                     "imageIdx", idx) 
@@ -262,6 +270,19 @@ classdef IOUtils < handle
                     "imageIdx", idx,...
                     'comment', comment, ...
                     'profile', profile);
+
+            %Add new UO to the selectionbox
+            GUI.UpdateUOBox(app);
+
+            %Create a new layer in the imagerenderer (if the UO is
+            %currently being shown)
+            obj = app.userObjects{end};
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImage(app)
+            end
+            Backups.CreateBackup(app)
         end
         
         function LoadMeasurements(app, name, idx)
@@ -488,6 +509,29 @@ classdef IOUtils < handle
                 end
 
                 segList{end+1} = name;
+            end
+        end
+
+        function InitPreferences()
+
+            try
+                ispref('rmsstudio', 'datasets')
+            catch
+                delete(fullfile(prefdir, 'matlabprefs.mat'))
+                
+                addpref('rmsstudio', 'datasets', [])
+                addpref('rmsstudio', 'profiles', [])
+                addpref('rmsstudio', 'ROILst', [])
+            end
+            
+            if ~ispref('rmsstudio', 'ROILst')
+                    addpref('rmsstudio', 'ROILst', [])
+            end
+            if ~ispref('rmsstudio', 'datasets')
+                    addpref('rmsstudio', 'datasets', [])
+            end
+            if ~ispref('rmsstudio', 'profiles')
+                    addpref('rmsstudio', 'profiles', [])
             end
         end
         

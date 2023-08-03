@@ -231,7 +231,7 @@ classdef GUI < handle
             GUI.UpdateSliceSlider(app)
             GUI.UpdateMinMaxSlider(app)
             GUI.UpdateUOBox(app)
-            GUI.ChangeListBoxValue(app, index)
+            GUI.ChangeListBoxValue(app, app.imagePerAxis(index))
             GUI.UpdateAxisButtons(app)
             GUI.Update4DSlider(app)
 
@@ -251,7 +251,7 @@ classdef GUI < handle
             GUI.UpdateSliceSlider(app)
             GUI.UpdateMinMaxSlider(app)
             GUI.UpdateUOBox(app)
-            GUI.ChangeListBoxValue(app, index)
+            GUI.ChangeListBoxValue(app, app.imagePerAxis(index))
             GUI.UpdateAxisButtons(app)
             GUI.Update4DSlider(app)
         end
@@ -274,6 +274,8 @@ classdef GUI < handle
                 return
             end
 
+            Interaction.ToggleInteractionTimer(app)
+
             if nargin == 2  %app + event
 
                 event           = varargin{1};
@@ -283,32 +285,24 @@ classdef GUI < handle
                     return
                 end
 
-                hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
-                i       = hit(1);
-                j       = hit(2);
-
             elseif nargin == 3  %app + value + axID
 
                 scrollCount = varargin{1};
                 axID        = varargin{2};
-                i           = app.crosshairPerAxis{axID}(1);
-                j           = app.crosshairPerAxis{axID}(2);
-
             end
 
             imID    = app.imagePerAxis(axID);
             
             if app.ctrl %Zoom instead of scrolling
                 GUI.ZoomAxis(app, axID, scrollCount, event);
-                
                 return
             end
 
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view} - scrollCount;
-            Interaction.UpdateSlice(app, slice, axID);
+            Interaction.UpdateSlice(app, slice, axID)
 
-            GUI.MoveCrosshair(app, i, j, axID)
+            GUI.MoveCrosshair(app, axID)
             
         end
         
@@ -388,27 +382,23 @@ classdef GUI < handle
 
             zoomFactor      = zoomFactor + zoomAmount;
             zoomFactor      = min(zoomFactor, 1.5);
-            zoomFactor      = max(zoomFactor, 0.4);
+            zoomFactor      = max(zoomFactor, 0.1);
             
             app.viewingParams(4) = zoomFactor;
 
-            hit     = GUI.GetHitFromCurrentPointZoom(app, axID, event);
-            xPos    = hit(1);
-            yPos    = hit(2);
+            %Get position from crosshairPerAxis
+            row         = app.crosshairPerAxis{axID}(1);
+            column      = app.crosshairPerAxis{axID}(2);
+            
+            %Get real world coordinates
+            xyz         = NiftiUtils.rc2xyz(app, row, column, axID);
 
-            %find world-coordinate location of hit
-            xyz         = NiftiUtils.hitToXYZ(app, xPos, yPos, axID);
             GUI.ZoomAxisAtPosition(app, 1, xyz)
             GUI.ZoomAxisAtPosition(app, 2, xyz)
 
-            %get another ijk to convert (why god why)
-            hit     = GUI.GetHitFromCurrentPoint(app, axID, event);
-            xPos    = hit(1);
-            yPos    = hit(2);
             %Display crosshair
-            xyz         = NiftiUtils.hitToXYZ(app, xPos, yPos, axID);
-            GUI.CrosshairPerAxis(app, 1, xyz)
-            GUI.CrosshairPerAxis(app, 2, xyz)
+            GUI.CrosshairPerAxis(app, 1)
+            GUI.CrosshairPerAxis(app, 2)
         end
 
 
@@ -446,9 +436,10 @@ classdef GUI < handle
             j0 = the_axis.YLim(1);
             j1 = the_axis.YLim(2);
 
+            
             %find relative position of cursor
-            iPerc   = iPos/(i1-i0);
-            jPerc   = jPos/(j1-j0);
+            iPerc   = (iPos-i0)/(i1-i0);
+            jPerc   = (jPos-j0)/(j1-j0);
 
             %Find new limits such that cursor stays (roughly) in the same
             %position
@@ -479,14 +470,12 @@ classdef GUI < handle
             GUI.InitCrosshair(app)
         end      
 
-        function StartDragging(app, hit)
+        function StartDragging(app, hit, i, j)
            %Records the point where the cursor was pressed to allow
            %dragging the image
-                hitx = round(hit.IntersectionPoint(1));
-                hity = round(hit.IntersectionPoint(2));
-                app.dragPoint   = [hitx, 0, hity, 0];
+
+                app.dragPoint   = [i, 0, j, 0];
                 app.drawing.mode = 7;   %drag mode
-                
 
                 set(hit.Source.Parent.Parent.Parent,...
                     'WindowButtonUpFcn',...
@@ -551,7 +540,10 @@ classdef GUI < handle
                 ax.Position(4);
             yPos            = deltaY - ( yPos * deltaY) + ax.YLim(1);
             
-            hit = [xPos, yPos];
+            sz = NiftiUtils.FindInPlaneResolution(app, ...
+                app.imagePerAxis(axID));
+
+            hit = [xPos, sz(2) - yPos];
 
         end
 
@@ -687,13 +679,11 @@ classdef GUI < handle
         end
         
         
-        function StartChangingContrast(app, hit)
+        function StartChangingContrast(app, hit, i, j)
            %Records the point where the cursor was pressed to change 
 %               x = hit.Source.Parent.Parent.CurrentPoint(1);
 %               y = hit.Source.Parent.Parent.CurrentPoint(2);
-                hitx = round(hit.IntersectionPoint(1));
-                hity = round(hit.IntersectionPoint(2));
-                app.dragPoint   = [hitx, 0, hity, 0];
+                app.dragPoint   = [i, 0, j, 0];
                 app.drawing.mode = 6;
                 
                 set(hit.Source.Parent.Parent.Parent,...
@@ -804,7 +794,7 @@ classdef GUI < handle
         end
         
         function UpdateUOBox(app)
-        %Updates the box with the different user-made ROIs.
+        %Updates the UOBox widget with the different user-made ROIs.
 
             GUI.UpdateProfileBox(app)
 
@@ -835,10 +825,8 @@ classdef GUI < handle
                     app, obj.imageIdx, view);
                 views           = {'Cor', 'Sag', 'Ax'};
                 view            = views{view};
-                types           = {'POL', 'MSR', 'CIR', 'ELL'};
-                type            = types{obj.type};
                 name            = GUI.GetUOBoxName(...
-                                    type, name, slice, view);
+                                    name, slice, view);
 
                 app.UOBox.Items{counter}        = name.char;
                 app.UOBox.ItemsData(counter)    = obj.ID;
@@ -851,22 +839,16 @@ classdef GUI < handle
             app.UOBox.ItemsData(idx)   = -1;
         end
         
-        function name = GetUOBoxName(del, name, slice, view)
+        function name = GetUOBoxName(name, slice, view)
         %Creates a name that fits in the UOBox. 
-        %TODO: don't hardcode amount of characters
         
             %25 characters
-            %DEL#NAME###########slc#viw
-            %  4           14        4   3
+            %NAME###########slc#viw
+            %        15      4   3
 
-            ddel    = 4 - length(del);
-            for i = 1:ddel
-                del = del + " ";
-            end
-
-            dname   = 14 - length(name);
+            dname   = 15 - length(name);
             if dname <= 0
-                name = name(1:10) + "... ";
+                name = name(1:11) + "... ";
             else
                 for i = 1:dname
                     name = name + " ";
@@ -883,7 +865,7 @@ classdef GUI < handle
                 view = view(1:3);
             end
 
-            name = del + name + slice + view;
+            name = name + slice + view;
             
         end
 
@@ -891,17 +873,37 @@ classdef GUI < handle
             
             %Clear items
             app.ProfileListBox.Items     = {};
+            style = uistyle("Icon", "");
+            addStyle(app.ProfileListBox, style)
+
+            %Add any profiles from UOs
             for i = 1:length(app.userObjects)
+                if app.userObjects{i}.deleted
+                    continue
+                end
+
                 if isempty(app.ProfileListBox.Items)
                     app.ProfileListBox.Items{1} = ...
                         app.userObjects{i}.profile;
+
+                    %Add an icon to signify UO presence
+                    style = uistyle("Icon", "uoIcon.png");
+                    addStyle(app.ProfileListBox, style, "item", ...
+                        length(app.ProfileListBox.Items))
                 elseif ~any(contains(app.ProfileListBox.Items, ...
                         app.userObjects{i}.profile))
                     app.ProfileListBox.Items{end+1} = ...
                         app.userObjects{i}.profile;
+
+                    %Add an icon to signify UO presence
+                    style = uistyle("Icon", "uoIcon.png");
+                    addStyle(app.ProfileListBox, style, "item", ...
+                        length(app.ProfileListBox.Items))
                 end
             end
 
+
+            %Add profiles from the  preferences
             profiles = getpref('rmsstudio', 'profiles');
             for i = 1:length(profiles)
                 if ~any(contains(app.ProfileListBox.Items, ...
@@ -947,6 +949,7 @@ classdef GUI < handle
             %Toggles the '* ' prefix of items in app.AvailableImagesListbox
             %to indicate whether UOs exist in that file.
 
+            %only works for newer matlab versions
             v = strsplit(version, '.');
             if str2num(v{1}) >= 9 && str2num(v{2}) > 13
                 if ~app.hasUO(idx)
@@ -971,22 +974,30 @@ classdef GUI < handle
             set(app.UIFigure, 'Pointer', 'arrow')
         end
         
-        function MouseHover(app, hit)
+        function MouseHover(app, row, column, axID)
             %Called by Interaction.MouseDraggedInImage. Checks which UO is
             %underneath the cursor (if any). Displays UO info in UOlabel.
             %Additionally displays the value of the image underneath the
             %cursor in the HoverLabel
 
-            if isempty(app.data)
-                return
-            end
+            if isempty(app.data); return;  end
+            % if GUI.isMultipleCall();  return;  end
 
-            GUI.DisplayHoverValue(app, hit)
-
-            UOId = Objects.FindUOUnderMouse(app, hit);
+            UOId = Objects.FindUOUnderMouse(app, row, column, axID);
             
             if app.buttonDown
-                GUI.MoveCrosshair(app, hit)
+                %set/reset activity timer
+                eTime = toc;
+
+                app.frameTimeLst(end+1) = eTime;
+               
+                text = strcat('FPS = ', ...
+                    num2str(1/mean(app.frameTimeLst(end-10:end))));
+                app.fpsLabel.Text = text;
+                tic
+                Interaction.ToggleInteractionTimer(app)
+                GUI.MoveCrosshair(app, row, column, axID)
+                GUI.DisplayHoverValue(app, row, column, axID)
             end
 
             if UOId == -1
@@ -995,43 +1006,45 @@ classdef GUI < handle
             end
 
             GUI.DisplayUOText(app, UOId)
+
         end
 
-        function DisplayHoverValue(app, hit)
+        function flag=isMultipleCall()
+        %Checks whether there are multiple function calls in the function
+        %stack. 
+          flag = false;
+          % Get the stack
+          s = dbstack();
+          if numel(s) <= 2
+            % Stack too short for a multiple call
+            return
+          end
+          % How many calls to the calling function are in the stack?
+          names = {s(:).name};
+          TF = strcmp(s(2).name,names);
+          count = sum(TF);
+          if count>1
+            % More than 1
+            flag = true;
+          end
+        end
+
+        function DisplayHoverValue(app, row, column, axID)
             %Get the value of the voxel underneath the cursor and write to
             %app.HoverLabel
-
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
             
-            if isnan(hitx) || isnan(hity)
+            if isnan(row) || isnan(column)
                 return
             end
             
-            %Find which view the cursor is over
-            if round(hit.Point(1)) <= hit.Source.Position(3)/2
-                view = 1;
-            else
-                view = 2;
-            end
+            ijk     = NiftiUtils.rc2ijk(app, row, column, axID);
+            %Find value - permuted because matlab switches rows and
+            %columns...
+            imID    = app.imagePerAxis(axID);
 
-            %Find imID and slice
-            try
-                imID    = app.imagePerAxis(view);
-                ax      = app.viewPerImage(imID);
-                slice   = app.slicePerImage{imID}{ax};
-            catch
-                return
-            end
-
-            %Find value
-            try
-                res = app.data{imID}.img(hity,hitx,slice);
-            catch
-                res = 0;
-            end
+            %ijk 1 and 2 are switched, because of matlab reasons
+            res = app.data{imID}.img(end - ijk(2) + 1, ijk(1), ijk(3));
             app.HoverLabel.Text = num2str(res);
-
 
         end
 
@@ -1073,7 +1086,7 @@ classdef GUI < handle
         j               = round(sz(2)/2);
         
         %Convert to world coordinates
-        xyz         = NiftiUtils.hitToXYZ(app, i, j);
+        xyz         = NiftiUtils.rc2xyz(app, i, j);
 
         %Draw crosshair for each axis   -TODO: don't hardcode axes
         GUI.CrosshairPerAxis(app, 1, xyz)
@@ -1088,66 +1101,74 @@ classdef GUI < handle
         %Moves the crosshair to the new position. Scrolls the images on the
         %other ax(i/e)s along with the position.
 
-            if nargin == 2     %hit
-                hit = varargin{1};
+            if nargin == 2     %axID
+                axID        = varargin{1};
+                row         = app.crosshairPerAxis{axID}(1);
+                column      = app.crosshairPerAxis{axID}(2);
+                
+                %Invert the column, for some reason?
+                imID        = app.imagePerAxis(app.axID);  
+                sz          = NiftiUtils.FindInPlaneResolution(app, imID);
+                column      = sz(2) - column;
+                column      = min(column, sz(2));
+                column      = max(column, 1);
+                xyz         = NiftiUtils.rc2xyz(app, row, column, axID);
 
-                %return when hit is wrong
-                if any(isnan(hit.IntersectionPoint))
-                    return
-                end
-    
-                %Find xyz position of hit
-                i           = hit.IntersectionPoint(1);
-                j           = hit.IntersectionPoint(2);
-                xyz         = NiftiUtils.hitToXYZ(app, i, j);
+            elseif nargin == 3     %row, column
+                row         = varargin{1};
+                column      = varargin{2};
+                xyz         = NiftiUtils.rc2xyz(app, row, column);
             elseif nargin == 4
-                i           = varargin{1};
-                j           = varargin{2};
+                row         = varargin{1};
+                column      = varargin{2};
                 axID        = varargin{3};
-                xyz         = NiftiUtils.hitToXYZ(app, i, j, axID);
+                xyz         = NiftiUtils.rc2xyz(app, row, column, axID);
             end
 
             %Draw crosshair for each axis   -TODO: don't hardcode axes
             GUI.CrosshairPerAxis(app, 1, xyz)
             GUI.CrosshairPerAxis(app, 2, xyz)
 
-            %set/reset activity timer
-            Interaction.ToggleInteractionTimer(app)
-
         end
 
-        function CrosshairPerAxis(app, axID, xyz)
+        function CrosshairPerAxis(app, axID, varargin)
         %Finds the image position of world coordinate xyz for image imID.
         %Also calculates endpoints of the crosshair and calls the rendering
         %function
         %If the xyz position doesn't match the current slice, scroll
         
-            %Find ijk
             imID        = app.imagePerAxis(axID);
-            tm          = app.transMatPerImage{imID};
-            ijk         = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
-
-            %Remove relative viewing axis
-            viewAxis    = app.viewPerImage(imID);
             viewDim     = NiftiUtils.FindViewingDimension(app, imID);
+            viewingAxis = app.viewPerImage(imID);
+
+            if nargin == 3  %xyz is given
+                xyz = varargin{1};
+
+                %Find ijk
+                tm          = app.transMatPerImage{imID};
+                ijk         = NiftiUtils.xyz2ijk(app, tm, xyz, axID);
+                ijk         = round(ijk');
+    
+                [row,column]       = NiftiUtils.ijk2rc(app, axID, ijk);
+                app.crosshairPerAxis{axID} = [row,column];
+            else    %xyz not given, we take the position from 
+                    % app.crosshairPerAxis
+                row         = app.crosshairPerAxis{axID}(1);
+                column      = app.crosshairPerAxis{axID}(2);
+                ijk         = NiftiUtils.rc2ijk(app, row, column, axID);
+            end
+
+            %Find slice and the image if needed
             slice       = ijk(viewDim);
-            ijk(viewDim)   = [];
-            app.crosshairPerAxis{axID} = ijk;
-            
-            %Scroll if needed
             if ~isempty(app.slicePerImage{imID})
-                if slice ~= app.slicePerImage{imID}{viewAxis}
+                if slice ~= app.slicePerImage{imID}{viewingAxis}
                     Interaction.UpdateSlice(app, slice, axID)
                 end
             end
-
-            %find size of image
-            sz          = size(app.data{imID}.img);
-            sz(viewAxis)= [];
             
-            %Draw
-            Graphics.DrawCrosshairInAxis(app, axID, ijk, sz)
-            
+            %Draw the crosshairs
+            sz  = NiftiUtils.FindInPlaneResolution(app, imID);
+            Graphics.DrawCrosshairInAxis(app, axID, row, column, sz)
 
         end
 

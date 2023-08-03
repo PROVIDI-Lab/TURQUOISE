@@ -230,12 +230,41 @@ classdef NiftiUtils < handle
                 orrCode = 'a'; %If orientation is unclear, try axial
             end
 
-            imageOr     = strfind('sca', orrCode); 
-            or_Mat      = [3,1,2; 1,3,2; 1,2,3];
-            view        = or_Mat(imageOr, viewingAxis);
+            imageOr     = strfind('csa', orrCode); 
+            % or_Mat      = [3,1,2; 2,3,1; 1,2,3];
+            % view        = or_Mat(imageOr, viewingAxis);
 
-            strings     = [iOrrString, jOrrString, kOrrString];
-            strings(2*view-1:2*view) = [];
+            %find which directions should be displayed
+            if imageOr == 1 %Coronal image
+                if viewingAxis == 1 %coronal projection -> RLIS
+                    strings     = [iOrrString, jOrrString];
+                elseif viewingAxis == 2 %sagittal projection -> APIS
+                    strings     = [reverse(kOrrString), jOrrString];
+                else    %axial projection -> LRAP
+                    strings     = [iOrrString, reverse(kOrrString)];
+                end
+
+            elseif imageOr == 2 %Sagittal image
+                if viewingAxis == 1 %coronal projection -> RLIS
+                    strings     = [reverse(kOrrString), jOrrString];
+                elseif viewingAxis == 2 %sagittal projection -> APIS
+                    strings     = [reverse(iOrrString), jOrrString];
+                else    %axial projection -> LRAP
+                    strings     = [reverse(kOrrString), reverse(iOrrString)];
+                end
+            else
+                if viewingAxis == 1 %coronal projection -> RLIS
+                    strings     = [iOrrString, kOrrString];
+                elseif viewingAxis == 2 %sagittal projection -> APIS
+                    strings     = [jOrrString, kOrrString];
+                else    %axial projection -> LRAP
+                    strings     = [iOrrString, jOrrString];
+                end
+            end
+            
+
+            
+            % strings(2*viewingAxis-1:2*viewingAxis) = [];
 
             or = [strings, orrCode];            
         
@@ -251,12 +280,10 @@ classdef NiftiUtils < handle
             % orientation as follows:
             %                           viewing axis
             %                   cor         sag         ax
-            %           cor     k           j           i
-            %im Orr     sag     j           k           i
-            %           ax      i           j           k
+            %           cor     k           i           j
+            %im Orr     sag     i           k           j
+            %           ax      j           i           k
 
-            tm          = app.transMatPerImage{imID};
-            or          = NiftiUtils.FindOrientation(tm);
 
             %if viewaxis is specified in varargin, use that. if not, use
             %viewPerImage
@@ -266,8 +293,10 @@ classdef NiftiUtils < handle
                 viewAxis    = varargin{1};
             end
 
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
             imageOr     = strfind('csa', or(5)); 
-            or_Mat      = [3,2,1; 2,3,1; 1,2,3];
+            or_Mat      = [3,1,2; 1,3,2; 2,1,3];
             viewDim     = or_Mat(imageOr, viewAxis);
         end
 
@@ -281,8 +310,53 @@ classdef NiftiUtils < handle
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
             imageOr     = strfind('csa', or(5)); 
-            projMat     = [3,2,1; 3,1,2; 1,2,3];
+            projMat     = [2,3,1; 1,3,2; 2,1,3];
             proj        = projMat(imageOr, objViewDim);
+        end
+
+        function res = FindInPlaneResolution(app, imID)
+            %Gives the x,y resolution of the image that should be
+            %displayed, given the image orientation and projection
+
+            %Ex. a coronal image with total resolution 256, 256, 100 is
+            %projected sagitally. The in-plane resolution will be 100x256
+            %(x,y).
+
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('csa', or(5)); 
+            res         = size(app.data{imID}.img);
+            viewingAxis = app.viewPerImage(imID);
+
+            if imageOr == 1 %Coronal image
+                if viewingAxis == 1 %coronal projection
+                    res          = [res(1), res(2)];
+                elseif viewingAxis == 2 %sagittal projection 
+                    res          = [res(3), res(2)];
+                else    %axial projection
+                    res          = [res(1), res(3)];
+                end
+
+            elseif imageOr == 2 %Sagittal image
+                if viewingAxis == 1 %coronal projection
+                    res          = [res(3), res(2)];
+                elseif viewingAxis == 2 %sagittal projection 
+                    res          = [res(1), res(2)];
+                else    %axial projection
+                    res          = [res(3), res(1)];
+                end
+
+            else    %Axial image
+                if viewingAxis == 1 %coronal projection
+                    res          = [res(1), res(3)];
+                elseif viewingAxis == 2 %sagittal projection
+                    res          = [res(2), res(3)];
+                else    %axial projection
+                    res          = [res(1), res(2)];
+                end
+            end
+
+
         end
 
         function [xq,yq,zq] = GetDisplayGrid(app, axID)
@@ -563,6 +637,8 @@ classdef NiftiUtils < handle
             %Converts image coordinates to world coordinates with the help
             %of the image transformation matrix.
 
+            ijk = ijk - 1;  %offset because matlab arrays start at 1
+
             if length(ijk) == 3
                 ijk(end+1) = 1;
             end
@@ -575,7 +651,7 @@ classdef NiftiUtils < handle
             xyz = xyz(1:3);
         end
 
-        function ijk = xyz2ijk(app, tm, xyz, axID)
+        function ijk = xyz2ijk(~, tm, xyz, axID)
             %Converts world coordinates to image coordinates with the help
             %of the image transformation matrix.
 
@@ -589,22 +665,16 @@ classdef NiftiUtils < handle
 
             ijk = tm \ xyz;
             ijk = ijk(1:3);
-
-            imID            = app.imagePerAxis(axID);
-            viewDim = NiftiUtils.FindViewingDimension(app, imID);
-            
-            if viewDim == 3
-                return
-            end
-
-            or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('sca', or(5));
-            sz          = size(app.data{imID}.img, imageOr);
-            ijk(3)      = sz - ijk(3);
+            ijk = ijk + 1; %offset because matlab arrays start at 1
 
         end
 
-        function xyz = hitToXYZ(app, i,j, varargin)
+        function ijk = rc2ijk (app, row, column, varargin)
+            %Find the image coordinates (ijk) from the current location.
+            %Input:
+            %row - x position in plane
+            %column - y position in plane
+            %varargin - might contain axID.
 
             if nargin == 4
                 axID    = varargin{1};
@@ -613,36 +683,138 @@ classdef NiftiUtils < handle
             end
 
             imID            = app.imagePerAxis(axID);
-            if isempty(app.slicePerImage{imID})
-                xyz = [];
-                return
-            end
+            viewingAxis     = app.viewPerImage(imID); 
+            slice           = app.slicePerImage{imID}{viewingAxis};
+            slice           = repmat(slice, size(row));
 
-            viewAxis        = app.viewPerImage(imID); 
-            k               = app.slicePerImage{imID}{viewAxis};
-            ijkView         = NiftiUtils.FindViewingDimension(app, imID);
+            %Put row, column, and slice in the right order to get to image
+            %coordinates ijk. 
 
             tm          = app.transMatPerImage{imID};
             or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('csa', or(5));
-            sz          = size(app.data{imID}.img, imageOr);
+            imageOr     = strfind('csa', or(5)); 
 
-            
+            if imageOr == 1 %Coronal image
+                if viewingAxis == 1 %coronal projection
+                    ijk = [row, column, slice];
+                elseif viewingAxis == 2 %sagittal projection 
+                    ijk = [slice, column, row];
+                else    %axial projection
+                    sz  = size(app.data{imID}.img, 3);
+                    k   = sz - column;
+                    k   = max(k, 1);   
+                    k   = min(k, sz);
+                    ijk = [row, slice, k];
+                end
 
-%             disp([sz, i, j, k, sz - i])
+            elseif imageOr == 2 %Sagittal image
+                if viewingAxis == 1 %coronal projection
+                    sz  = size(app.data{imID}.img, 3);
+                    ijk = [slice, column, sz - row];
+                elseif viewingAxis == 2 %sagittal projection 
+                    ijk = [row, column, slice];
+                else    %axial projection
+                    szk  = size(app.data{imID}.img, 3);
+                    szi  = size(app.data{imID}.img, 1);
+                    ijk = [szi - column, slice, szk - row];
+                end 
 
-            if ijkView == 1
-                ijk = [k, i, sz - j];
-            elseif ijkView == 2
-                ijk = [i, k, sz- j];
-            else
-                ijk = [i, j, k];
+            else    %Axial image
+                if viewingAxis == 1 %coronal projection
+                    ijk = [row, slice, column];
+                elseif viewingAxis == 2 %sagittal projection
+                    sz  = size(app.data{imID}.img, 2);
+                    ijk = [slice, sz - row + 1, column];
+                else    %axial projection
+                    ijk = [row, column, slice];
+                end
             end
 
-            xyz         = NiftiUtils.ijk2xyz(tm, ijk);            
+            %bound to prevent any accidental rounding errors
+            ijk(ijk == 0) = 1;
 
         end
-        
+
+
+        function xyz = rc2xyz (app, row, column, varargin)
+            %We go from image coordinates to world coordinates.
+
+            
+            if nargin == 4
+                axID = varargin{1};            
+            else
+                axID = app.axID;
+            end
+
+            %First, get the image coordinates from the cursor location
+            ijk = NiftiUtils.rc2ijk(app, row, column, axID);
+
+            %Next, multiply with the transformation matrix to get world
+            %coordinates
+            imID        = app.imagePerAxis(axID);
+            tm          = app.transMatPerImage{imID};
+            xyz         = NiftiUtils.ijk2xyz(tm, ijk);  
+
+        end
+       
+        function [row, column] = ijk2rc(app, axID, ijk, varargin)
+        %Takes the image coordinates ijk and returns display
+        %coordinates row and column. 
+
+            imID        = app.imagePerAxis(axID);
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            viewAxis    = app.viewPerImage(imID);
+            imageOr     = strfind('csa', or(5)); 
+            or_Mat      = [3,1,2; 1,3,2; 2,1,3];
+            view        = or_Mat(imageOr, viewAxis);
+
+            %If a slice is provided in varargin, first select only those 
+            %coordinates with a matching slice.
+            if nargin == 4
+                slice = varargin{1};
+                idx             = ijk(:, view) ~= slice;
+                ijk(idx,:)      = [];
+            end
+
+            %Start with the non-axis image coordinates
+            ijk(:, view)    = [];
+            row               = ijk(:,1);
+            column               = ijk(:,2);
+
+            %Next, Get image dimensions, needed to flip certain axes
+            sz          = size(app.data{imID}.img);
+            sz(view)    = [];
+
+            %Under some circumstances, x and y need to be swapped
+            if viewAxis == 2 && imageOr == 1 || ... %corimage, sag proj.
+               viewAxis == 1 && imageOr == 2 || ... % sag im, cor proj.
+               viewAxis == 3 && imageOr == 2        % sag im, ax proj.
+                c = row;
+                row = column;
+                column = c;
+                sz = flip(sz);
+            end
+
+            %flip y because image coordinates are 0,0 in the bottom
+            %left and matlab coordinates are 0,0 in top left.
+            if imageOr == 1 && viewAxis == 3 || ... %cor im, axial proj.
+               imageOr == 2 && viewAxis == 3        % sag im, ax proj.
+                %don't flip with these projections
+            else
+                column   = sz(2) - column;
+            end
+            
+            %Under some circumstances, x position needs to inverted as
+            %well
+            if viewAxis == 2 && imageOr == 3 || ... % ax im, Sagittal proj
+               viewAxis == 1 && imageOr == 2 || ... % sag im, cor proj.
+               viewAxis == 3 && imageOr == 2        % sag im, ax proj.
+                
+                row = sz(1) - row;
+            end    
+        end
+
     end
     
 end

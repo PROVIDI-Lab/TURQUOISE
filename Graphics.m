@@ -55,6 +55,10 @@ classdef Graphics < handle
             Graphics.UpdateUserInteractionsForAxis(app, axID);
             Graphics.UpdateUIAxesLabel(app, axID);
 
+            %Important line: If we don't block callbacks while drawing the
+            %image, the view can freeze permanently :(
+            drawnow limitrate nocallbacks
+
         end
         
         function UpdateUserObjectsForAxis(app, axID)
@@ -131,6 +135,7 @@ classdef Graphics < handle
 
             imSlice     = MathUtils.ApplyProjection(...
                 app, true, imID, d4, imageOr, viewAxis, slice);
+
             % figure;
             % imshow(imSlice,[])
             set(app.imageRenderer{axID}, 'CData', imSlice);
@@ -150,7 +155,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{viewAxis};
 
             maskSlice   = MathUtils.ApplyProjection(...
-                false, idx, 1, imageOr, viewAxis, slice);
+                app, false, idx, 1, imageOr, viewAxis, slice);
 
             col = app.colors_list(obj.ID,:);
 
@@ -233,68 +238,27 @@ classdef Graphics < handle
                 Graphics.DeleteAllTempDrawings(app);
             end
             
-            %Plot app.drawing.points
-            if(~isempty(app.points{app.axID}))
-                tmp = app.points{app.axID};
-                
-                %Find slice
-                imID        = app.imagePerAxis(axID);
-                tm          = app.transMatPerImage{imID};
-                or          = NiftiUtils.FindOrientation(tm);
-                viewAxis    = app.viewPerImage(imID);
-                imageOr     = strfind('csa', or(5)); 
-                or_Mat      = [3,2,1; 2,3,1; 1,2,3];
-                view        = or_Mat(imageOr, viewAxis);
-                slice       = app.slicePerImage{imID}{viewAxis};
-
-                % %There are some siturations where the viewing dimension
-                % %(=slice) and / or hity should be inverted
-                % %The situtions are listed in the following table. 
-                % 
-                % invAxisTable =  [0,0,1; 0,0,1; 0,0,0];
-                % flipHitYTable = [0,0,1; 1,0,1; 0,0,0];
-                % 
-                % %The table is in the following order (csa csa csa) where the
-                % %choice of the triplet is based on the image orientation and
-                % %the choice within the triplet is the viewPerImage.
-                % 
-                % tm          = app.transMatPerImage{imID};
-                % or          = NiftiUtils.FindOrientation(tm);
-                % imageOr     = strfind('csa', or(5)); 
-                % 
-                % shouldInvert    = invAxisTable(imageOr, viewAxis);
-                % shouldFlip      = flipHitYTable(imageOr, viewAxis);
-                % sz              = size(app.data{imID}.img);
-                % 
-                % if shouldInvert
-                %     dim     = sz(1);
-                %     slice   = dim - slice;
-                % end
-                
-                %find points with matching slice
-                idx             = tmp(:, view) ~= slice;
-                tmp(idx,:)      = [];
-                tmp(:, view)    = [];
-                x               = tmp(:,1);
-                y               = tmp(:,2);
-
-                % %flip y if necessary
-                % sz(view) = [];
-                % if shouldFlip
-                %     dim     = sz(2);
-                %     y    = dim - y;
-                % end
-               
-                %plot points
-                hold(the_axis,'on');
-                h = plot(the_axis, x, y, '.-g',...
-                    'HitTest',                              ...
-                    'on',                                   ...
-                    'ButtonDownFcn',                        ...
-                    @app.MouseClickedInImage);
-                hold(the_axis,'off');
-                app.tempDrawings = [app.tempDrawings; h];
+            %Plot app.points
+            if isempty(app.points{app.axID})
+                return
             end
+                
+            %Get display coords
+            imID     = app.imagePerAxis(axID);
+            viewAxis = app.viewPerImage(imID);
+            slice   = app.slicePerImage{imID}{viewAxis};
+            [x,y]   = NiftiUtils.ijk2rc(app, axID, ...
+                app.points{app.axID}, slice);
+               
+            %plot points
+            hold(the_axis,'on');
+            h = plot(the_axis, x, y, '.-g',...
+                'HitTest',                              ...
+                'on',                                   ...
+                'ButtonDownFcn',                        ...
+                @app.MouseClickedInImage);
+            hold(the_axis,'off');
+            app.tempDrawings = [app.tempDrawings; h];
         end
         
         function DrawROIPointsInAxis(app, axID)
@@ -333,27 +297,17 @@ classdef Graphics < handle
             end
         end
 
-        function DrawCrosshairInAxis(app, axID, ijk, sz)
+        function DrawCrosshairInAxis(app, axID, x, y, sz)
 
-            % if ~app.buttonDown
-            %     if strcmp(app.crosshairTimer.Running, 'on')
-            %         stop(app.crosshairTimer)
-            %         start(app.crosshairTimer)
-            %     else
-            %         start(app.crosshairTimer)
-            %     end
-            % end
-            % 
-            % app.crosshairRenderer{axID}(1).Visible = 'on';
-            % app.crosshairRenderer{axID}(2).Visible = 'on';
 
+            %Adjust the crosshair plots
             set(app.crosshairRenderer{axID}(1), 'XData',...
                 [1, sz(1)]);
             set(app.crosshairRenderer{axID}(1), 'YData',...
-                [ijk(2), ijk(2)]);
+                [y, y]);
 
             set(app.crosshairRenderer{axID}(2), 'XData',...
-                [ijk(1), ijk(1)]);
+                [x, x]);
             set(app.crosshairRenderer{axID}(2), 'YData',...
                 [1, sz(2)]);
 
@@ -368,8 +322,8 @@ classdef Graphics < handle
             Graphics.ToggleCrosshairsInAxis(app, 1, 'on')
             Graphics.ToggleCrosshairsInAxis(app, 2, 'on')
 
-            set(app.imageRenderer{1}, "MaxRenderedResolution", 256)
-            set(app.imageRenderer{2}, "MaxRenderedResolution", 256)
+            % set(app.imageRenderer{1}, "MaxRenderedResolution", 300)
+            % set(app.imageRenderer{2}, "MaxRenderedResolution", 300)
 
         end
 
@@ -382,8 +336,8 @@ classdef Graphics < handle
             Graphics.ToggleCrosshairsInAxis(app, 1, 'off')
             Graphics.ToggleCrosshairsInAxis(app, 2, 'off')
 
-            set(app.imageRenderer{1}, "MaxRenderedResolution", "None")
-            set(app.imageRenderer{2}, "MaxRenderedResolution", "None")
+            % set(app.imageRenderer{1}, "MaxRenderedResolution", "None")
+            % set(app.imageRenderer{2}, "MaxRenderedResolution", "None")
 
         end
 
@@ -467,7 +421,7 @@ classdef Graphics < handle
 
             the_axis    = app.GetAxis(axID);
             imID        = app.imagePerAxis(axID);
-            viewDim     = NiftiUtils.FindViewingDimension(app, app.imID);
+            viewDim     = NiftiUtils.FindViewingDimension(app, imID);
             sz          = size(app.imageRenderer{axID}.CData);
 
             the_axis.XLim = [0, sz(2)];

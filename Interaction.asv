@@ -147,13 +147,24 @@ classdef Interaction < handle
                     end
             end
             
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
-                           
+            %Find image position of hit
+            row         = round(hit.IntersectionPoint(1));
+            column      = round(hit.IntersectionPoint(2));
+
+            %Flip j, because we want bottom left as 0,0
+            imID        = app.imagePerAxis(app.axID);  
+            sz          = NiftiUtils.FindInPlaneResolution(app, imID);
+            column      = sz(2) - column + 1;
+            %Bound j, to prevent errors
+            column      = min(column, sz(2));
+            column      = max(column, 1);
+            
+            %%%%
+            %Do stuff based on drawing mode           
             if(app.drawing.mode == 1)
                 % Here we are manually drawing an ROI
                 if hit.Button == 1
-                    ROI.AddPointToPolygon(app,hitx,hity);
+                    ROI.AddPointToPolygon(app,row,column);
                 elseif hit.Button == 3  %right mouse button, finish drawing
                     if(size(app.points{app.axID},1) <= 3)
                         return
@@ -171,19 +182,19 @@ classdef Interaction < handle
             
             elseif(app.drawing.mode == 3)
                 % Here we are adding a manual measurement
-                Measurements.MouseMeasurementLines(app,hit,hitx,hity);
+                Measurements.MouseMeasurementLines(app,hit,row,column);
                 
             elseif(app.drawing.mode == 4)
                 % Here we are using the automatic ROI drawing
-                Segmentation.MouseMagicDraw(app,hit,hitx,hity);            
+                Segmentation.MouseMagicDraw(app,hit,row,column);            
             
-            elseif hit.Button == 2
+            elseif hit.Button == 2  %mmb
                 %Here we adjust the contrast
-                GUI.StartChangingContrast(app, hit)
+                GUI.StartChangingContrast(app, hit, row, column)
                 
-            elseif hit.Button == 3
+            elseif hit.Button == 3  %rmb
                 %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOUnderMouse(app, hit, app.axID);
+                id = Objects.FindUOUnderMouse(app, row, column, app.axID);
 
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
@@ -191,13 +202,14 @@ classdef Interaction < handle
                     return
                 else
                     %rmb + drag is pan image
-                    GUI.StartDragging(app, hit)
+                    GUI.StartDragging(app, hit, row, column)
                 end
             else
                 %If not doing anything else, move the cursor and other
                 %panels around
                 GUI.ButtonDown(app, hit)
-                GUI.MoveCrosshair(app, hit)
+                tic
+                GUI.MoveCrosshair(app, row, column)
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -239,19 +251,43 @@ classdef Interaction < handle
                 return
             end
 
+            row     = round(hit.IntersectionPoint(1));
+            column  = round(hit.IntersectionPoint(2));
 
-            if isempty(app.dragPoint)
-                GUI.MouseHover(app, hit)                
+            %Find image
+            axID        = GUI.FindAxisUnderCursor(app, hit);
+            if axID == -1
+                return
+            end
+            imID        = app.imagePerAxis(axID);  
+
+            %Flip column, because we want bottom left as 0,0
+            sz          = NiftiUtils.FindInPlaneResolution(app, imID);
+            column      = sz(2) - column + 1;
+
+            %Bound row and column, to prevent errors
+            column      = min(column, sz(2));
+            column      = max(column, 1);
+            row         = min(row, sz(1));
+            row         = max(row, 1);
+
+            %Don't do anything if we're outside the image
+            if any(isnan([row,column]))
                 return
             end
 
-            hitx = round(hit.IntersectionPoint(1));
-            hity = round(hit.IntersectionPoint(2));
+            %If dragpoint is empty, we're not adjusting contrast, or
+            %panning across the axis.
+            if isempty(app.dragPoint)
+                GUI.MouseHover(app, row, column, axID)                
+                return
+            end            
+
             if app.drawing.mode == 6        %contrast
-                GUI.AdjustContrast(app, hitx, hity)
+                GUI.AdjustContrast(app, row, column)
             elseif app.drawing.mode == 7    %dragging
                 GUI.DragAxis(app, hit)
-            end            
+            end     
         end
 
         function ToggleInteractionTimer(app)
@@ -259,6 +295,7 @@ classdef Interaction < handle
             %If it goes off, the images will be rendered at a higher
             %quality and the crosshairs will disappear. If this function is
             %called, it will either reset or start the timer.     
+
 
             if strcmp(app.interactionTimer.Running, 'on')
                 stop(app.interactionTimer)
@@ -272,10 +309,44 @@ classdef Interaction < handle
 
         end
 
-        function TimerCallback(~, ~, app)
+        function InteractionTimerCallback(~, ~, app)
 
+            if app.buttonDown
+                stop(app.interactionTimer)
+                start(app.interactionTimer)
+                return
+            end
             stop(app.interactionTimer)
             Graphics.SetStaticGraphics(app)
+        end
+
+        function CancelTimerCallback(~, ~, app)
+
+            stop(app.cancelTimer)
+            start(app.cancelTimer)
+
+            if ~isprop(app, 'progressDlg')
+                return
+            end
+
+            try
+                if isempty(app.progressDlg)
+                    return
+                end
+                if ~app.progressDlg.CancelRequested
+                    return
+                end
+            catch
+                return
+            end
+            
+
+            %else, reset
+            app.progressDlg.CancelRequested = false;
+            GUI.RevertControlsStatus(app)
+            msgbox("If you suspect that the program is encountering " + ...
+                "problems, please save any progress and restart the app")
+
         end
         
         %% Keypresses
@@ -318,6 +389,8 @@ classdef Interaction < handle
                         Interaction.ChangeViewAxis(app, 3)
                     case 'q'
                         profile on
+                        Interaction.test(app)
+                        profile viewer
                     case 'w'
                         profile viewer
                     case 'escape'
@@ -478,8 +551,10 @@ classdef Interaction < handle
                    return
                end
             end
-                       
-            closereq
+
+            stop(app.cancelTimer)
+
+            close all;
         end
            
             
@@ -826,6 +901,15 @@ classdef Interaction < handle
             a = 12;
         end
         
+        function test(app)
+
+            for i = 1:200
+                pause(0.001)
+                GUI.MoveCrosshair(app, 100+rand(1)*10, 100+rand(1)*10, 2)
+            end
+
+        end
+
         function values = overlayMask(im, mask)
            
             %Overlays mask over image, takes into account different shapes
