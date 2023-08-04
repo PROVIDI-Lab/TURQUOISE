@@ -76,9 +76,9 @@ classdef IOUtils < handle
                     delete(fullfile(profileFn, [uObj.name,'*']))  
                     continue
                 end
-                %Only write .json for now
+
                 IOUtils.saveSegmentationPoints(uObj, profileFn);
-                %IOUtils.saveSegmentation(app, uObj, profileFn)
+                IOUtils.saveSegmentation(app, uObj, profileFn)
             end
         end
         
@@ -97,7 +97,7 @@ classdef IOUtils < handle
 
             nii     = IOUtils.arr2nii(app, obj);
             try
-                save_nii(nii, outFn);
+                save_untouch_nii(nii, outFn);
             catch err
                 uialert(uifigure,err.message,...
                     'Unable to save segmentation');
@@ -186,14 +186,11 @@ classdef IOUtils < handle
                 return
             end
             nii     = load_untouch_nii(fn);
-%             nii     = IOUtils.PermuteFlip(nii);
+            nii     = NiftiUtils.PermuteFlip(nii);
             nii.img = nii.img(:,:,:,1); 
-            
-            beginPos    = strfind(fn,filesep);
-            beginPos    = beginPos(end);
-            endPos      = strfind(fn,'-');
-            endPos      = endPos(end);
-            name        = fn(beginPos + 1 : endPos - 1);
+
+            [~, name, ~]    = fileparts(fn);
+            name            = erase(name, ['.nii', '.gz', '-segmetnation']);
 
             %Get polygon points from the label
             %Assume that the viewdim is the same as the image orientation
@@ -201,11 +198,17 @@ classdef IOUtils < handle
             viewDim = 3;
             points = ROI.MaskToPoints(nii.img, [-1,-1,-1], viewDim);
 
+            if isempty(points)
+                uialert(app.UIFigure, 'This segmentation seems empty.',...
+                    'Segmentation error');
+                return
+            end
+
             
             Objects.AddNewUserObj(app,...
                     "type", 1, ...
                     "points", points, ... 
-                    "data", nii.img,...
+                    "data", single(nii.img),...
                     "name", name,...
                     "imageIdx", idx) 
         end
@@ -449,7 +452,7 @@ classdef IOUtils < handle
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;
             %Undo the permutation done when reading the nii
-            nii.img = permute(nii.img,[2 1 3 4]);
+            nii.img = flip(permute(nii.img,[2 1 3 4]), 2);
             nii.hdr.dime.dim([2,3]) = nii.hdr.dime.dim([3,2]);
         
         end

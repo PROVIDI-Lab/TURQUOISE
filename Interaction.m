@@ -208,7 +208,6 @@ classdef Interaction < handle
                 %If not doing anything else, move the cursor and other
                 %panels around
                 GUI.ButtonDown(app, hit)
-                tic
                 GUI.MoveCrosshair(app, row, column)
             end
             
@@ -563,10 +562,11 @@ classdef Interaction < handle
             %Loads a new segmentation for the current image.
 
             %TODO: move to IOUtils
-            defPath         = strcat(app.filepath, "\.rmsstudio");
-            [file, path]    = uigetfile('*.nii',                        ...
-                                'Load Segmentation',                    ...
-                                defPath);
+            defPath         = strcat(app.filepath);
+            [file, path]    = uigetfile(...
+                    {'*.nii.gz; *.nii; *.json', ...
+                    'Segmentation files (*.nii.gz, *.nii, *.json)'}, ...
+                'Load Segmentation', defPath);
             fp              = fullfile(path, file);
             if ~exist(fp, "file")
                 return
@@ -583,8 +583,8 @@ classdef Interaction < handle
             Backups.CreateBackup(app)
             
             %Switch to new labels
-            items   = app.UOBox.Items;
-            app.UOBox.Value    = length(items) - 1;
+            GUI.UpdateUOBox(app)
+            app.UOBox.Value    = app.UOBox.ItemsData(end - 1);
             Interaction.UOBoxChanged(app);
         end
         

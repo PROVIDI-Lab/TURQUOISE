@@ -198,6 +198,11 @@ classdef ROI < handle
 
             %find all slices
             [x,y,z] = ind2sub(size(mask), find(mask));
+
+            if isempty(x)
+                return
+            end
+
             tmp = [x,y,z];
             slices = unique(tmp(:, viewDim));
 

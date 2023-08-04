@@ -987,14 +987,6 @@ classdef GUI < handle
             
             if app.buttonDown
                 %set/reset activity timer
-                eTime = toc;
-
-                app.frameTimeLst(end+1) = eTime;
-               
-                text = strcat('FPS = ', ...
-                    num2str(1/mean(app.frameTimeLst(end-10:end))));
-                app.fpsLabel.Text = text;
-                tic
                 Interaction.ToggleInteractionTimer(app)
                 GUI.MoveCrosshair(app, row, column, axID)
                 GUI.DisplayHoverValue(app, row, column, axID)
