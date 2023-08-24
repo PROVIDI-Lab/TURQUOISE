@@ -160,17 +160,21 @@ classdef IOUtils < handle
             %Loads userobjects from the disk that correspond to the image
             %at idx.
             folder      = app.studyNames{idx};
-            
-            if strcmp(folder(1:2), '* ')
-                    folder = folder(3:end);
-            end
-            
+
             direc       = fullfile(app.current_folder, folder);
             %First find any segmentations
-            segFiles    = dir(fullfile(direc,'**\*.json'));
+            segFiles    = [dir(fullfile(direc,'**\*.nii')), ...
+                dir(fullfile(direc, '**\*.nii.gz'))];
             for file = segFiles'
-                IOUtils.loadSegmentationPoints(...
-                    app, fullfile(file.folder, file.name), idx);
+                
+                basename = erase(file.name, {'.nii', '.gz'});
+                if exist(fullfile(file.folder, [basename, '.json']), 'file')
+                    IOUtils.loadSegmentationPoints(...
+                        app, fullfile(file.folder, file.name), idx);
+                else
+                    IOUtils.LoadSegmentation(app, ...
+                        fullfile(file.folder, file.name), idx)
+                end
             end
                     
             %Next, load measurements
@@ -190,7 +194,7 @@ classdef IOUtils < handle
             nii.img = nii.img(:,:,:,1); 
 
             [~, name, ~]    = fileparts(fn);
-            name            = erase(name, ['.nii', '.gz', '-segmetnation']);
+            name            = erase(name, {'.nii', '.gz', '-segmentation'});
 
             %Get polygon points from the label
             %Assume that the viewdim is the same as the image orientation
@@ -204,13 +208,23 @@ classdef IOUtils < handle
                 return
             end
 
+            %find profile, if any
+            [base, ~, ~] = fileparts(fn);
+            [base, folder, ~] = fileparts(base);
+            [~, superfolder, ~] = fileparts(base);
+            if strcmp(superfolder, 'rmsstudio')
+                profile = ''; %no profile
+            else
+                profile = folder;
+            end
             
             Objects.AddNewUserObj(app,...
                     "type", 1, ...
                     "points", points, ... 
                     "data", single(nii.img),...
                     "name", name,...
-                    "imageIdx", idx) 
+                    "imageIdx", idx, ...
+                    "profile", profile) 
         end
         
         function loadSegmentationPoints(app, fn, idx)

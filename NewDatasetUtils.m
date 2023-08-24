@@ -240,6 +240,27 @@ classdef NewDatasetUtils < handle
         end
 
 
+        function status = ConvertSegmentations(app)
+            %Finds all segmentations, converts them to the .json standard
+            %that the app uses.
+
+             msg = sprintf('Looking for DWI files.');
+            app.dlg.Message = msg;
+            app.dlg.Value =  0;
+
+            bvalFiles = dir(fullfile(app.fp, '**\*.bval'));
+
+            for i = 1:length(bvalFiles)
+                fn = fullfile(bvalFiles(i).folder, bvalFiles(i).name);
+                app.dlg.Message = ['Computing ADC map '...,
+                    num2str(i) ' / ' num2str(length(bvalFiles))];
+                app.dlg.Value =  (i-1) / length(bvalFiles);
+                NewDatasetUtils.DWI2ADC(fn)
+            end
+            app.dlg.Value =  1;
+        end
+
+
 
     end
 end

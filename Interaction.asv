@@ -30,7 +30,6 @@ classdef Interaction < handle
             %the right slice & view.
             
             index   = app.UOBox.Value;
-            disp(index)
             
             if index <= 0
                 return

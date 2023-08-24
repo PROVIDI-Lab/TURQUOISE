@@ -873,8 +873,7 @@ classdef GUI < handle
             
             %Clear items
             app.ProfileListBox.Items     = {};
-            style = uistyle("Icon", "");
-            addStyle(app.ProfileListBox, style)
+            removeStyle(app.ProfileListBox)
 
             %Add any profiles from UOs
             for i = 1:length(app.userObjects)
@@ -886,6 +885,10 @@ classdef GUI < handle
                     app.ProfileListBox.Items{1} = ...
                         app.userObjects{i}.profile;
 
+                    if app.userObjects{i}.imageIdx ~= app.imID
+                        continue
+                    end
+
                     %Add an icon to signify UO presence
                     style = uistyle("Icon", "uoIcon.png");
                     addStyle(app.ProfileListBox, style, "item", ...
@@ -894,6 +897,10 @@ classdef GUI < handle
                         app.userObjects{i}.profile))
                     app.ProfileListBox.Items{end+1} = ...
                         app.userObjects{i}.profile;
+
+                    if app.userObjects{i}.imageIdx ~= app.imID
+                        continue
+                    end
 
                     %Add an icon to signify UO presence
                     style = uistyle("Icon", "uoIcon.png");
@@ -913,8 +920,33 @@ classdef GUI < handle
                 end
             end
 
+            %Add 'none'
+            idx     = size(app.ProfileListBox.Items, 2) + 1;
+            app.ProfileListBox.Items{idx}       = 'None';
+
+            %Add icon if any of them have an empty profile
+            for i = 1:length(app.userObjects)
+                if app.userObjects{i}.deleted
+                    continue
+                end
+
+                if app.userObjects{i}.imageIdx ~= app.imID
+                    continue
+                end
+
+                if isempty(app.userObjects{i}.profile)
+                    style = uistyle("Icon", "uoIcon.png");
+                    addStyle(app.ProfileListBox, style, "item", ...
+                        length(app.ProfileListBox.Items))
+                    break
+                end
+            end
+
+            %Set the value to the current user_profile, if possible
             if any(strcmp(app.ProfileListBox.Items, app.user_profile))
                 app.ProfileListBox.Value = app.user_profile;
+            else
+                app.ProfileListBox.Value = 'None';
             end
         end
         
@@ -1035,7 +1067,11 @@ classdef GUI < handle
             imID    = app.imagePerAxis(axID);
 
             %ijk 1 and 2 are switched, because of matlab reasons
-            res = app.data{imID}.img(end - ijk(2) + 1, ijk(1), ijk(3));
+            try
+                res = app.data{imID}.img(end - ijk(2) + 1, ijk(1), ijk(3));
+            catch
+                return
+            end
             app.HoverLabel.Text = num2str(res);
 
         end
@@ -1055,11 +1091,10 @@ classdef GUI < handle
             MeanSig  = obj.prop.mean;
 
             String   = strcat(Name,                 ...
-                        '\tVolume:%.2f mm^3 \tMean: %.2f \n%s');
+                        '\tVolume:%.0f mm^{3} \tMean: %.2f mm^{2}s^{-1}');
             String   = sprintf(String,              ...               
                                Volume,              ...
-                               MeanSig, ...
-                               string(obj.comment));
+                               MeanSig);
             app.UOHoverLabel.Text = String;
         end
 

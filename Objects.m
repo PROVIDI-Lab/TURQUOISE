@@ -5,9 +5,15 @@ classdef Objects < handle
             obj         = UserObj();
             
             %very hacky way to assign properties.
+            %in the meantime, check if profile is assigned
+            hasProfile = false;
             for idx     = 1:2:nargin-1
                 if ~isprop(obj, varargin{idx})
                     continue
+                end
+
+                if strcmp(varargin{idx}, "profile")
+                    hasProfile = true;
                 end
                 
                 str     = strcat(...
@@ -37,7 +43,11 @@ classdef Objects < handle
             if isempty(obj.comment)
                 obj.comment = '';
             end
-            if isempty(obj.profile)
+
+            %if the profile is empty, and no profile was specified, change
+            %to app.user_profile. Otherwise, the empty profile was
+            %intentional and should be kept.
+            if isempty(obj.profile) && ~hasProfile
                 obj.profile = app.user_profile;
             end
 
@@ -48,7 +58,7 @@ classdef Objects < handle
             app.userObjects{end+1}  = obj;
         end
 
-        function name = CheckNameUnique(app, name, idx)
+        function name = CheckNameUnique(app, name, idx, profile)
             %Compares names between new object and existing objects.
             %In the case of identical names, adds a number to the end.           
             
@@ -130,13 +140,20 @@ classdef Objects < handle
         end
 
         %% Searching the UOs
-        function names = GetAllUONamesForImage(app, index)
+        function names = GetAllUONamesForImage(app, index, varargin)
             %Returns the names of all UOs with a matching image and profile
+
+            if nargin == 3
+                profile = varargin{1};
+            else
+                profile = app.user_profile;
+            end
+
             names = {};
             for i = 1:length(app.userObjects)
                 obj = app.userObjects{i};
                 if obj.imageIdx ~= index || obj.deleted || ...
-                        ~strcmp(obj.profile, app.user_profile)
+                        ~strcmp(obj.profile, profile)
                     continue
                 end
                 names{end+1} = obj.name;
@@ -757,7 +774,11 @@ classdef Objects < handle
             end
 
             prevComment = app.userObjects{idx}.comment;
-            comment = inputdlg('','Add comment', [3 50], prevComment);
+            if isempty(prevComment)
+                comment = inputdlg('','Add comment', [3 50]);
+            else
+                comment = inputdlg('','Add comment', [3 50], prevComment);
+            end
 
             if ~isempty(comment)
                 app.userObjects{idx}.comment = comment;
@@ -919,7 +940,11 @@ classdef Objects < handle
                 
                 if obj.type == 1 || obj.type == 3 || obj.type == 4
                     
-                    maskVal = obj.data(end - ijk(2) + 1, ijk(1), ijk(3));
+                    try
+                        maskVal = obj.data(end - ijk(2) + 1, ijk(1), ijk(3));
+                    catch
+                        return
+                    end
 
                     if maskVal
                         UOId = obj.ID; 

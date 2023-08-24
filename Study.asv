@@ -95,7 +95,10 @@ classdef Study < handle
                 folder      = app.studyNames{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
-                files       = dir(fullfile(direc, '**\*.json')); 
+                jsonfiles       = dir(fullfile(direc, '**\*.json')); 
+                niifiles        = dir(fullfile(direc, '**\*.nii')); 
+                niigzfiles      = dir(fullfile(direc, '**\*.nii.gz')); 
+                files = [jsonfiles, niifiles, niigzfiles];
                 if isempty(files)
                     continue
                 end
@@ -180,7 +183,7 @@ classdef Study < handle
                 app.transMatPerImage{i} = tm;
                 or  = NiftiUtils.FindOrientation(tm);
                 app.viewPerImage(i) = ...
-                    strfind('sca',or(5)); %1 = sag, 2=cor, 3=axial
+                    strfind('csa',or(5)); %1 = cor, 2=sag, 3=axial
 
                 refs(:,i) =...
                     NiftiUtils.GetRefHalfway(hdr);

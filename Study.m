@@ -95,7 +95,10 @@ classdef Study < handle
                 folder      = app.studyNames{idx};
                 direc       = fullfile(app.current_folder,...
                         folder);
-                files       = dir(fullfile(direc, '**\*.json')); 
+                jsonfiles       = dir(fullfile(direc, '**\*.json')); 
+                niifiles        = dir(fullfile(direc, '**\*.nii')); 
+                niigzfiles      = dir(fullfile(direc, '**\*.nii.gz')); 
+                files = [jsonfiles, niifiles, niigzfiles];
                 if isempty(files)
                     continue
                 end
