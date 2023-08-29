@@ -259,7 +259,6 @@ classdef IOUtils < handle
             %Load points
             points = data.points;            
             points(any(isnan(points),2),:) = [];
-            disp(points)
             
             if isfield(data, 'type')
                 type = data.type;
@@ -465,9 +464,9 @@ classdef IOUtils < handle
             
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;
+            
             %Undo the permutation done when reading the nii
-            nii.img = flip(permute(nii.img,[2 1 3 4]), 2);
-            nii.hdr.dime.dim([2,3]) = nii.hdr.dime.dim([3,2]);
+            nii = NiftiUtils.FlipPermute(nii);
         
         end
         
