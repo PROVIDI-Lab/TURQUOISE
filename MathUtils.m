@@ -363,7 +363,40 @@ classdef MathUtils < handle
 
         end
 
-        
+
+        function sortedPoints = SortPointsByDistance(points)
+        %Takes n-by-2 point array and sorts them such that each point is
+        %adjacent to the points closest to it.
+
+            %remove duplicate points
+            points = unique(points, 'rows');
+
+            %Calculate distance matrix
+            distanceMatrix = squareform(pdist(points));
+            distanceMatrix(distanceMatrix == 0) = Inf;
+
+            %Initialize indexes & output
+            pIdx = zeros(length(points), 1);
+            pIdx(1) = 1;
+            sortedPoints = [points(1,:)];
+
+            %Loop over each point. for each point, find the point with the
+            %smallest distance, given by the distanceMatrix. That point is
+            %added to sortedPoint.
+            %All values for the current point in the distanceMatrix are set
+            %to inf. Next, repeat for the new point.
+            for i = 1 : length(points)-1
+                
+                idx = pIdx(i);
+
+                [d, newIdx]     = min(distanceMatrix(idx,:));
+                if d > 10
+                    break
+                end
+                sortedPoints    = [sortedPoints; points(newIdx, :)];
+                pIdx(i+1)     = newIdx;
+                distanceMatrix(:,idx) = Inf;
+            end
+        end
     end
-    
 end

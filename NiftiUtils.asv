@@ -15,19 +15,6 @@ classdef NiftiUtils < handle
             img = permute(img, order);
             img = flip(img, 1);
             nii.img = img;
-
-%             %hdr
-%             srow_x = nii.hdr.hist.srow_x;
-%             srow_y = nii.hdr.hist.srow_y;
-%             nii.hdr.hist.srow_x = -srow_y;
-% %             nii.hdr.hist.srow_x = srow_y;
-%             nii.hdr.hist.srow_y = srow_x;
-% 
-%             dimx    = nii.hdr.dime.dim(2);
-%             dimy    = nii.hdr.dime.dim(3);
-%             nii.hdr.dime.dim(2) = dimy;
-%             nii.hdr.dime.dim(3) = dimx;
-
         end
 
         function nii = FlipPermute(nii)
@@ -38,19 +25,6 @@ classdef NiftiUtils < handle
             img = flip(img, 1);
             img = permute(img, [2,1,3]);
             nii.img = img;
-
-%             %hdr
-%             srow_x = nii.hdr.hist.srow_x;
-%             srow_y = nii.hdr.hist.srow_y;
-%             nii.hdr.hist.srow_x = srow_y;
-%             nii.hdr.hist.srow_y = -srow_x;
-% %             nii.hdr.hist.srow_y = srow_x;
-% 
-%             dimx    = nii.hdr.dime.dim(2);
-%             dimy    = nii.hdr.dime.dim(3);
-%             nii.hdr.dime.dim(2) = dimy;
-%             nii.hdr.dime.dim(3) = dimx;
-
         end
 
 

@@ -285,6 +285,11 @@ classdef GUI < handle
                     return
                 end
 
+                if app.ctrl %Zoom instead of scrolling - only happens here
+                    GUI.ZoomAxis(app, axID, scrollCount, event);
+                    return
+                end
+
             elseif nargin == 3  %app + value + axID
 
                 scrollCount = varargin{1};
@@ -292,11 +297,6 @@ classdef GUI < handle
             end
 
             imID    = app.imagePerAxis(axID);
-            
-            if app.ctrl %Zoom instead of scrolling
-                GUI.ZoomAxis(app, axID, scrollCount, event);
-                return
-            end
 
             view    = app.viewPerImage(imID);
             slice   = app.slicePerImage{imID}{view} - scrollCount;
@@ -875,56 +875,40 @@ classdef GUI < handle
             app.ProfileListBox.Items     = {};
             removeStyle(app.ProfileListBox)
 
-            %Add any profiles from UOs
+            %first make a list of all possible profiles
+            profileLst = {};
+
             for i = 1:length(app.userObjects)
                 if app.userObjects{i}.deleted
                     continue
                 end
 
-                if isempty(app.ProfileListBox.Items)
-                    app.ProfileListBox.Items{1} = ...
-                        app.userObjects{i}.profile;
-
-                    if app.userObjects{i}.imageIdx ~= app.imID
-                        continue
-                    end
-
-                    %Add an icon to signify UO presence
-                    style = uistyle("Icon", "uoIcon.png");
-                    addStyle(app.ProfileListBox, style, "item", ...
-                        length(app.ProfileListBox.Items))
-                elseif ~any(contains(app.ProfileListBox.Items, ...
+                if isempty(profileLst)
+                    profileLst{end+1} = app.userObjects{i}.profile;
+                elseif ~any(contains(profileLst, ...
                         app.userObjects{i}.profile))
-                    app.ProfileListBox.Items{end+1} = ...
-                        app.userObjects{i}.profile;
-
-                    if app.userObjects{i}.imageIdx ~= app.imID
-                        continue
-                    end
-
-                    %Add an icon to signify UO presence
-                    style = uistyle("Icon", "uoIcon.png");
-                    addStyle(app.ProfileListBox, style, "item", ...
-                        length(app.ProfileListBox.Items))
+                    profileLst{end+1} = app.userObjects{i}.profile;
                 end
             end
-
 
             %Add profiles from the  preferences
             profiles = getpref('rmsstudio', 'profiles');
-            for i = 1:length(profiles)
-                if ~any(contains(app.ProfileListBox.Items, ...
-                        profiles{i}))
-                    app.ProfileListBox.Items{end+1} = ...
-                        profiles{i};
+            for ii = 1:length(profiles)
+                if ~any(contains(profileLst, ...
+                        profiles{ii}))
+                    profileLst{end+1} = profiles{ii};
                 end
             end
+
+            %Add these profiles to the listbox
+            app.ProfileListBox.Items = profileLst;
 
             %Add 'none'
             idx     = size(app.ProfileListBox.Items, 2) + 1;
             app.ProfileListBox.Items{idx}       = 'None';
 
-            %Add icon if any of them have an empty profile
+            %Finally, go over all UOs again, to toggle their presence per
+            %profile
             for i = 1:length(app.userObjects)
                 if app.userObjects{i}.deleted
                     continue
@@ -938,7 +922,17 @@ classdef GUI < handle
                     style = uistyle("Icon", "uoIcon.png");
                     addStyle(app.ProfileListBox, style, "item", ...
                         length(app.ProfileListBox.Items))
-                    break
+                else
+                    for ii = 1:length(profileLst)
+                        if strcmp(profileLst{ii}, ...
+                                app.userObjects{i}.profile)
+                            style = uistyle("Icon", "uoIcon.png");
+                            addStyle(app.ProfileListBox, style, "item", ...
+                                ii)
+                            profileLst{ii} = [];
+                            break
+                        end
+                    end
                 end
             end
 

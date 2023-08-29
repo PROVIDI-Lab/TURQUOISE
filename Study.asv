@@ -83,8 +83,13 @@ classdef Study < handle
             Study.ToggleUnsavedProgress(app, false)
             close(d);
 
+            %when GUI isn't initialised, we can't load UOs yet. Does do
+            %some stuff double, but it's not a big problem I think..
             IOUtils.LoadUserObjects(app, imList(1))
             IOUtils.LoadUserObjects(app, imList(2))
+
+            GUI.InitUORenderer(app, 1)
+            GUI.InitUORenderer(app, 2)
             
         end
         
@@ -98,8 +103,8 @@ classdef Study < handle
                 jsonfiles       = dir(fullfile(direc, '**\*.json')); 
                 niifiles        = dir(fullfile(direc, '**\*.nii')); 
                 niigzfiles      = dir(fullfile(direc, '**\*.nii.gz')); 
-                files = [jsonfiles, niifiles, niigzfiles];
-                if isempty(files)
+                
+                if isempty(jsonfiles) && isempty(niifiles) && isempty(niigzfiles)
                     continue
                 end
                 

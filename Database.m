@@ -3,6 +3,13 @@ classdef Database < handle
         
         function PrepareDatabase(app, varargin)
            %Prepares a new database
+
+           if app.unsavedProgress
+               proceed = Interaction.PromptSave(app);
+               if ~proceed
+                   return
+               end
+           end
            
            GUI.DisableControlsStatus(app)
 

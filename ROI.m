@@ -45,7 +45,8 @@ classdef ROI < handle
                 obj = app.userObjects{i};
                 if strcmp(obj.name, ROIName) && ...
                         obj.imageIdx == imID && ...
-                        obj.deleted ~= 1
+                        obj.deleted ~= 1     && ...
+                        strcmp(obj.profile, app.user_profile)
                     Objects.AddToUO(app, obj.ID, validatedPts)
                     break
                 end
@@ -234,9 +235,18 @@ classdef ROI < handle
                 %Find boundary pixels in order
                 tmpPoints = bwtraceboundary(sEdge, [x(1), y(1)], 'N');
 
+                %bwtraceboundary sometimes messes up the order, so here we
+                %enforce it. Also, removes any duplicate points.
+                tmpPoints = MathUtils.SortPointsByDistance(tmpPoints);
+
                 %Reduce amount of lines by Douglas-Peucker Algorithm
-                %Tolerance hardcoded to 1 seems to give good results.
-                tmpPoints = dpsimplify(tmpPoints, 1);
+                %Tolerance hardcoded to 0.8 seems to give good results.
+                tmpPoints = dpsimplify(tmpPoints, 0.8);
+
+                %flip x, for some reason?
+                sz      = size(mask);
+                sz(viewDim) = [];
+                tmpPoints(:,1) = sz(1) - tmpPoints(:,1);
 
                 %add slice dim, swap x and y 
                 tmpPoints = [tmpPoints(:,2),...

@@ -367,9 +367,9 @@ classdef Interaction < handle
             if isempty(modifier)
                 switch key
                     case 'uparrow'
-                        GUI.SliceUp(app)
+                        GUI.Scroll(app, -1, app.axID)
                     case 'downarrow'
-                        GUI.SliceDown(app)
+                        GUI.Scroll(app, 1, app.axID)
                     case 'backspace'
                         Interaction.BackspacePressed(app)
                     case 'h'
@@ -380,6 +380,8 @@ classdef Interaction < handle
                         app.ctrl    = true;
                     case 'f12'
                         Interaction.Debug(app)
+                    case 'f11'
+                        Interaction.ForceRedraw(app)
                     case 's'
                         Interaction.ChangeViewAxis(app, 2)
                     case 'c'
@@ -805,8 +807,6 @@ classdef Interaction < handle
             objs    = Objects.GetAllUONamesForImage(app, imID);
             nameLst = getpref('rmsstudio', 'ROILst');
             app.ROIPromptApp.Show(objs, nameLst, renameQ)
-         
-            return
         end
                 
         function choice = PromptTarget(app)
@@ -899,6 +899,10 @@ classdef Interaction < handle
             %Used for quick access to the app state
             disp('Debugging, press "continue"')
             a = 12;
+        end
+
+        function ForceRedraw(app)
+            drawnow
         end
         
         function test(app)

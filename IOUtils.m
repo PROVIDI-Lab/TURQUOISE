@@ -170,7 +170,7 @@ classdef IOUtils < handle
                 basename = erase(file.name, {'.nii', '.gz'});
                 if exist(fullfile(file.folder, [basename, '.json']), 'file')
                     IOUtils.loadSegmentationPoints(...
-                        app, fullfile(file.folder, file.name), idx);
+                        app, fullfile(file.folder, [basename, '.json']), idx);
                 else
                     IOUtils.LoadSegmentation(app, ...
                         fullfile(file.folder, file.name), idx)
@@ -461,7 +461,6 @@ classdef IOUtils < handle
         
         function nii = arr2nii(app, obj)
         %Constructs a nii object from the user object containing an ROI
-        %TODO: compress!
             
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;
