@@ -154,9 +154,9 @@ classdef Interaction < handle
             %Flip j, because we want bottom left as 0,0
             imID        = app.imagePerAxis(app.axID);  
             sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-            column      = sz(2) - column + 1;
+            column      = sz(1) - column + 1;
             %Bound j, to prevent errors
-            column      = min(column, sz(2));
+            column      = min(column, sz(1));
             column      = max(column, 1);
             
             %%%%
@@ -262,12 +262,12 @@ classdef Interaction < handle
 
             %Flip column, because we want bottom left as 0,0
             sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-            column      = sz(2) - column + 1;
+            column      = sz(1) - column + 1;
 
             %Bound row and column, to prevent errors
-            column      = min(column, sz(2));
+            column      = min(column, sz(1));
             column      = max(column, 1);
-            row         = min(row, sz(1));
+            row         = min(row, sz(2));
             row         = max(row, 1);
 
             %Don't do anything if we're outside the image

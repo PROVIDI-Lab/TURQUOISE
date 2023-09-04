@@ -157,7 +157,6 @@ classdef ROI < handle
         function mask = AddSliceToMask(app, mask, maskSlc, slcNum)
 
             axTable     = [3,2,1; 2,3,1; 1,2,3];
-            % rotTable    = [0,0,1; 0,0,0; 1,1,0];
             flipTable   = [0,0,1; 0,0,1; 1,0,0];
             flipXTable  = [0,0,0; 0,0,0; 0,0,0];
             
@@ -168,13 +167,9 @@ classdef ROI < handle
             viewingAxis = app.viewPerImage(imID);
 
             ax          = axTable(imageOr, viewingAxis);
-            % rot         = rotTable(imageOr, viewingAxis);
             flp         = flipTable(imageOr, viewingAxis);
             flpx        = flipXTable(imageOr, viewingAxis);
 
-            % if rot
-            %     maskSlc = rot90(maskSlc);
-            % end
 
             if flp
                 maskSlc = flip(maskSlc);
@@ -257,78 +252,6 @@ classdef ROI < handle
                 newPoints = [newPoints; tmpPoints];
             end
         end
-
-        % function pts = ValidatePoints(app, varargin)
-        % %Makes sure that all points match with the image orientation and
-        % %projection
-        % 
-        %     if nargin == 1
-        %         pts     = app.points{app.axID};
-        %     else
-        %         pts     = varargin{1};
-        %     end
-        % 
-        %     %Get some orientation info
-        %     imID    = app.imagePerAxis(app.axID);
-        %     view    = app.viewPerImage(imID);
-        %     tm      = app.transMatPerImage{imID};
-        %     or      = NiftiUtils.FindOrientation(tm);
-        %     imageOr = strfind('csa', or(5)); 
-        % 
-        %     %There are some siturations where the viewing dimension
-        %     %(=slice) and / or hity should be inverted
-        %     %The situtions are listed in the following table. 
-        % 
-        %     invAxisTable =  [0,0,1; 0,0,1; 0,0,0];
-        %     flipHitYTable = [0,0,1; 0,1,0; 0,0,0];
-        %     flipHitXTable = [0,0,0; 1,0,0; 0,0,0];
-        %     rotateXYTable = [0,0,0; 0,1,0; 0,0,0];
-        % 
-        %     %The table is in the following order (csa csa csa) where the
-        %     %choice of the triplet is based on the image orientation and
-        %     %the choice within the triplet is the viewPerImage.
-        % 
-        %     shouldInvert    = invAxisTable(imageOr, view);
-        %     shouldFlip      = flipHitYTable(imageOr, view);
-        %     shouldFlipX     = flipHitXTable(imageOr, view);
-        %     shouldRotate    = rotateXYTable(imageOr, view);
-        %     sz              = size(app.data{imID}.img);
-        % 
-        %     if shouldInvert
-        %         if view == 3
-        %             dim     = sz(1);    
-        %             pts(:,1) = dim - pts(:,1);
-        %         else %otherwise, sagittal view
-        %             dim = sz(3);
-        %             pts(:,3) = dim - pts(:,3);
-        %         end
-        %     end
-        % 
-        %     if shouldFlip
-        %         if view == 2 %sagittal view
-        %             dim     = sz(1);    
-        %             pts(:,1)= dim - pts(:,1);
-        %         elseif view == 3 && imageOr == 2
-        %             dim     = sz(1);    
-        %             pts(:,3)= dim - pts(:,3);
-        %         else %otherwise, 3rd dimension
-        %             dim     = sz(3);    
-        %             pts(:,3)= dim - pts(:,3);
-        %         end
-        %     end
-        % 
-        %     if shouldFlipX
-        %         dim     = sz(3);    
-        %         pts(:,1)= dim - pts(:,1);
-        %     end
-        % 
-        % 
-        %     if shouldRotate
-        %         tmp = pts(:,1);
-        %         pts(:,1) = pts(:,2);
-        %         pts(:,2) = tmp;
-        %     end
-        % end
         
         function [view, slice] = GetViewAndSlice(points)
             %Finds the view that was (most likely) used to draw the ROI as

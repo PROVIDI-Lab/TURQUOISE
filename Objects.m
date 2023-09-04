@@ -370,7 +370,7 @@ classdef Objects < handle
 
             %flip y
             sz      = NiftiUtils.FindInPlaneResolution(app, app.imID);
-            tmp(:,2) =  sz(2) - tmp(:,2);
+            tmp(:,2) =  sz(1) - tmp(:,2);
             newPoints = NiftiUtils.rc2ijk(app, tmp(:,1), tmp(:,2));
 
 
@@ -388,8 +388,7 @@ classdef Objects < handle
             app.userObjects{idx}.makeProperties(app);
             
             %Create new mask
-            % adaptedPts = ROI.ValidatePoints(app, newPoints);
-            app.userObjects{idx}.createMask(app, newPoints)
+            app.userObjects{idx}.createMask(app)
             
             %turn mask back on
             app.userObjects{idx}.setVisible(true)
@@ -682,6 +681,10 @@ classdef Objects < handle
             if idx == -1
                 return
             end
+
+            %%TODO: 
+            %   - load image if not previously done
+            %   - fix different views
             
             obj         = app.userObjects{idx};
             

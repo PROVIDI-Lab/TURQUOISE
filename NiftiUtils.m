@@ -776,7 +776,7 @@ classdef NiftiUtils < handle
                imageOr == 2 && viewAxis == 3        % sag im, ax proj.
                 %don't flip with these projections
             else
-                column   = sz(2) - column;
+                column   = sz(1) - column;
             end
             
             %Under some circumstances, x position needs to inverted as
@@ -785,7 +785,7 @@ classdef NiftiUtils < handle
                viewAxis == 1 && imageOr == 2 || ... % sag im, cor proj.
                viewAxis == 3 && imageOr == 2        % sag im, ax proj.
                 
-                row = sz(1) - row;
+                row = sz(2) - row;
             end    
         end
 

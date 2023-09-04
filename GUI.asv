@@ -1130,8 +1130,8 @@ classdef GUI < handle
                 %Invert the column, for some reason?
                 imID        = app.imagePerAxis(app.axID);  
                 sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-                column      = sz(2) - column;
-                column      = min(column, sz(2));
+                column      = sz(1) - column;
+                column      = min(column, sz(1));
                 column      = max(column, 1);
                 xyz         = NiftiUtils.rc2xyz(app, row, column, axID);
 
@@ -1145,6 +1145,11 @@ classdef GUI < handle
                 axID        = varargin{3};
                 xyz         = NiftiUtils.rc2xyz(app, row, column, axID);
             end
+
+            % ijk = NiftiUtils.rc2ijk(app, row, column);
+            % disp([row, column])
+            % disp(ijk)
+            % disp(xyz')
 
             %Draw crosshair for each axis   -TODO: don't hardcode axes
             GUI.CrosshairPerAxis(app, 1, xyz)
