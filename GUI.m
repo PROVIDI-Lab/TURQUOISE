@@ -231,7 +231,7 @@ classdef GUI < handle
             GUI.UpdateSliceSlider(app)
             GUI.UpdateMinMaxSlider(app)
             GUI.UpdateUOBox(app)
-            GUI.ChangeListBoxValue(app, app.imagePerAxis(index))
+            GUI.ChangeListBoxValue(app, index)
             GUI.UpdateAxisButtons(app)
             GUI.Update4DSlider(app)
 

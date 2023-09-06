@@ -370,7 +370,7 @@ classdef Objects < handle
 
             %flip y
             sz      = NiftiUtils.FindInPlaneResolution(app, app.imID);
-            tmp(:,2) =  sz(2) - tmp(:,2);
+            tmp(:,2) =  sz(1) - tmp(:,2);
             newPoints = NiftiUtils.rc2ijk(app, tmp(:,1), tmp(:,2));
 
 
