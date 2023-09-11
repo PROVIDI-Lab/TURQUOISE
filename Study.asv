@@ -144,10 +144,10 @@ classdef Study < handle
                 GUI.DisableControlsStatus(app)
                 app.imagePerAxis(app.axID) = index;
                 IOUtils.LoadNii(app, index)
+
+                GUI.DisplayNewImage(app, index)
                 IOUtils.LoadUserObjects(app, index)
                 Backups.CreateBackup(app)
-                
-                GUI.DisplayNewImage(app, index)
                 GUI.RevertControlsStatus(app)
                 return
             end

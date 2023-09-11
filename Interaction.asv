@@ -556,6 +556,7 @@ classdef Interaction < handle
             stop(app.cancelTimer)
 
             close all;
+            delete(app)
         end
            
             

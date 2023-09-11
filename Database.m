@@ -87,21 +87,11 @@ classdef Database < handle
             %inputs:    app - the RMSStudio app
             %varargin:  optional, the index to switch to.
             
-            if app.unsavedProgress
-               proceed = Interaction.PromptSave(app);
-               if ~proceed
-                   return
-               end
-            end
-            
-            GUI.DisableControlsStatus(app)
-            
             if ~isempty(varargin)
                 index   = varargin{1};
                 app.PatientsListBox.Value =                     ...
                     app.PatientsListBox.Items{index};
             end
-
 
             % update the sessionbox
             items = {};
@@ -115,20 +105,22 @@ classdef Database < handle
             end
             app.SessionsListBox.Items = items;
             
-            %Load the study at the index
-            if ~isempty(items)
-                Database.SwitchSession(app, items{1})
-            end
-            
-            GUI.RevertControlsStatus(app)
         end
 
         function SwitchSession(app, varargin)
             %Called when a new study is selected in the availablestudies
-            %listbox. Switches to that study.
-            %inputs:    app - the RMSStudio app
-            %varargin:  optional, the index to switch to.
+            %listbox.             
             
+            
+            if ~isempty(varargin)
+                val   = varargin{1};
+                app.SessionsListBox.Value = val;
+            end
+        end
+
+        function SwitchToNewSession(app)
+            %Called to actually switch to a new session
+
             if app.unsavedProgress
                proceed = Interaction.PromptSave(app);
                if ~proceed
@@ -137,11 +129,6 @@ classdef Database < handle
             end
             
             GUI.DisableControlsStatus(app)
-            
-            if ~isempty(varargin)
-                val   = varargin{1};
-                app.SessionsListBox.Value = val;
-            end
 
             %find index in database
             for i = 1:length(app.dataset)
@@ -155,7 +142,5 @@ classdef Database < handle
             
             GUI.RevertControlsStatus(app)
         end
-            
-            
     end
 end
