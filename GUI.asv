@@ -60,7 +60,7 @@ classdef GUI < handle
         function SetupAxis(app, the_ax, axID)
         %Constructs the UIAxes
             rect = get(the_ax,'OuterPosition');
-            bg = zeros(rect([4 3]));
+            bg = zeros(round(rect([4 3])));
             bg(round(end/2),round(end/2)) = 1;
             app.imageRenderer{axID} = imagesc(the_ax, bg);
             colormap(the_ax,'gray');

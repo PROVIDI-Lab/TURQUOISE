@@ -897,7 +897,7 @@ classdef Objects < handle
                 app.userObjects{idx}.imageIdx);
 
             if ~visible
-                Graphics.DrawROIInAxis(app, axID, app.userObjects{idx})
+                Graphics.DrawROIInAxis(app, axID, app.userObjects{idx}, idx)
             else
                 sz  = size(app.userObjects{idx}.data);
                 sz(app.userObjects{idx}.viewDim) = [];
@@ -938,6 +938,10 @@ classdef Objects < handle
                 end
 
                 if ~strcmp(obj.profile, app.user_profile)
+                    continue
+                end
+
+                if ~obj.visible
                     continue
                 end
                 

@@ -390,8 +390,6 @@ classdef Interaction < handle
                         Interaction.ChangeViewAxis(app, 3)
                     case 'q'
                         profile on
-                        Interaction.test(app)
-                        profile viewer
                     case 'w'
                         profile viewer
                     case 'escape'
@@ -761,6 +759,11 @@ classdef Interaction < handle
             viewDim = NiftiUtils.FindViewingDimension(app, imID);
             if slice > imgSize(viewDim)
                 slice = imgSize(viewDim);
+            end
+
+            %check if the slice should still be updated after bounding
+            if app.slicePerImage{imID}{view} == slice
+                return
             end
             
             app.slicePerImage{imID}{view}   = slice;
