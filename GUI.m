@@ -1202,6 +1202,8 @@ classdef GUI < handle
             %toggles app.buttonDown and sets up a callback for dragging and
             %releasing the mouse.
 
+            %Really hacky way of setting a callback to the UIFigure (at
+            %least I think that's what it links to)
             try
                 set(hit.Source.Parent.Parent.Parent,...
                 'WindowButtonUpFcn',...
