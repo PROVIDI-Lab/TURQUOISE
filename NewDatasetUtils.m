@@ -192,13 +192,13 @@ classdef NewDatasetUtils < handle
                 app.dlg.Message = ['Computing ADC map '...,
                     num2str(i) ' / ' num2str(length(bvalFiles))];
                 app.dlg.Value =  (i-1) / length(bvalFiles);
-                NewDatasetUtils.DWI2ADC(fn)
+                NewDatasetUtils.DWIConv(fn)
             end
             app.dlg.Value =  1;
 
         end
 
-        function DWI2ADC(fn)
+        function DWIConv(fn)
 
             bvals = sort(load(fn));
 
@@ -238,7 +238,7 @@ classdef NewDatasetUtils < handle
             %Sort according to bvals
             [~, I] = sort(mean(input_img_avg), 'descend');
             input_img = input_img_avg(:,I);
-            
+
             %Calculate ADC values based on solving the diffusion equation.
 
             res = X\log(single(input_img)');
@@ -257,6 +257,67 @@ classdef NewDatasetUtils < handle
 
             [folder, name, ~] = fileparts(fn);
             save_untouch_nii(out_nii, fullfile(folder, ['ADC_' name '.nii.gz']))
+
+            %also calculate IVIM, if possible
+            if sum(uniqueBVals < 200 & uniqueBVals > 0) < 1 || length(uniqueBVals) < 3
+                return %can't do IVIM
+            end
+            
+            IX_high = uniqueBVals >= 200;
+            IX_low = uniqueBVals < 200;
+
+            if sum(IX_high) < 2
+                IX_high = false(length(uniqueBVals), 1);
+                IX_high(end-1:end) = true;
+                IX_low = false(length(uniqueBVals), 1);
+                IX_low(1:end-2) = true;
+            end
+
+            %high
+            Xh = [-uniqueBVals(IX_high)' ones(sum(IX_high==1),1)];
+	        HighD = Xh\log(input_img(:,IX_high))'; 
+            HighD(HighD < 0) = 0;
+            HighD(HighD == inf) = 0;
+
+            %low
+            Xl = [-uniqueBVals(IX_low)' ones(sum(IX_low==1),1)]; 
+	        LowD = Xl\log(input_img(:,IX_low))';
+            LowD(LowD < 0) = 0;
+            LowD(LowD == inf) = 0;
+
+            %f
+            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);	        
+            f(f < 0) = 0;
+            f(f == inf) = 0;
+
+            %save
+            %high
+            HighD = reshape(HighD(1,:), [sx, sy, sz]);
+            HighD(bckGrndIdx) = 0;
+            
+            out_nii.img = HighD;
+
+            [folder, name, ~] = fileparts(fn);
+            save_untouch_nii(out_nii, fullfile(folder, ['IVIM-HighD_' name '.nii.gz']))
+
+            %low
+            LowD = reshape(LowD(1,:), [sx, sy, sz]);
+            LowD(bckGrndIdx) = 0;
+            
+            out_nii.img = LowD;
+
+            [folder, name, ~] = fileparts(fn);
+            save_untouch_nii(out_nii, fullfile(folder, ['IVIM-LowD_' name '.nii.gz']))
+
+            %f
+            f = reshape(f, [sx, sy, sz]);
+            f(bckGrndIdx) = 0;
+            
+            out_nii.img = f;
+
+            [folder, name, ~] = fileparts(fn);
+            save_untouch_nii(out_nii, fullfile(folder, ['IVIM-f_' name '.nii.gz']))
+
 
         end
 

@@ -389,6 +389,7 @@ classdef Objects < handle
             
             %Create new mask
             app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.makeProperties(app)    
             
             %turn mask back on
             app.userObjects{idx}.setVisible(true)
@@ -569,7 +570,6 @@ classdef Objects < handle
             obj.renaming = true;
             obj.data = [];
             obj.points = [];
-            obj.prop = [];
 
             %Remove UOLayer in renderer
             %first find right axis
@@ -844,7 +844,6 @@ classdef Objects < handle
                 newObj.points   = obj.points;
                 newObj.name     = obj.name;
                 newObj.imageIdx = obj.imageIdx;
-                newObj.prop     = obj.prop;
                 newObj.ID       = obj.ID;
                 newObj.viewDim  = obj.viewDim;
                 newObj.comment  = obj.comment;
@@ -867,6 +866,8 @@ classdef Objects < handle
                         objects{i}.points,...
                         objects{i}.imageIdx,...
                         objects{i}.type);
+
+                    app.userObjects{i}.makeProperties(app);
                 end
             end
             

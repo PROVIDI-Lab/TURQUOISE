@@ -104,36 +104,6 @@ classdef IOUtils < handle
             end             
         end
         
-        function saveObjProperties(properties, fn)
-        %Creates a table with all the properties stored in the segmentation
-        %of the current image and writes it to an .xlsx file
-        %Input:
-        %   properties, a cell array with the properties of the objects
-        %   filename, the name of the .xlsx file
-        %
-            %Create table of the segmentation properties
-            %get names of properties
-            prop    = properties{1};
-            varLst  = fieldnames(prop);
-
-            %store properties in cell array
-            cellArr = cell(length(properties), numel(varLst));
-            for idx = 1:length(properties)
-                prop    = properties{idx};    
-
-                for varIdx  = 1:numel(varLst)
-                    var     = varLst{varIdx};
-                    cellArr{idx, varIdx} = prop.(var);
-                end
-            end
-            %write cellarray to table
-            tab = cell2table(cellArr, 'VariableNames', varLst);
-            
-            %write to disk
-%             writetable(tab,filename,'Sheet',1,'Range','A1');
-            writetable(tab, fn)
-        end
-        
         function saveSegmentationPoints(obj, fn)
             %Saves the roiPoints to a json object.
             
@@ -148,7 +118,15 @@ classdef IOUtils < handle
             jsonObj     = struct(   'points', obj.points, ...
                                     'type', obj.type, ...
                                     'viewDim', obj.viewDim,...
-                                    'comment', obj.comment);
+                                    'comment', obj.comment, ...
+                                    'volume', obj.volume, ...
+                                    'mean', obj.meanVal, ...
+                                    'std', obj.stdVal, ...
+                                    'prctile5', obj.prctile5, ...
+                                    'prctile25', obj.prctile25, ...
+                                    'prctile50', obj.prctile50, ...
+                                    'prctile75', obj.prctile75, ...
+                                    'prctile95', obj.prctile95);
             txt         = jsonencode(jsonObj);
             
             fid         = fopen(outFn, 'w');

@@ -17,6 +17,14 @@ classdef UserObj < matlab.mixin.SetGet
        viewDim                  %Stores the viewing dimension
        comment
        profile
+       volume
+       meanVal
+       stdVal
+       prctile5
+       prctile25
+       prctile50
+       prctile75
+       prctile95
     end
     
     methods        
@@ -37,32 +45,15 @@ classdef UserObj < matlab.mixin.SetGet
                 V           = ...
                     app.data{obj.imageIdx}.img(:,:,:, axis4D);
                 
-                obj.prop            = struct();
-                obj.prop.name       = obj.name;
-                obj.prop.volume     = length(find(L))*VS^3;
+                obj.volume     = length(find(L))*VS^3;
 
-                try
-                    obj.prop.mean       = mean(V(L(:)));
-                catch
-                    errordlg("Segmentation out of bounds, please redo.")
-                    obj.deleted = true;
-                    return
-                end
-                obj.prop.max        = max(V(L(:)));    
-                obj.prop.min        = min(V(L(:)));
-                obj.prop.std        = std(V(L(:)));    
-            elseif obj.type == 2
-                
-                P1                  = obj.points(1,:);
-                P2                  = obj.points(2,:);
-                direction = P2-P1;
-                CL                  = norm(direction,2);
-                obj.prop            = struct();
-                obj.prop.name       = obj.name;
-                obj.prop.points     = obj.points;
-                obj.prop.length     =...
-                    CL*min(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
-                
+                obj.meanVal         = mean(V(L(:)));
+                obj.stdVal          = std(V(L(:)));    
+                obj.prctile5        = prctile(V(L(:)), 5);
+                obj.prctile25       = prctile(V(L(:)), 25);
+                obj.prctile50       = prctile(V(L(:)), 50);
+                obj.prctile75       = prctile(V(L(:)), 75);
+                obj.prctile95       = prctile(V(L(:)), 95);
             end
             
         end
@@ -85,28 +76,7 @@ classdef UserObj < matlab.mixin.SetGet
         function setVisible(obj, visible, ~)
             
              obj.visible              = visible;
-        end
-        
-%         function setBoxVisible(obj, boxVisible)
-%             if isempty(obj.graphics)
-%                 return
-%             end
-%             
-%             for i = 1:length(obj.graphics)
-%                 %if text..
-%                 if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
-%                     obj.boxVisible           = boxVisible;
-%                     if ~isvalid(obj.graphics{i})
-%                         continue
-%                     end
-%                     obj.graphics{i}.Visible  = boxVisible; 
-%                 end
-%             end
-%             
-%         end
-        
-        
+        end   
         
     end
-    
 end

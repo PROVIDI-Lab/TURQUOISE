@@ -17,6 +17,14 @@ classdef UserObj < matlab.mixin.SetGet
        viewDim                  %Stores the viewing dimension
        comment
        profile
+       volume
+       mean
+       std
+       prctile5
+       prctile25
+       prctile50
+       prctile75
+       prctile95
     end
     
     methods        
@@ -37,9 +45,8 @@ classdef UserObj < matlab.mixin.SetGet
                 V           = ...
                     app.data{obj.imageIdx}.img(:,:,:, axis4D);
                 
-                obj.prop            = struct();
-                obj.prop.name       = obj.name;
-                obj.prop.volume     = length(find(L))*VS^3;
+                
+                obj.volume     = length(find(L))*VS^3;
 
                 try
                     obj.prop.mean       = mean(V(L(:)));
@@ -85,28 +92,7 @@ classdef UserObj < matlab.mixin.SetGet
         function setVisible(obj, visible, ~)
             
              obj.visible              = visible;
-        end
-        
-%         function setBoxVisible(obj, boxVisible)
-%             if isempty(obj.graphics)
-%                 return
-%             end
-%             
-%             for i = 1:length(obj.graphics)
-%                 %if text..
-%                 if isa(obj.graphics{i}, 'matlab.graphics.primitive.Text')
-%                     obj.boxVisible           = boxVisible;
-%                     if ~isvalid(obj.graphics{i})
-%                         continue
-%                     end
-%                     obj.graphics{i}.Visible  = boxVisible; 
-%                 end
-%             end
-%             
-%         end
-        
-        
+        end   
         
     end
-    
 end
