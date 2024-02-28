@@ -288,7 +288,7 @@ classdef NewDatasetUtils < handle
             if NewDatasetUtils.correctBvals(bvals, st)
                 return
             else
-                bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+                bvals = NewDatasetUtils.getCorrectBvals(st);
             end
         end
 
