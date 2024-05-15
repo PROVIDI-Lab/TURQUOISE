@@ -200,16 +200,28 @@ classdef NewDatasetUtils < handle
 
         function DWIConv(fn)
 
-            bvals = sort(load(fn));
+            if contains(fn, '.nii')
+                %nii input, load nii and create .bvalfile
+                nii_fn = fn;
+                nii = load_untouch_nii(nii_fn);
+                [sx,sy,sz,st] = size(nii.img);
 
-            nii_fn = strrep(fn, '.bval', '.nii.gz');
-            nii = load_untouch_nii(nii_fn);
+                fn = NewDatasetUtils.makeBvalFile(st, fn);
+                bvals = sort(load(fn));
 
-            %check for correct number of b-vals
-            [sx,sy,sz,st] = size(nii.img);
+            else    %.bval input
 
-            if ~NewDatasetUtils.correctBvals(bvals, st)
-                bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+                bvals = sort(load(fn));
+    
+                nii_fn = strrep(fn, '.bval', '.nii.gz');
+                nii = load_untouch_nii(nii_fn);
+    
+                %check for correct number of b-vals
+                [sx,sy,sz,st] = size(nii.img);
+    
+                if ~NewDatasetUtils.correctBvals(bvals, st)
+                    bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+                end
             end
 
             uniqueBVals = unique(bvals);
@@ -350,6 +362,28 @@ classdef NewDatasetUtils < handle
                 return
             else
                 bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+            end
+        end
+
+        function bvalFn = makeBvalFile(st, fn)
+            msg = ['Incorrect (number of) b-values found. Please enter the correct ',...
+                    num2str(st), ' b-values, separated with spaces. ',...
+                    fn];
+            output = inputdlg(msg);
+
+            bvalVec = str2num(output{1});
+            if NewDatasetUtils.correctBvals(bvalVec, st)
+                
+                bvalFn = strrep(fn, '.nii.gz', '.bval');
+                bvalFn = strrep(bvalFn, '.nii', '.bval');
+
+                
+                fid = fopen(bvalFn, 'wt' );
+                fprintf(fid, '%s', output{:});
+                fclose(fid);
+
+            else
+                NewDatasetUtils.makeBvalFile(st, fn);
             end
         end
 

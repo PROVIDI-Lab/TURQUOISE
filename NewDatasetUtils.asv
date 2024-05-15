@@ -200,16 +200,28 @@ classdef NewDatasetUtils < handle
 
         function DWIConv(fn)
 
-            bvals = sort(load(fn));
+            if contains(fn, '.nii')
+                %nii input, load nii and create .bvalfile
+                nii_fn = fn;
+                nii = load_untouch_nii(nii_fn);
+                [sx,sy,sz,st] = size(nii.img);
 
-            nii_fn = strrep(fn, '.bval', '.nii.gz');
-            nii = load_untouch_nii(nii_fn);
+                fn = NewDatasetUtils.makeBvalFile(st, fn);
+                bvals = sort(load(fn));
 
-            %check for correct number of b-vals
-            [sx,sy,sz,st] = size(nii.img);
+            else    %.bval input
 
-            if ~NewDatasetUtils.correctBvals(bvals, st)
-                bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+                bvals = sort(load(fn));
+    
+                nii_fn = strrep(fn, '.bval', '.nii.gz');
+                nii = load_untouch_nii(nii_fn);
+    
+                %check for correct number of b-vals
+                [sx,sy,sz,st] = size(nii.img);
+    
+                if ~NewDatasetUtils.correctBvals(bvals, st)
+                    bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+                end
             end
 
             uniqueBVals = unique(bvals);
@@ -267,15 +279,31 @@ classdef NewDatasetUtils < handle
             IX_low = uniqueBVals < 200;
 
             if sum(IX_high) < 2
-                IX_high = zeros(length(uniqueBVals), 1);
-                IX_high(end-1:end) = 1;
-                IX_low = zeros(length(uniqueBVals));
-                IX_low(1:end-2) = 1;
+                IX_high = false(length(uniqueBVals), 1);
+                IX_high(end-1:end) = true;
+                IX_low = false(length(uniqueBVals), 1);
+                IX_low(1:end-2) = true;
             end
 
             %high
-            Xh = [-uniqueBVals(IX_high) ones(sum(IX_high==1),1)];
-	        HighD = Xh\log(input_img(:,IX_high))';
+            Xh = [-uniqueBVals(IX_high)' ones(sum(IX_high==1),1)];
+	        HighD = Xh\log(input_img(:,IX_high))'; 
+            HighD(HighD < 0) = 0;
+            HighD(HighD == inf) = 0;
+
+            %low
+            Xl = [-uniqueBVals(IX_low)' ones(sum(IX_low==1),1)]; 
+	        LowD = Xl\log(input_img(:,IX_low))';
+            LowD(LowD < 0) = 0;
+            LowD(LowD == inf) = 0;
+
+            %f
+            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);	        
+            f(f < 0) = 0;
+            f(f == inf) = 0;
+
+            %save
+            %high
             HighD = reshape(HighD(1,:), [sx, sy, sz]);
             HighD(bckGrndIdx) = 0;
             
@@ -284,11 +312,8 @@ classdef NewDatasetUtils < handle
             [folder, name, ~] = fileparts(fn);
             save_untouch_nii(out_nii, fullfile(folder, ['IVIM-HighD_' name '.nii.gz']))
 
-
             %low
-            Xl = [-uniqueBVals(IX_low) ones(sum(IX_low==1),1)]; 
-	        LowD = Xl\log(input_img(:,IX_low))';
-	        LowD = reshape(LowD(1,:), [sx, sy, sz]);
+            LowD = reshape(LowD(1,:), [sx, sy, sz]);
             LowD(bckGrndIdx) = 0;
             
             out_nii.img = LowD;
@@ -297,15 +322,13 @@ classdef NewDatasetUtils < handle
             save_untouch_nii(out_nii, fullfile(folder, ['IVIM-LowD_' name '.nii.gz']))
 
             %f
-            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);
-	        f = reshape(f, [sx, sy, sz]);
+            f = reshape(f, [sx, sy, sz]);
             f(bckGrndIdx) = 0;
             
             out_nii.img = f;
 
             [folder, name, ~] = fileparts(fn);
             save_untouch_nii(out_nii, fullfile(folder, ['IVIM-f_' name '.nii.gz']))
-
 
 
         end
@@ -339,6 +362,28 @@ classdef NewDatasetUtils < handle
                 return
             else
                 bvals = NewDatasetUtils.getCorrectBvals(st, fn);
+            end
+        end
+
+        function bvalFn = makeBvalFile(st, fn)
+            msg = ['Incorrect (number of) b-values found. Please enter the correct ',...
+                    num2str(st), ' b-values, separated with spaces. ',...
+                    fn];
+            output = inputdlg(msg);
+
+            bvalVec = str2num(output{1});
+            if NewDatasetUtils.correctBvals(bvalVec, st)
+                
+                bvalfn = strrep(fn, '.nii.gz', '.bval');
+                [fnDir, fnName, ~] = fileparts(fn);
+                bvalFn = fullfile(fnDir, [fnName, '.bval']);
+                
+                fid = fopen(bvalFn, 'wt' );
+                fprintf(fid, output);
+                fclose(fid);
+
+            else
+                NewDatasetUtils.makeBvalFile(st, fn);
             end
         end
 
