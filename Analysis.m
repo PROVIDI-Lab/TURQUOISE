@@ -1,5 +1,7 @@
 classdef Analysis < handle
     methods (Static)
+
+        function ApplyMask(src, ~, app)
             
             name = src.Parent.Children(1).Value;
             segs = src.Parent.Children(4).Value;
