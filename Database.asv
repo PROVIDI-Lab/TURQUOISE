@@ -91,6 +91,8 @@ classdef Database < handle
                 index   = varargin{1};
                 app.PatientsListBox.Value =                     ...
                     app.PatientsListBox.Items{index};
+
+                app.app.PatientsListBox.Value
             end
 
             % update the sessionbox

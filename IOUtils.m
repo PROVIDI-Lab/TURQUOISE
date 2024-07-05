@@ -7,12 +7,12 @@ classdef IOUtils < handle
         %Loads the .nii file associated with the current
         %image. Sets the nii file as the current image.
         %Input: 
-        %   app, the RMSStudio app
+        %   app, the app
         %   Index, the index of the image currently being loaded
         
-            fp = app.current_folder;
+            fp = app.sessionPath;
             try
-                fn = app.studyNames{index};
+                fn = app.sessionNames{index};
             catch
                 return
             end
@@ -137,9 +137,9 @@ classdef IOUtils < handle
         function LoadUserObjects(app, idx)
             %Loads userobjects from the disk that correspond to the image
             %at idx.
-            folder      = app.studyNames{idx};
+            folder      = app.sessionNames{idx};
 
-            direc       = fullfile(app.current_folder, folder);
+            direc       = fullfile(app.sessionPath, folder);
             %First find any segmentations
             segFiles    = [dir(fullfile(direc,'**\*.nii')), ...
                 dir(fullfile(direc, '**\*.nii.gz'))];
@@ -307,11 +307,6 @@ classdef IOUtils < handle
             end
         end
         
-%         function LoadSet(app)
-%         %Prepares a new database
-%             Database.PrepareDatabase(app) 
-%         end
-        
         %%
         
         function PrepareStudy(app, filepath)
@@ -336,15 +331,15 @@ classdef IOUtils < handle
             else
                 fp              = filepath;
             end
-            app.filepath = fp;
+            app.sessionPath = filepath;
             
             %Convert files to nii (if needed), find original filenames and
-            %set the 'current_folder' object.
+            %set the 'sessionPath' object.
             
             IOUtils.findRmsstudioDir(app, fp) %Find the path to rmsstudio
             try
                 IOUtils.convertToNii(app);
-                app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
+                app.UIFigure.Name   = ['RMSStudio ' app.sessionPath];
             catch err
 %                 close(h);
                 uialert(uifigure,err.message,'');
@@ -365,41 +360,41 @@ classdef IOUtils < handle
         
         function CheckNiis(app)
         %Goes over all nii files in the current folder and add them to
-        %app.studynames
+        %app.sessionNames
         % TODO: add header checking!!
                         
-            files = dir(fullfile(app.current_folder,...
+            files = dir(fullfile(app.sessionPath,...
                 '*.nii'));
 
-            cfiles = dir(fullfile(app.current_folder,...
+            cfiles = dir(fullfile(app.sessionPath,...
                 '*.nii.gz'));
 
             files = [files; cfiles];
             
-            app.studyNames = cell(length(files),1);
+            app.sessionNames = cell(length(files),1);
             
             files2keep = true(length(files),1);
 
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-                hdr = load_untouch_header_only(fullfile(app.current_folder,text));
+                hdr = load_untouch_header_only(fullfile(app.sessionPath,text));
                 if(hdr.dime.dim(4) == 1) % Only 1 slice
                     files2keep(file_id) = false;
                 end
 
                 text = erase(text, '.nii.gz');
-                app.studyNames{file_id} = erase(text, '.nii');
+                app.sessionNames{file_id} = erase(text, '.nii');
             end
             
-            app.AvailableimagesListBox.Items = app.studyNames(files2keep);
-            app.studyNames = app.studyNames(files2keep);
+            app.AvailableimagesListBox.Items = app.sessionNames(files2keep);
+            app.sessionNames = app.sessionNames(files2keep);
         end
         
         function convertToNii(app)
             %If no previous conversions exist, Create a rmsstudio 
             %directory with .nii versions of all the files using dcm2nii.
                 
-            if(numel(dir(app.current_folder)) == 2)
+            if(numel(dir(app.sessionPath)) == 2)
                 %If folder exists, but is emtpy, try to load dicom images.
                 %only elements in folder are '.' & '..'
                 dcm2nii = IOUtils.checkDcm2Nii();
@@ -407,7 +402,7 @@ classdef IOUtils < handle
                     return
                 end
                 cmd = [dcm2nii ' -f %d_%s -z y -o "'                     ...
-                        app.current_folder '" "'  app.filepath '"'];
+                        app.sessionPath '" "'  app.filepath '"'];
                 system(cmd);
             end
         end
@@ -450,13 +445,13 @@ classdef IOUtils < handle
         
         function findRmsstudioDir(app, fp)
             %Searches the current workspace for a dir that includes 
-            %'rmsstudio' in its name. Sets this as app.current_folder.
+            %'rmsstudio' in its name. Sets this as app.sessionPath.
             %If no such folder exists, one is made.
-            app.current_folder = [];
+            app.sessionPath = [];
             
             %If the path already contains the rmsstudio folder, return
             if contains(fp, 'rmsstudio')
-                app.current_folder = fp;
+                app.sessionPath = fp;
                 return
             end
             
@@ -469,14 +464,14 @@ classdef IOUtils < handle
                    continue
                end
                
-               app.current_folder = fullfile(item.folder, item.name); 
+               app.sessionPath = fullfile(item.folder, item.name); 
                break
             end
             
             %Doesn't exist, make the folder
-            if isempty(app.current_folder)
+            if isempty(app.sessionPath)
                 mkdir(fullfile(fp,'rmsstudio'))
-                app.current_folder = fullfile(fp,'rmsstudio');
+                app.sessionPath = fullfile(fp,'rmsstudio');
             end
             
         end
@@ -484,8 +479,8 @@ classdef IOUtils < handle
         function segList = FindAllSegmentationsForImage(app, i)
             
             segList = {};
-            files = dir(fullfile(app.current_folder,              ...
-                        app.studyNames{i},   ...
+            files = dir(fullfile(app.sessionPath,              ...
+                        app.sessionNames{i},   ...
                          app.user_profile));
 
             for i = 1:length(files)

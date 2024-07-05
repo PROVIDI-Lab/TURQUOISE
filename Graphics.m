@@ -362,7 +362,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{view};
             maxSize     = size(app.data{imID}.img, viewDim);
             sliceString = [int2str(slice), ' / ', int2str(maxSize)];
-            nameString  = app.studyNames{imID};
+            nameString  = app.sessionNames{imID};
             string      = sprintf('%s\n%s',sliceString, nameString);
             
             if axID == 1

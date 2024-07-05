@@ -1,0 +1,169 @@
+<deployment-project plugin="plugin.ezdeploy" plugin-version="1.0">
+  <configuration file="D:\Code\TURQUOISE\TURQUOISE.prj" location="D:\Code\TURQUOISE" name="TURQUOISE" target="target.ezdeploy.standalone" target-name="Application Compiler">
+    <param.appname>TURQUOISE</param.appname>
+    <param.icon />
+    <param.icons />
+    <param.version>1.0</param.version>
+    <param.authnamewatermark />
+    <param.email />
+    <param.company />
+    <param.summary />
+    <param.description />
+    <param.screenshot />
+    <param.guid />
+    <param.installpath.string>\TURQUOISE\</param.installpath.string>
+    <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
+    <param.logo />
+    <param.install.notes />
+    <param.target.install.notes />
+    <param.intermediate>${PROJECT_ROOT}\TURQUOISE\for_testing</param.intermediate>
+    <param.files.only>${PROJECT_ROOT}\TURQUOISE\for_redistribution_files_only</param.files.only>
+    <param.output>${PROJECT_ROOT}\TURQUOISE\for_redistribution</param.output>
+    <param.logdir>${PROJECT_ROOT}\TURQUOISE</param.logdir>
+    <param.enable.clean.build>false</param.enable.clean.build>
+    <param.user.defined.mcr.options />
+    <param.target.type>subtarget.standalone</param.target.type>
+    <param.support.packages />
+    <param.web.mcr>true</param.web.mcr>
+    <param.package.mcr>false</param.package.mcr>
+    <param.no.mcr>false</param.no.mcr>
+    <param.web.mcr.name>MyAppInstaller_web</param.web.mcr.name>
+    <param.package.mcr.name>MyAppInstaller_mcr</param.package.mcr.name>
+    <param.no.mcr.name>MyAppInstaller_app</param.no.mcr.name>
+    <param.windows.command.prompt>true</param.windows.command.prompt>
+    <param.create.log>false</param.create.log>
+    <param.log.file />
+    <param.native.matlab>false</param.native.matlab>
+    <param.checkbox>false</param.checkbox>
+    <param.example />
+    <param.help.text>Syntax 
+	  -? 
+	 
+ Input Arguments 
+	 -?  print help on how to use the application 
+	 input arguments</param.help.text>
+    <unset>
+      <param.icon />
+      <param.icons />
+      <param.version />
+      <param.authnamewatermark />
+      <param.email />
+      <param.company />
+      <param.summary />
+      <param.description />
+      <param.screenshot />
+      <param.guid />
+      <param.installpath.string />
+      <param.installpath.combo />
+      <param.logo />
+      <param.install.notes />
+      <param.target.install.notes />
+      <param.intermediate />
+      <param.files.only />
+      <param.output />
+      <param.logdir />
+      <param.enable.clean.build />
+      <param.user.defined.mcr.options />
+      <param.target.type />
+      <param.support.packages />
+      <param.web.mcr />
+      <param.package.mcr />
+      <param.no.mcr />
+      <param.web.mcr.name />
+      <param.package.mcr.name />
+      <param.no.mcr.name />
+      <param.windows.command.prompt />
+      <param.create.log />
+      <param.log.file />
+      <param.native.matlab />
+      <param.checkbox />
+      <param.example />
+    </unset>
+    <fileset.main>
+      <file>${PROJECT_ROOT}\TURQUOISE.mlapp</file>
+    </fileset.main>
+    <fileset.resources />
+    <fileset.package />
+    <fileset.depfun>
+      <file>${PROJECT_ROOT}\Analysis.m</file>
+      <file>${PROJECT_ROOT}\BackupObj.m</file>
+      <file>${PROJECT_ROOT}\Backups.m</file>
+      <file>${PROJECT_ROOT}\CopyRegisterSeg.m</file>
+      <file>${PROJECT_ROOT}\Database.m</file>
+      <file>${PROJECT_ROOT}\fit_ellipse.m</file>
+      <file>${PROJECT_ROOT}\Graphics.m</file>
+      <file>${PROJECT_ROOT}\GUI.m</file>
+      <file>${PROJECT_ROOT}\icon.png</file>
+      <file>${PROJECT_ROOT}\Interaction.m</file>
+      <file>${PROJECT_ROOT}\IOUtils.m</file>
+      <file>${PROJECT_ROOT}\Launcher.mlapp</file>
+      <file>${PROJECT_ROOT}\MathUtils.m</file>
+      <file>${PROJECT_ROOT}\Measurements.m</file>
+      <file>${PROJECT_ROOT}\NewDataset.mlapp</file>
+      <file>${PROJECT_ROOT}\NewDatasetUtils.m</file>
+      <file>${PROJECT_ROOT}\nifti\affine.m</file>
+      <file>${PROJECT_ROOT}\nifti\bresenham_line3d.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_img.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch0_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_header_only.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_img.m</file>
+      <file>${PROJECT_ROOT}\nifti\reslice_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch0_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\verify_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\xform_nii.m</file>
+      <file>${PROJECT_ROOT}\NiftiUtils.m</file>
+      <file>${PROJECT_ROOT}\Objects.m</file>
+      <file>${PROJECT_ROOT}\otherLibs\blendedPolymask.m</file>
+      <file>${PROJECT_ROOT}\otherLibs\dpsimplify.m</file>
+      <file>${PROJECT_ROOT}\Plotting.m</file>
+      <file>${PROJECT_ROOT}\ROI.m</file>
+      <file>${PROJECT_ROOT}\ROIPrompt.mlapp</file>
+      <file>${PROJECT_ROOT}\SegManager.mlapp</file>
+      <file>${PROJECT_ROOT}\Segmentation.m</file>
+      <file>${PROJECT_ROOT}\Study.m</file>
+      <file>${PROJECT_ROOT}\UserObj.m</file>
+    </fileset.depfun>
+    <build-deliverables>
+      <file location="${PROJECT_ROOT}\TURQUOISE\for_testing" name="readme.txt" optional="true">D:\Code\TURQUOISE\TURQUOISE\for_testing\readme.txt</file>
+      <file location="${PROJECT_ROOT}\TURQUOISE\for_testing" name="TURQUOISE.exe" optional="false">D:\Code\TURQUOISE\TURQUOISE\for_testing\TURQUOISE.exe</file>
+      <file location="${PROJECT_ROOT}\TURQUOISE\for_testing" name="splash.png" optional="false">D:\Code\TURQUOISE\TURQUOISE\for_testing\splash.png</file>
+    </build-deliverables>
+    <workflow />
+    <matlab>
+      <root>C:\Program Files\MATLAB\R2023b</root>
+      <toolboxes>
+        <toolbox name="neuralnetwork" />
+      </toolboxes>
+      <toolbox>
+        <neuralnetwork>
+          <enabled>true</enabled>
+        </neuralnetwork>
+      </toolbox>
+    </matlab>
+    <platform>
+      <unix>false</unix>
+      <mac>false</mac>
+      <windows>true</windows>
+      <win2k>false</win2k>
+      <winxp>false</winxp>
+      <vista>false</vista>
+      <linux>false</linux>
+      <solaris>false</solaris>
+      <osver>10.0</osver>
+      <os32>false</os32>
+      <os64>true</os64>
+      <arch>win64</arch>
+      <matlab>true</matlab>
+    </platform>
+  </configuration>
+</deployment-project>

@@ -18,9 +18,13 @@ classdef NewDatasetUtils < handle
 
             if isempty(niiFiles)
                 if isempty(dcmFiles)
-                    errordlg("No files found.", "File error")
+                    selection = uiconfirm(app.UIFigure, ...
+                        "No .dcm files found. Continue anyway?", ...
+                        "File error", "Icon","warning");
                     status = 0;
-                    return
+                    if strcmp(selection, "Cancel")
+                        return
+                    end
                 end
             else    %no need to convert
                 return
@@ -56,6 +60,9 @@ classdef NewDatasetUtils < handle
 
                 for j = 1:length(sessionFolders)
                     sFolder = sessionFolders(j);
+                    if ~sFolder.isdir
+                        continue
+                    end
                     inpath = fullfile(sFolder.folder, sFolder.name);
                     outpath = fullfile(inpath, 'rmsstudio');
                     mkdir(outpath)

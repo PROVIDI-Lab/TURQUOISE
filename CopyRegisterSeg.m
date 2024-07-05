@@ -40,7 +40,7 @@ classdef CopyRegisterSeg < handle
             segs = Objects.GetAllUOsForImage(app, app.imIdx);
             slctSeg.Items = segs;
 
-            targets = app.studyNames;
+            targets = app.sessionNames;
             targets(app.imIdx) = [];
             slctTarget.Items = targets;
 
@@ -72,11 +72,11 @@ classdef CopyRegisterSeg < handle
 
                 %Todo: fix actual copy & registration.
                     %For now, it just does copyfile
-                    path = fullfile(app.current_folder,              ...
-                                        app.studyNames{app.imIdx},   ...
+                    path = fullfile(app.sessionPath,              ...
+                                        app.sessionNames{app.imIdx},   ...
                                          app.user_profile);
 
-                    outpath = fullfile(app.current_folder,          ...
+                    outpath = fullfile(app.sessionpath,          ...
                                         target,                     ...
                                          app.user_profile);
 

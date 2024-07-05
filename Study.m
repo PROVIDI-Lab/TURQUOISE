@@ -12,7 +12,7 @@ classdef Study < handle
             %First, remove everything from the screen
             GUI.ResetViews(app);
             
-            nImages     = length(app.studyNames);
+            nImages     = length(app.sessionNames);
             if nImages == 0
                 return
             end
@@ -58,7 +58,7 @@ classdef Study < handle
             end
             
             %fill the other images
-            for i = 1:length(app.studyNames)
+            for i = 1:length(app.sessionNames)
                 if length(imList) >= 2
                     break
                 end
@@ -95,10 +95,10 @@ classdef Study < handle
         
         function FindUOsOnDisk(app)
             
-            nImages     = length(app.studyNames);
+            nImages     = length(app.sessionNames);
             for idx = 1:nImages
-                folder      = app.studyNames{idx};
-                direc       = fullfile(app.current_folder,...
+                folder      = app.sessionNames{idx};
+                direc       = fullfile(app.sessionPath,...
                         folder);
                 jsonfiles       = dir(fullfile(direc, '**\*.json')); 
                 niifiles        = dir(fullfile(direc, '**\*.nii')); 
@@ -117,9 +117,9 @@ classdef Study < handle
             %Saves the current study to the .rmsstudio folder. All the 
             %User-made objects are written to either .nii or .csv files.
             
-            for imageId=1:length(app.studyNames)
-                fn      = app.studyNames{imageId};                
-                outfn   = fullfile(app.current_folder,              ...
+            for imageId=1:length(app.sessionNames)
+                fn      = app.sessionNames{imageId};                
+                outfn   = fullfile(app.sessionPath,              ...
                                         fn);
                                      
                 IOUtils.saveUObjs(app, imageId, outfn);
@@ -170,11 +170,11 @@ classdef Study < handle
         %scan. This info is then used to find a mean neutral viewing
         %reference point.
         
-            fp = app.current_folder;
-            refs = ones(3,length(app.studyNames));
+            fp = app.sessionPath;
+            refs = ones(3,length(app.sessionNames));
         
-            for i = 1:length(app.studyNames)
-                fn = app.studyNames{i};
+            for i = 1:length(app.sessionNames)
+                fn = app.sessionNames{i};
 
                 if(exist(fullfile(fp,[fn '.nii']),'file') > 0)
                     ext = '.nii';

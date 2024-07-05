@@ -16,9 +16,9 @@ classdef GUI < handle
             
             %Select and display the first image of the study, and if
             %possible, display the second image on the second view.
-            if(~isempty(app.studyNames))
+            if(~isempty(app.sessionNames))
                 
-                if length(app.studyNames) > 1
+                if length(app.sessionNames) > 1
                     msg = sprintf('Preparing image 1 of 2');
                     d.Message = msg;
                     d.Value = 0.5;
@@ -270,7 +270,7 @@ classdef GUI < handle
         function Scroll(app, varargin)
         %Manages the scrollwheelEvent 
         
-            if isempty(app.data) || isempty(app.studyNames)
+            if isempty(app.data) || isempty(app.sessionNames)
                 return
             end
 
@@ -1281,9 +1281,9 @@ classdef GUI < handle
         
         function ToggleUnsavedIndicator(app)
             if app.unsavedProgress
-                app.UIFigure.Name = ['RMSStudio ' app.current_folder ' *'];
+                app.UIFigure.Name = ['RMSStudio ' app.sessionPath ' *'];
             else
-                app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
+                app.UIFigure.Name   = ['RMSStudio ' app.sessionPath];
             end
         end
         

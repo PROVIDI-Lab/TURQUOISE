@@ -102,7 +102,7 @@ classdef Interaction < handle
         %        calling this function from unknown sources (not
         %        pre-defined).
 
-            if isempty(app.studyNames)
+            if isempty(app.sessionNames)
                 return
             end
         
@@ -246,7 +246,7 @@ classdef Interaction < handle
         function MouseDraggedInImage(app, hit)
             %Triggers when the mouse moves in the image after the
             %windowbuttonmotionFCN has been set for the UIAxes elements.
-            if isempty(app.studyNames)
+            if isempty(app.sessionNames)
                 return
             end
 
@@ -481,7 +481,7 @@ classdef Interaction < handle
                	'Study reset', ...
                	'Yes','No','No');
             if(strcmp(answer,'Yes') > 0)
-                delete(fullfile(app.current_folder,'*rmsstudio*'));
+                delete(fullfile(app.sessionPath));
             else
                 GUI.RevertControlsStatus(app);
             end
@@ -522,7 +522,7 @@ classdef Interaction < handle
         
         function Reload(app)
             GUI.DisableControlsStatus(app)
-            IOUtils.PrepareStudy(app, app.filepath)
+            IOUtils.PrepareStudy(app, app.dataset)
             GUI.RevertControlsStatus(app)     
             app.ctrl    = false;
         end
@@ -534,7 +534,7 @@ classdef Interaction < handle
         %Input:
         %   app - the RMSstudio app
         %
-            if isempty(app.studyNames)
+            if isempty(app.sessionNames)
                 return
             end
             GUI.DisableControlsStatus(app, 'Saving', 'on')
@@ -562,8 +562,9 @@ classdef Interaction < handle
         function LoadNewLabels(app)
             %Loads a new segmentation for the current image.
 
-            %TODO: move to IOUtils
-            defPath         = strcat(app.filepath);
+            return %TODO rebuild
+
+            defPath         = strcat(app.dataset);
             [file, path]    = uigetfile(...
                     {'*.nii.gz; *.nii; *.json', ...
                     'Segmentation files (*.nii.gz, *.nii, *.json)'}, ...
@@ -591,14 +592,7 @@ classdef Interaction < handle
         
         function LoadROIPoints(app)
         %Loads a new segmentation for the current image.
-            defPath         = strcat(app.filepath, "\.rmsstudio");
-            [file, path]    = uigetfile('*.json',                       ...
-                                'Load ROI points',                      ...
-                                defPath);
-            fp              = fullfile(path, file);
-            
-            IOUtils.loadSegmentationPoints(app, fp, app.imID);  
-            Graphics.UpdateImage(app);
+            return %TODO: rebuild
         end
         
         function DrawPolygon(app)
@@ -707,7 +701,7 @@ classdef Interaction < handle
             uicontrol('Parent',d,                               ...
                 'Style','popup',                                        ...
                 'Position',[75 70 100 25],                              ...
-                'String',app.studyNames,              ...
+                'String',app.sessionNames,              ...
                 'Callback',@popup_callback);
             
             uicontrol('Parent',d,                                 ...
@@ -715,7 +709,7 @@ classdef Interaction < handle
                 'String','Align!',                                      ...
                 'Callback','delete(gcf)');
             
-            choice = app.studyNames{1};
+            choice = app.sessionNames{1};
             
             % Wait for d to close before running to completion
             uiwait(d);
@@ -822,7 +816,7 @@ classdef Interaction < handle
                    'Parent',    d,...
                    'Style',     'popup',...
                    'Position',  [40 50 420 30],...
-                   'String',    app.studyNames,...
+                   'String',    app.sessionNames,...
                    'Callback',  @popup_callback);
 
             uicontrol('Parent',d,...

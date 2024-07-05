@@ -1,79 +1,14 @@
 classdef Analysis < handle
     methods (Static)
-
-        function ApplyMasks(app)
-
-            %TODO: add/subtract buttons & list
-
-            fig = uifigure('Name', 'Copy segmentations', ...
-                'Position',[500 500 600 400]);
-
-            btn = uibutton(fig,...
-                'Position',[250 50 100 22],...
-                'Text','Apply Masks');
-            
-            slctSegLbl = uilabel(fig,...
-                'Position', [470, 300, 150, 22],...
-                'Text', 'Select segmentations');
-            slctSeg = uilistbox(fig,...
-                'Position', [425, 100, 150, 200]);
-            slctSeg.Multiselect = 'on';
-            slctAllSeg= uicheckbox(fig,...
-                'Position', [425, -50, 150, 200],...
-                'Text', 'Select all',...
-                'ValueChangedFcn', @SelectAllSeg);
-
-            slctImageLbl = uilabel(fig,...
-                'Position', [40, 300, 150, 22],...
-                'Text', 'Select Image');
-            slctImage = uilistbox(fig,...
-                'Position', [25, 100, 150, 200],...
-                'ValueChangedFcn',@SwitchImage);
-
-            %Button callback
-            btn.ButtonPushedFcn = {@Analysis.ApplyMask, app};
-
-            %Fill listboxes
-            segList = {};
-            for i=1:length(app.studyNames)
-                segList{i} = IOUtils.FindAllSegmentationsForImage(app, i);
-            end
-            slctSeg.Items = segList{app.imIdx};
-
-            Images = app.studyNames;
-            slctImage.Items = Images;
-
-            function SwitchImage(src, ~)
-                [~, index] = ismember(...
-                    src.Parent.Children(1).Value, ...
-                    src.Parent.Children(1).Items);
-                src.Parent.Children(4).Items = segList{index};
-
-                SelectAllSeg(src, 1)
-
-            end
-
-            function SelectAllSeg(src, ~)
-                if src.Value
-                    src.Parent.Children(4).Value = ...
-                        src.Parent.Children(4).Items;
-                else
-                    src.Parent.Children(4).Value = {};
-                end
-            end
-        end
-
-        function ApplyMask(src, ~, app)
             
             name = src.Parent.Children(1).Value;
             segs = src.Parent.Children(4).Value;
             
-            adc_fn = fullfile(...
-                app.current_folder,...
+            adc_fn = fullfile(app.sessionPath, ...
                 [name, '.rmsstudio_reslice.nii']);
 
             segPath = fullfile(...
-                app.current_folder,...
+                app.sessionPath,...
                 name, app.user_profile);
 
             adc = load_nii(adc_fn);

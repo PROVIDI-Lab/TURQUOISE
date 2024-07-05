@@ -91,6 +91,7 @@ classdef Database < handle
                 index   = varargin{1};
                 app.PatientsListBox.Value =                     ...
                     app.PatientsListBox.Items{index};
+
             end
 
             % update the sessionbox
@@ -104,6 +105,9 @@ classdef Database < handle
                 end
             end
             app.SessionsListBox.Items = items;
+
+            app.studyPath = fullfile(app.datasetPath, ...
+                    app.PatientsListBox.Value);
             
         end
 
@@ -116,6 +120,7 @@ classdef Database < handle
                 val   = varargin{1};
                 app.SessionsListBox.Value = val;
             end
+
         end
 
         function SwitchToNewSession(app)

@@ -26,6 +26,9 @@ classdef Plotting < handle
 
         function Labels3DView(app)
         % Show a 3D plot of the labels    
+
+        return %todo change for UO system
+        
             f=figure;
             ax = axes(f);
             hold(ax,'on');

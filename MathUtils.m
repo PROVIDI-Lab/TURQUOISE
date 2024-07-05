@@ -80,7 +80,7 @@ classdef MathUtils < handle
             parameter_files =...
                 {strcat('C:\Users\user\Dropbox\MRIToolkit\',...
                 'ImageRegistrations\elastix_parameters\parrig_NN.txt')};
-            fp = app.current_folder;
+            fp = app.sessionPath;
             fn1 = app.AvailableimagesListBox.Value(1:end-4);
             fn2 = target(1:end-4);
             if(strcmp(fn1,fn2) > 0)
