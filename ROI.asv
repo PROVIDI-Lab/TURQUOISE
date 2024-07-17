@@ -204,53 +204,57 @@ classdef ROI < handle
 
 
             for i = 1:length(slices)
-                slice = slices(i);
-
-                %Original points have precedence over new points
-                
-                idx     = points(:, viewDim) == slice;
-                if any(idx)
-                    newPoints = [newPoints; points(idx,:)];
-                    continue
-                end
-
-                %find points from mask slice
-                if viewDim == 1
-                    tmpSlice    = squeeze(mask(slice, :, :));
-                elseif viewDim == 2
-                    tmpSlice     = squeeze(mask(:, slice, :));
-                else
-                    tmpSlice     = squeeze(mask(:, :, slice));
-                end
-
-                %Get points by sobel edge detection
-                sEdge   = edge(tmpSlice, 'sobel');
-                [x,y]   = ind2sub(size(sEdge), find(sEdge));
-    
-                %Find boundary pixels in order
-                tmpPoints = bwtraceboundary(sEdge, [x(1), y(1)], 'N');
-
-                %bwtraceboundary sometimes messes up the order, so here we
-                %enforce it. Also, removes any duplicate points.
-                tmpPoints = MathUtils.SortPointsByDistance(tmpPoints);
-
-                %Reduce amount of lines by Douglas-Peucker Algorithm
-                %Tolerance hardcoded to 0.8 seems to give good results.
-                tmpPoints = dpsimplify(tmpPoints, 0.8);
-
-                %flip x, for some reason?
-                sz      = size(mask);
-                sz(viewDim) = [];
-                tmpPoints(:,1) = sz(1) - tmpPoints(:,1);
-
-                %add slice dim, swap x and y 
-                tmpPoints = [tmpPoints(:,2),...
-                             tmpPoints(:,1),...
-                             ones(length(tmpPoints), 1) * slice];
-
+                tmpPoints = ROI.MaskToPoints2D(slice);
                 %add points to list
                 newPoints = [newPoints; tmpPoints];
             end
+        end
+
+        function tmpPoints = MaskToPoints2D(slice)
+            
+
+            %Original points have precedence over new points
+            
+            idx     = points(:, viewDim) == slice;
+            if any(idx)
+                newPoints = [newPoints; points(idx,:)];
+                continue
+            end
+
+            %find points from mask slice
+            if viewDim == 1
+                tmpSlice    = squeeze(mask(slice, :, :));
+            elseif viewDim == 2
+                tmpSlice     = squeeze(mask(:, slice, :));
+            else
+                tmpSlice     = squeeze(mask(:, :, slice));
+            end
+
+            %Get points by sobel edge detection
+            sEdge   = edge(tmpSlice, 'sobel');
+            [x,y]   = ind2sub(size(sEdge), find(sEdge));
+
+            %Find boundary pixels in order
+            tmpPoints = bwtraceboundary(sEdge, [x(1), y(1)], 'N');
+
+            %bwtraceboundary sometimes messes up the order, so here we
+            %enforce it. Also, removes any duplicate points.
+            tmpPoints = MathUtils.SortPointsByDistance(tmpPoints);
+
+            %Reduce amount of lines by Douglas-Peucker Algorithm
+            %Tolerance hardcoded to 0.8 seems to give good results.
+            tmpPoints = dpsimplify(tmpPoints, 0.8);
+
+            %flip x, for some reason?
+            sz      = size(mask);
+            sz(viewDim) = [];
+            tmpPoints(:,1) = sz(1) - tmpPoints(:,1);
+
+            %add slice dim, swap x and y 
+            tmpPoints = [tmpPoints(:,2),...
+                         tmpPoints(:,1),...
+                         ones(length(tmpPoints), 1) * slice];
+
         end
         
         function [view, slice] = GetViewAndSlice(points)

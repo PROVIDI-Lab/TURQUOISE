@@ -21,8 +21,8 @@ classdef NewDatasetUtils < handle
                     selection = uiconfirm(app.UIFigure, ...
                         "No .dcm files found. Continue anyway?", ...
                         "File error", "Icon","warning");
-                    status = 0;
                     if strcmp(selection, "Cancel")
+                        status = 0;
                         return
                     end
                 end
@@ -105,7 +105,7 @@ classdef NewDatasetUtils < handle
                     dcm2nii = dcm2nii(1);
                 end
 
-                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');                
+                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');      
                 
             else
                 dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
@@ -115,6 +115,14 @@ classdef NewDatasetUtils < handle
                 end
                 addpath(dcm2niiDir)
                 dcm2nii     = fullfile(dcm2niiDir, 'dcm2niix');
+
+                if exist(dcm2nii, 'file')
+                    msgbox(strcat("Found dmc2niix at: ", dcm2nii))
+                else
+                    msgbox("didn't find dcm2niix, please try again")
+                    dcm2nii = NewDatasetUtils.FindDcm2nii();
+                end
+
             end
             
         end
@@ -225,6 +233,10 @@ classdef NewDatasetUtils < handle
     
                 %check for correct number of b-vals
                 [sx,sy,sz,st] = size(nii.img);
+
+                if st == 1 %only 1 bval - can't compute ADC
+                    return
+                end
     
                 if ~NewDatasetUtils.correctBvals(bvals, st)
                     bvals = NewDatasetUtils.getCorrectBvals(st, fn);

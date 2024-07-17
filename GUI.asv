@@ -16,9 +16,9 @@ classdef GUI < handle
             
             %Select and display the first image of the study, and if
             %possible, display the second image on the second view.
-            if(~isempty(app.studyNames))
+            if(~isempty(app.sessionNames))
                 
-                if length(app.studyNames) > 1
+                if length(app.sessionNames) > 1
                     msg = sprintf('Preparing image 1 of 2');
                     d.Message = msg;
                     d.Value = 0.5;
@@ -122,6 +122,53 @@ classdef GUI < handle
 
             delete(app.UORenderer{axID}{objID})
 
+        end
+
+        function InitTmpRenderer(app)
+            %whenever a new image gets displayed on any UIAxis, remove all
+            %previous UORenderer layers and draw new ones for all
+            %userObjects on that image.
+
+            %First, remove all UO layers 
+            for i = 1:length(app.UORenderer{axID})
+                delete(app.UORenderer{axID}{i})
+            end
+
+            app.UORenderer{axID} = {};
+
+            %Draw new ones for the objects on that image
+            UOIDs = Objects.GetAllUOIDsForImage(app, ...
+                app.imagePerAxis(axID));
+            for i = 1:length(UOIDs)
+                GUI.AddUOLayer(app, axID, UOIDs(i))
+            end
+
+        end
+
+        function AddUOLayer(app, axID, objID)
+            %Creates new imagesc with UO color and transparency 0
+
+            if axID == 0
+                return
+            end
+
+            the_ax  = app.GetAxis(axID);
+            rect = round(get(the_ax,'OuterPosition'));
+            col = app.colors_list(objID,:);
+            im  = cat(3, ones(rect([4 3])) * col(1),...
+                         ones(rect([4 3])) * col(2),...
+                         ones(rect([4 3])) * col(3));
+
+            hold(the_ax, 'on')
+            app.UORenderer{axID}{objID} = imshow(im, 'Parent', the_ax);
+            set(app.UORenderer{axID}{objID},'AlphaData', 0);
+            hold(the_ax, 'off')
+
+            set(app.UORenderer{axID}{objID},...
+                'ButtonDownFcn',@app.MouseClickedInImage);
+
+            %restore any changes to the axis
+            Graphics.UpdateAxisParams(app, axID)
         end
 
         function SetupCrosshairs(app, the_axis, axID)
@@ -270,7 +317,7 @@ classdef GUI < handle
         function Scroll(app, varargin)
         %Manages the scrollwheelEvent 
         
-            if isempty(app.data) || isempty(app.studyNames)
+            if isempty(app.data) || isempty(app.sessionNames)
                 return
             end
 
@@ -1202,6 +1249,8 @@ classdef GUI < handle
             %toggles app.buttonDown and sets up a callback for dragging and
             %releasing the mouse.
 
+            %Really hacky way of setting a callback to the UIFigure (at
+            %least I think that's what it links to)
             try
                 set(hit.Source.Parent.Parent.Parent,...
                 'WindowButtonUpFcn',...
@@ -1279,9 +1328,9 @@ classdef GUI < handle
         
         function ToggleUnsavedIndicator(app)
             if app.unsavedProgress
-                app.UIFigure.Name = ['RMSStudio ' app.current_folder ' *'];
+                app.UIFigure.Name = ['RMSStudio ' app.sessionPath ' *'];
             else
-                app.UIFigure.Name   = ['RMSStudio ' app.current_folder];
+                app.UIFigure.Name   = ['RMSStudio ' app.sessionPath];
             end
         end
         

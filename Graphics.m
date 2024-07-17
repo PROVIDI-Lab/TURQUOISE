@@ -170,6 +170,29 @@ classdef Graphics < handle
             set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.4);
         end
 
+        function DrawTmpROIInAxis(app, axID, segmentation, opacity, color)
+
+            imID        = app.imagePerAxis(axID);
+            viewAxis    = app.viewPerImage(imID); 
+            tm          = app.transMatPerImage{imID};
+            or          = NiftiUtils.FindOrientation(tm);
+            imageOr     = strfind('csa', or(5)); 
+            slice       = app.slicePerImage{imID}{viewAxis};
+
+            maskSlice   = MathUtils.ApplyProjectionToArray(segmentation, imageOr, viewAxis, slice);
+
+            %Set the roi to be slightly transparent
+            set(app.tmpRenderer{axID},'CData', ...
+                repmat(reshape(color, [1,1,3]), size(maskSlice)) .*...
+                    repmat(maskSlice, 1,1,3));
+            set(app.tmpRenderer{axID},'AlphaData', maskSlice*opacity);
+
+        end
+
+        function ResetTmpROI(app, axID)
+            set(app.tmpRenderer{axID},'AlphaData', 0);
+        end
+
         
         function DrawMeasurementInAxis(app, axID, obj) 
         % This draws a measurement.

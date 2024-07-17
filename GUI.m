@@ -124,6 +124,30 @@ classdef GUI < handle
 
         end
 
+        function InitTmpRenderer(app, axID)
+            %whenever a new image gets displayed on any UIAxis, remove all
+            %previous tmpRenderer and draw a new one for all
+            %userObjects on that image.
+
+            app.tmpRenderer{axID} = [];
+
+            the_ax  = app.GetAxis(axID);
+            rect = round(get(the_ax,'OuterPosition'));
+            col = [0, 255, 255];
+            im  = cat(3, ones(rect([4 3])) * col(1),...
+                         ones(rect([4 3])) * col(2),...
+                         ones(rect([4 3])) * col(3));
+
+            hold(the_ax, 'on')
+            app.tmpRenderer{axID} = imshow(im, 'Parent', the_ax);
+            set(app.tmpRenderer{axID},'AlphaData', 0);
+            hold(the_ax, 'off')
+
+            set(app.tmpRenderer{axID},...
+                'ButtonDownFcn',@app.MouseClickedInImage);
+
+        end
+
         function SetupCrosshairs(app, the_axis, axID)
             %Plots the crosshairs on each image axis. Crosshairs are
             %updated in Graphics.DrawCrosshairInAxis, which only sets the
@@ -166,6 +190,8 @@ classdef GUI < handle
 
             GUI.InitUORenderer(app, 1)
             GUI.InitUORenderer(app, 2)
+            GUI.InitTmpRenderer(app, 1)
+            GUI.InitTmpRenderer(app, 2)
                         
         end
         
@@ -211,6 +237,7 @@ classdef GUI < handle
 
             %Setup the new UO renderer layers
             GUI.InitUORenderer(app, app.axID)
+            GUI.InitTmpRenderer(app, app.axID)
             
             %Draw the new image
             Graphics.UpdateImage(app);   
@@ -237,6 +264,7 @@ classdef GUI < handle
 
             %Draw new UORenderer layers
             GUI.InitUORenderer(app, app.axID)
+            GUI.InitTmpRenderer(app, app.axID)
                         
             %Update to the new image
             Graphics.UpdateImage(app)

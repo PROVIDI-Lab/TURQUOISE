@@ -269,6 +269,29 @@ classdef MathUtils < handle
             %imOrr,  orientation of the array. 1=cor, 2= sag, 3 = ax
             %proj,   projection 1=cor, 2= sag, 3 = ax
 
+            if imQ
+                arr = app.data{ID}.img(:,:,:,d4);
+            else
+                arr = app.userObjects{ID}.data(:,:,:,d4);
+            end
+
+            slice = MathUtils.ApplyProjectionToArray( ...
+                arr, imOrr, proj, sliceNum);
+
+        end
+
+        function slice = ApplyProjectionToArray(arr, imOrr, proj, sliceNum)
+
+            %Takes a 3D array and returns a slice from a certain projection
+            %at a certain index.
+            %
+            %input:
+            %app,   RMSstudio pointer
+            %mask,  the mask to get a projection from
+            %imOrr,  orientation of the array. 1=cor, 2= sag, 3 = ax
+            %proj,   projection 1=cor, 2= sag, 3 = ax
+            %slice,  slice position
+
             %
             %The projection is gained as follows:
             %imOrr  projection  axis    other steps
@@ -299,51 +322,26 @@ classdef MathUtils < handle
             flp = flipTable(imOrr, proj);
             flpx= flipXTable(imOrr, proj);
 
-            if imQ  %Loading an image
-                if inv  %invert axis
-                    switch ax
-                        case 1
-                            slice = app.data{ID}.img( ...
-                                max(end-sliceNum + 1, 1), :, :, d4);
-                        case 2
-                            slice = app.data{ID}.img( ...
-                                :, max(end-sliceNum + 1, 1), :, d4);
-                        case 3
-                            slice = app.data{ID}.img( ...
-                                :, :, max(end-sliceNum + 1, 1), d4);
-                    end
-                else
-                    switch ax
-                        case 1
-                            slice = app.data{ID}.img(sliceNum, :, :, d4);
-                        case 2
-                            slice = app.data{ID}.img(:, sliceNum, :, d4);
-                        case 3
-                            slice = app.data{ID}.img(:, :, sliceNum, d4);
-                    end
+            if inv  %invert axis
+                switch ax
+                    case 1
+                        slice = arr( ...
+                            max(end-sliceNum + 1, 1), :, :);
+                    case 2
+                        slice = arr( ...
+                            :, max(end-sliceNum + 1, 1), :);
+                    case 3
+                        slice = arr( ...
+                            :, :, max(end-sliceNum + 1, 1));
                 end
-            else    %Loading an ROI
-                if inv
-                    switch ax
-                        case 1
-                            slice = app.userObjects{ID}.data( ...
-                                max(end-sliceNum + 1, 1), :, :);
-                        case 2
-                            slice = app.userObjects{ID}.data( ...
-                                :, max(end-sliceNum + 1, 1), :);
-                        case 3
-                            slice = app.userObjects{ID}.data( ...
-                                :, :, max(end-sliceNum + 1, 1));
-                    end
-                else
-                    switch ax
-                        case 1
-                            slice = app.userObjects{ID}.data(sliceNum, :, :);
-                        case 2
-                            slice = app.userObjects{ID}.data(:, sliceNum, :);
-                        case 3
-                            slice = app.userObjects{ID}.data(:, :, sliceNum);
-                    end
+            else
+                switch ax
+                    case 1
+                        slice = arr(sliceNum, :, :);
+                    case 2
+                        slice = arr(:, sliceNum, :);
+                    case 3
+                        slice = arr(:, :, sliceNum);
                 end
             end
 

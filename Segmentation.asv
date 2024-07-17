@@ -27,8 +27,7 @@ classdef Segmentation < handle
             slice   = app.slicePerImage{imID}{view};
             axis4D  = app.d4PerImage(imID);
             
-            segmentation = zeros(size(app.data{imID}.img(:,:,:,axis4D)));
-
+            
             if(view == 3)
                 TheImg =                                                ...
                     app.data{imID}.img(...
@@ -48,30 +47,21 @@ classdef Segmentation < handle
 
             switch method
                 case 'ChanVese'
-                    maskSlice = Segmentation.ChanVese2D(app, TheImg, ...
+                    segmentation = Segmentation.ChanVese2D(app, TheImg, ...
                         hitx, hity, true, sensitivity);
                 case 'ChanVeseComplement'
-                    maskSlice = Segmentation.ChanVese2D(app, TheImg, ...
+                    segmentation = Segmentation.ChanVese2D(app, TheImg, ...
                         hitx, hity, false, sensitivity);
                 case 'LowerThreshold'
-                    maskSlice = Segmentation.Thresh2D(TheImg, TheVal,...
+                    segmentation = Segmentation.Thresh2D(TheImg, TheVal,...
                         hitx, hity, true, sensitivity);
                 case 'HigherThreshold'
-                    maskSlice = Segmentation.Thresh2D(TheImg, TheVal,...
+                    segmentation = Segmentation.Thresh2D(TheImg, TheVal,...
                         hitx, hity, false, sensitivity);
                 otherwise
                     errordlg("This method is not implemented")
                     segmentation = [];
-                    return
             end       
-
-            if(view == 3)
-                segmentation(:, :, slice) = maskSlice;
-            elseif(view == 2)
-                segmentation(:, slice, :) = maskSlice;
-            elseif(view == 1)
-                segmentation(slice, :, :) = maskSlice;
-            end
         end
         
         function segmentation = Thresh2D(TheImg, TheVal, hitx, hity, ...
@@ -184,13 +174,21 @@ classdef Segmentation < handle
             end
             [LA,NA] = bwlabeln(u);
 
-            if view == 3
-                segmentation = LA == LA(hity, hitx, slice);
-            elseif view == 2
-                segmentation = LA == LA(hity, slice, hitx);
-            elseif view == 1
-                segmentation = LA == LA(slice, hity, hitx);
+            segmentation = LA == 
+            for ijkid=1:NA
+                lLA = LA == ijkid;
+                if(view == 3 &&                            ...
+                        lLA(hity,hitx,slice) == 0)
+                    u(lLA > 0) = 0;
+                elseif(view == 2 &&                        ...
+                        lLA(hity,slice,hitx) == 0)
+                    u(lLA > 0) = 0;
+                elseif(view == 1 &&                        ...
+                        lLA(slice,hity,hitx) == 0)
+                    u(lLA > 0) = 0;
+                end
             end     
+            segmentation = u;
         end
         
         function segmentation = ChanVese(app, TheImg, hitx, hity, ...

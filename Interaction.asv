@@ -79,6 +79,18 @@ classdef Interaction < handle
 
         end
         
+        function AlgorithmChanged(app)
+        %Sets the right algorithm selection   
+        
+            value = app.AlgorithmDropDown.Value;
+            for ij=1:length(app.AlgorithmDropDown.Items)
+                if(strcmp(value, app.AlgorithmDropDown.Items{ij}) > 0)
+                    break
+                end
+            end
+            app.drawing.magic_method = ij; 
+        end
+        
         
     %% UIAxes interactions
     
@@ -163,6 +175,10 @@ classdef Interaction < handle
                                             [.96 .96 .96];
                     GUI.ResetCursor(app)
                 end
+                
+%             elseif(app.drawing.mode == 2)
+%                 %Here we want to drag a point
+%                 ROI.StartDragging(app, hit)
             
             elseif(app.drawing.mode == 3)
                 % Here we are adding a manual measurement
@@ -170,7 +186,7 @@ classdef Interaction < handle
                 
             elseif(app.drawing.mode == 4)
                 % Here we are using the automatic ROI drawing
-                app.ContourPickerApp.PosSelected(row,column, app.axID);   
+                Segmentation.MouseMagicDraw(app,hit,row,column);            
             
             elseif hit.Button == 2  %mmb
                 %Here we adjust the contrast
@@ -379,7 +395,7 @@ classdef Interaction < handle
                     case 'escape'
                         GUI.RevertControlsStatus(app)
                     case 'm'
-                        Interaction.MagicDraw(app)
+                        
                 end
                 
             elseif contains(modifier, 'control')
@@ -639,13 +655,9 @@ classdef Interaction < handle
             if(app.drawing.mode ~= 4)
                 GUI.SetCursor(app, 'crosshair')
                 app.drawing.mode = 4;
-
-                app.ContourPickerApp.Open()
             else
                 app.drawing.mode = 0;
                 GUI.ResetCursor(app)
-
-                app.ContourPickerApp.Close()
             end
             Graphics.UpdateImage(app); 
         end
