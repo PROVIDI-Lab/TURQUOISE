@@ -130,6 +130,7 @@ classdef GUI < handle
             %userObjects on that image.
 
             app.tmpRenderer{axID} = [];
+            app.tmpMasks{axID} = [];
 
             the_ax  = app.GetAxis(axID);
             rect = round(get(the_ax,'OuterPosition'));

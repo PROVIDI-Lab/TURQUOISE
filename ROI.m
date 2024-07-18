@@ -206,13 +206,14 @@ classdef ROI < handle
             for i = 1:length(slices)
                 slice = slices(i);
 
+                %original points have precedence
                 idx     = points(:, viewDim) == slice;
                 if any(idx)
                     newPoints = [newPoints; points(idx,:)];
                     continue
                 end
 
-                tmpPoints = ROI.MaskToPoints2D(slice);
+                tmpPoints = ROI.MaskToPoints2D(mask, slice, viewDim);
                 %add points to list
                 newPoints = [newPoints; tmpPoints];
             end
@@ -235,14 +236,13 @@ classdef ROI < handle
             for i = 1:length(slices)
                 slice = slices(i);
 
-                tmpPoints = ROI.MaskToPoints2D(slice);
+                tmpPoints = ROI.MaskToPoints2D(mask, slice, viewDim);
                 %add points to list
                 points = [points; tmpPoints];
             end
         end
 
-        function tmpPoints = MaskToPoints2D(slice)
-            %Original points have precedence over new points
+        function tmpPoints = MaskToPoints2D(mask, slice, viewDim)
 
             %find points from mask slice
             if viewDim == 1

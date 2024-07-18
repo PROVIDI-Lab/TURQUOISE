@@ -5,10 +5,10 @@ classdef Segmentation < handle
 
             imID    = app.imagePerAxis(app.axID);
             view    = app.viewPerImage(imID);
-            points = ROI.MaskToPoints(segmentation, [], view);
+            points = ROI.MaskToPointsNew(segmentation, view);
 
             %Pass the points to the app, and continue as with any other ROI
-            app.points = points;
+            app.points{app.axID} = points;
             Interaction.PromptName(app);
 
             %Cleanup

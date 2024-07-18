@@ -54,6 +54,7 @@ classdef Graphics < handle
             Graphics.DrawUserObjects(app, axID);
             Graphics.UpdateUserInteractionsForAxis(app, axID);
             Graphics.UpdateUIAxesLabel(app, axID);
+            Graphics.DrawTmpROIInAxis(app, axID);
 
             %Important line: If we don't block callbacks while drawing the
             %image, the view can freeze permanently :(
@@ -170,7 +171,15 @@ classdef Graphics < handle
             set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.4);
         end
 
-        function DrawTmpROIInAxis(app, axID, segmentation, opacity, color)
+        function DrawTmpROIInAxis(app, axID)
+
+            segmentation = app.tmpMasks{axID};
+            if isempty(segmentation)
+                return
+            end
+
+            color       = app.tmpMaskColor;
+            opacity     = app.tmpMaskOpacity;
 
             imID        = app.imagePerAxis(axID);
             viewAxis    = app.viewPerImage(imID); 
@@ -179,7 +188,8 @@ classdef Graphics < handle
             imageOr     = strfind('csa', or(5)); 
             slice       = app.slicePerImage{imID}{viewAxis};
 
-            maskSlice   = MathUtils.ApplyProjectionToArray(segmentation, imageOr, viewAxis, slice);
+            maskSlice   = MathUtils.ApplyProjectionToArray( ...
+                segmentation, imageOr, viewAxis, slice);
 
             %Set the roi to be slightly transparent
             set(app.tmpRenderer{axID},'CData', ...
