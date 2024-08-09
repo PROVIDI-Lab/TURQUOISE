@@ -909,23 +909,23 @@ classdef Objects < handle
             end
         end
                 
-        function UOId = FindUOUnderMouse(app, row, column, axID)
+        function UOId = FindUOUnderMouse(app, column, row, axID)
         %Checks all UOs to see which of them matches with the current
         %cursor position, view, slice etc. Returns the corresponding ID.
         
             UOId = -1;
 
-            if column <= 0 || row <= 0
+            if row <= 0 || column <= 0
                 return
             end
             
-            if isnan(column) || isnan(row)
+            if isnan(row) || isnan(column)
                 return
             end
             
             %Get orientation info
             imID        = app.imagePerAxis(axID);
-            ijk         = NiftiUtils.rc2ijk(app, row, column, axID);
+            ijk         = NiftiUtils.rc2ijk(app, column, row, axID);
              
             %Go over all UOs in reverse order
             for i = flip(1:length(app.userObjects))
@@ -961,7 +961,7 @@ classdef Objects < handle
 
                 elseif obj.type == 2
                     
-                    d = MathUtils.CalcDistancePointLine([column, row], ...
+                    d = MathUtils.CalcDistancePointLine([row, column], ...
                         obj.points(1,:), obj.points(2,:));
                     
                     if d <= 5

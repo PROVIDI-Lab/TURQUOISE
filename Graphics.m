@@ -332,17 +332,16 @@ classdef Graphics < handle
 
         function DrawCrosshairInAxis(app, axID, x, y, sz)
 
-
             %Adjust the crosshair plots
             set(app.crosshairRenderer{axID}(1), 'XData',...
-                [1, sz(2)]);
+                [1, sz(1)]);
             set(app.crosshairRenderer{axID}(1), 'YData',...
                 [y, y]);
 
             set(app.crosshairRenderer{axID}(2), 'XData',...
                 [x, x]);
             set(app.crosshairRenderer{axID}(2), 'YData',...
-                [1, sz(1)]);
+                [1, sz(2)]);
 
         end
 

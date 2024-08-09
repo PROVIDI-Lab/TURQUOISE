@@ -505,12 +505,6 @@ classdef NiftiUtils < handle
                            reshape(yq, 1, []);...
                            reshape(zq, 1, []);
                            ones(1,numel(xq))];
-
-            %Turn on for visualisation
-%             gridO       = tm * grid;
-%             xqO       = reshape(gridO(1,:), gridDim);
-%             yqO       = reshape(gridO(2,:), gridDim);
-%             zqO       = reshape(gridO(3,:), gridDim);
             
             %Translate the transformation matrix
             newTM   = tm;
@@ -522,22 +516,6 @@ classdef NiftiUtils < handle
 
             %Transform grid to get sampling locations
             grid    = newTM * grid;
-
-%             turn on for visualisation
-%             xq       = reshape(grid(1,:), gridDim);
-%             yq       = reshape(grid(2,:), gridDim);
-%             zq       = reshape(grid(3,:), gridDim);
-%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(...
-% app.data{imID}.hdr);
-%             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
-%             hold on
-%             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
-% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end),...
-% 5, 'red')
-%             xlabel('x')
-%             ylabel('y')
-%             zlabel('z')
-%             hold off
 
             %Lastly, use the inverse of the original image 
             % transformation matrix to get ijk coordinate sampling 
@@ -643,11 +621,11 @@ classdef NiftiUtils < handle
 
         end
 
-        function ijk = rc2ijk (app, row, column, varargin)
+        function ijk = rc2ijk (app, column, row, varargin)
             %Find the image coordinates (ijk) from the current location.
             %Input:
-            %row - x position in plane
-            %column - y position in plane
+            %column - x position in plane
+            %row - y position in plane
             %varargin - might contain axID.
 
             if nargin == 4
@@ -659,7 +637,7 @@ classdef NiftiUtils < handle
             imID            = app.imagePerAxis(axID);
             viewingAxis     = app.viewPerImage(imID); 
             slice           = app.slicePerImage{imID}{viewingAxis};
-            slice           = repmat(slice, size(row));
+            slice           = repmat(slice, size(column));
 
             %Put row, column, and slice in the right order to get to image
             %coordinates ijk. 
@@ -670,47 +648,50 @@ classdef NiftiUtils < handle
 
             if imageOr == 1 %Coronal image
                 if viewingAxis == 1 %coronal projection
-                    ijk = [row, column, slice];
+                    ijk = [column, row, slice];
                 elseif viewingAxis == 2 %sagittal projection 
-                    ijk = [slice, column, row];
+                    ijk = [slice, row, column];
                 else    %axial projection
                     sz  = size(app.data{imID}.img, 3);
-                    k   = sz - column;
+                    k   = sz - row;
                     k   = max(k, 1);   
                     k   = min(k, sz);
-                    ijk = [row, slice, k];
+                    ijk = [column, slice, k];
                 end
 
             elseif imageOr == 2 %Sagittal image
                 if viewingAxis == 1 %coronal projection
                     sz  = size(app.data{imID}.img, 3);
-                    ijk = [slice, column, sz - row];
+                    ijk = [slice, row, sz - column];
                 elseif viewingAxis == 2 %sagittal projection 
-                    ijk = [row, column, slice];
+                    ijk = [column, row, slice];
                 else    %axial projection
                     szk  = size(app.data{imID}.img, 3);
                     szi  = size(app.data{imID}.img, 1);
-                    ijk = [szi - column, slice, szk - row];
+                    ijk = [szi - row, slice, szk - column];
                 end 
 
             else    %Axial image
                 if viewingAxis == 1 %coronal projection
-                    ijk = [row, slice, column];
+                    ijk = [column, slice, row];
                 elseif viewingAxis == 2 %sagittal projection
                     sz  = size(app.data{imID}.img, 2);
-                    ijk = [slice, sz - row + 1, column];
+                    ijk = [slice, sz - column + 1, row];
                 else    %axial projection
-                    ijk = [row, column, slice];
+                    ijk = [column, row, slice];
                 end
             end
 
             %bound to prevent any accidental rounding errors
             ijk(ijk == 0) = 1;
 
+            app.CoordinateInspectorApp.ijkALabel.Text = ...
+                strcat('i: ', num2str(ijk(1)), 'j: ', num2str(ijk(2)), 'k: ', num2str(ijk(3)) );
+
         end
 
 
-        function xyz = rc2xyz (app, row, column, varargin)
+        function xyz = rc2xyz (app, column, row, varargin)
             %We go from image coordinates to world coordinates.
 
             
@@ -721,13 +702,16 @@ classdef NiftiUtils < handle
             end
 
             %First, get the image coordinates from the cursor location
-            ijk = NiftiUtils.rc2ijk(app, row, column, axID);
+            ijk = NiftiUtils.rc2ijk(app, column, row, axID);
 
             %Next, multiply with the transformation matrix to get world
             %coordinates
             imID        = app.imagePerAxis(axID);
             tm          = app.transMatPerImage{imID};
             xyz         = NiftiUtils.ijk2xyz(tm, ijk);  
+
+            app.CoordinateInspectorApp.xyzLabel.Text = ...
+                strcat('x: ', num2str(xyz(1)), 'y: ', num2str(xyz(2)), 'z: ', num2str(xyz(3)) );
 
         end
        
@@ -753,12 +737,12 @@ classdef NiftiUtils < handle
 
             %Start with the non-axis image coordinates
             ijk(:, view)    = [];
-            row               = ijk(:,1);
-            column               = ijk(:,2);
+            row             = ijk(:,1);
+            column          = ijk(:,2);
 
             %Next, Get image dimensions, needed to flip certain axes
-            sz          = size(app.data{imID}.img);
-            sz(view)    = [];
+            sz              = NiftiUtils.FindInPlaneResolution(app, imID);
+
 
             %Under some circumstances, x and y need to be swapped
             if viewAxis == 2 && imageOr == 1 || ... %corimage, sag proj.
@@ -767,7 +751,7 @@ classdef NiftiUtils < handle
                 c = row;
                 row = column;
                 column = c;
-                sz = flip(sz);
+                % sz =  flip(sz);
             end
 
             %flip y because image coordinates are 0,0 in the bottom
@@ -776,7 +760,7 @@ classdef NiftiUtils < handle
                imageOr == 2 && viewAxis == 3        % sag im, ax proj.
                 %don't flip with these projections
             else
-                column   = sz(1) - column;
+                column   = sz(2) - column;
             end
             
             %Under some circumstances, x position needs to inverted as
@@ -785,7 +769,7 @@ classdef NiftiUtils < handle
                viewAxis == 1 && imageOr == 2 || ... % sag im, cor proj.
                viewAxis == 3 && imageOr == 2        % sag im, ax proj.
                 
-                row = sz(2) - row;
+                row = sz(1) - row;
             end    
         end
 

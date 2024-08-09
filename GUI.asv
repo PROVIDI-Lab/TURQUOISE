@@ -1207,6 +1207,9 @@ classdef GUI < handle
                 ijk         = NiftiUtils.rc2ijk(app, row, column, axID);
             end
 
+            if axID == 2
+                disp([row, column]
+
             %Find slice and the image if needed
             slice       = ijk(viewDim);
             if ~isempty(app.slicePerImage{imID})

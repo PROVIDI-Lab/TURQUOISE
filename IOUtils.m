@@ -158,6 +158,8 @@ classdef IOUtils < handle
             %Next, load measurements
             IOUtils.LoadMeasurements(...
                 app, fullfile(direc,'measurements.csv'), idx);
+
+            Backups.CreateBackup(app)
         end
         
         
@@ -190,7 +192,7 @@ classdef IOUtils < handle
             [base, ~, ~] = fileparts(fn);
             [base, folder, ~] = fileparts(base);
             [~, superfolder, ~] = fileparts(base);
-            if strcmp(superfolder, 'rmsstudio')
+            if strcmp(superfolder, 'rmsstudio') || strcmp(folder, 'rmsstudio')
                 profile = ''; %no profile
             else
                 profile = folder;
@@ -277,7 +279,6 @@ classdef IOUtils < handle
                 GUI.AddUOLayer(app, axID, obj.ID)
                 Graphics.UpdateImage(app)
             end
-            Backups.CreateBackup(app)
         end
         
         function LoadMeasurements(app, name, idx)

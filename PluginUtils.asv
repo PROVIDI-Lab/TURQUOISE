@@ -1,0 +1,21 @@
+classdef PluginUtils < handle
+    methods (Static)
+
+        function PopulatePlugins(app)
+
+            [turquoiseFolder, ~, ~]      = fileparts(which('TURQUOISE'));
+            pluginFolder = fullfile(turquoiseFolder, 'plugins');
+
+            plugins = dir(fullfile(pluginFolder, '*.m'));
+
+            for i = 1:length(plugins)
+                plugin = plugins{i};
+                
+                evalStr = strcat(...
+                    "pluginObj = ", varargin{idx}, ' = varargin{idx+1};');
+
+            end
+        end
+        
+    end
+end            

@@ -136,23 +136,27 @@ classdef Interaction < handle
             end
             
             %Find image position of hit
-            row         = round(hit.IntersectionPoint(1));
-            column      = round(hit.IntersectionPoint(2));
+            column      = round(hit.IntersectionPoint(1));
+            row         = round(hit.IntersectionPoint(2));
 
             %Flip j, because we want bottom left as 0,0
             imID        = app.imagePerAxis(app.axID);  
             sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-            column      = sz(1) - column + 1;
+            row         = sz(2) - row + 1;
             %Bound j, to prevent errors
-            column      = min(column, sz(1));
-            column      = max(column, 1);
+            row         = min(row, sz(2));
+            row         = max(row, 1);
+
+            app.CoordinateInspectorApp.viewpixALabel.Text = strcat('c: ', num2str(column), ', r: ', num2str(row));
+
+            
             
             %%%%
             %Do stuff based on drawing mode           
             if(app.drawing.mode == 1)
                 % Here we are manually drawing an ROI
                 if hit.Button == 1
-                    ROI.AddPointToPolygon(app,row,column);
+                    ROI.AddPointToPolygon(app,column,row);
                 elseif hit.Button == 3  %right mouse button, finish drawing
                     if(size(app.points{app.axID},1) <= 3)
                         return
@@ -166,19 +170,19 @@ classdef Interaction < handle
             
             elseif(app.drawing.mode == 3)
                 % Here we are adding a manual measurement
-                Measurements.MouseMeasurementLines(app,hit,row,column);
+                Measurements.MouseMeasurementLines(app,hit,column,row);
                 
             elseif(app.drawing.mode == 4)
                 % Here we are using the automatic ROI drawing
-                app.ContourPickerApp.PosSelected(row,column, app.axID);   
+                app.ContourPickerApp.PosSelected(column,row, app.axID);   
             
             elseif hit.Button == 2  %mmb
                 %Here we adjust the contrast
-                GUI.StartChangingContrast(app, hit, row, column)
+                GUI.StartChangingContrast(app, hit, column, row)
                 
             elseif hit.Button == 3  %rmb
                 %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOUnderMouse(app, row, column, app.axID);
+                id = Objects.FindUOUnderMouse(app, column, row, app.axID);
 
                 if id > 0
                     C = get(app.UIFigure, 'CurrentPoint');
@@ -186,13 +190,13 @@ classdef Interaction < handle
                     return
                 else
                     %rmb + drag is pan image
-                    GUI.StartDragging(app, hit, row, column)
+                    GUI.StartDragging(app, hit, column, row)
                 end
             else
                 %If not doing anything else, move the cursor and other
                 %panels around
                 GUI.ButtonDown(app, hit)
-                GUI.MoveCrosshair(app, row, column)
+                GUI.MoveCrosshair(app, column, row)
             end
             
             Graphics.UpdateUserInteractions(app)
@@ -234,8 +238,8 @@ classdef Interaction < handle
                 return
             end
 
-            row     = round(hit.IntersectionPoint(1));
-            column  = round(hit.IntersectionPoint(2));
+            column      = round(hit.IntersectionPoint(1));
+            row         = round(hit.IntersectionPoint(2));
 
             %Find image
             axID        = GUI.FindAxisUnderCursor(app, hit);
@@ -246,28 +250,30 @@ classdef Interaction < handle
 
             %Flip column, because we want bottom left as 0,0
             sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-            column      = sz(1) - column + 1;
+            row         = sz(2) - row + 1;
 
             %Bound row and column, to prevent errors
-            column      = min(column, sz(1));
-            column      = max(column, 1);
             row         = min(row, sz(2));
             row         = max(row, 1);
+            column      = min(column, sz(1));
+            column      = max(column, 1);
+
+            app.CoordinateInspectorApp.viewpixALabel.Text = strcat('c: ', num2str(column), ', r: ', num2str(row));
 
             %Don't do anything if we're outside the image
-            if any(isnan([row,column]))
+            if any(isnan([column,row]))
                 return
             end
 
             %If dragpoint is empty, we're not adjusting contrast, or
             %panning across the axis.
             if isempty(app.dragPoint)
-                GUI.MouseHover(app, row, column, axID)                
+                GUI.MouseHover(app, column, row, axID)                
                 return
             end            
 
             if app.drawing.mode == 6        %contrast
-                GUI.AdjustContrast(app, row, column)
+                GUI.AdjustContrast(app, column, row)
             elseif app.drawing.mode == 7    %dragging
                 GUI.DragAxis(app, hit)
             end     
@@ -548,9 +554,7 @@ classdef Interaction < handle
         function LoadNewLabels(app)
             %Loads a new segmentation for the current image.
 
-            return %TODO rebuild
-
-            defPath         = strcat(app.dataset);
+            defPath         = app.dataset{1};
             [file, path]    = uigetfile(...
                     {'*.nii.gz; *.nii; *.json', ...
                     'Segmentation files (*.nii.gz, *.nii, *.json)'}, ...
@@ -559,8 +563,14 @@ classdef Interaction < handle
             if ~exist(fp, "file")
                 return
             end
+
+            if contains(fp, '.json')
+                IOUtils.loadSegmentationPoints(...
+                    app, fp, idx);
+            else
+                IOUtils.LoadSegmentation(app, fp, app.imID)
+            end
             
-            IOUtils.LoadSegmentation(app, fp, app.imID);  
             obj = app.userObjects{end};
             GUI.UpdateUOBox(app);
             axID = find(app.imagePerAxis == obj.imageIdx);
@@ -576,11 +586,42 @@ classdef Interaction < handle
             Interaction.UOBoxChanged(app);
         end
         
-        function LoadROIPoints(app)
-        %Loads a new segmentation for the current image.
-            return %TODO: rebuild
+        function LoadLabelsFromStudy(app)
+            %If one of the images in the study is a mask, this copies it
+            %and loads it as the mask for one of the images
+
+            %Get the mask selection
+            maskID = Interaction.PromptTarget(app);
+            a = 2;
+            b = 3;
+
+            fp = fullfile(app.sessionPath, [ app.sessionNames{maskID} '.nii.gz']);
+            if ~ exist(fp, 'file')
+                fp = fullfile(app.sessionPath, [ app.sessionNames{maskID} '.nii']);
+                if ~exist(fp, 'file')
+                    errordlg("Can't find this file")
+                    return
+                end
+            end
+
+            IOUtils.LoadSegmentation(app, fp, app.imID)
+
+            obj = app.userObjects{end};
+            GUI.UpdateUOBox(app);
+            axID = find(app.imagePerAxis == obj.imageIdx);
+            if axID
+                GUI.AddUOLayer(app, axID, obj.ID)
+                Graphics.UpdateImage(app)
+            end
+            Backups.CreateBackup(app)
+            
+            %Switch to new labels
+            GUI.UpdateUOBox(app)
+            app.UOBox.Value    = app.UOBox.ItemsData(end - 1);
+            Interaction.UOBoxChanged(app);
+
         end
-        
+
         function DrawPolygon(app)
             %Called when the user presses the 'draw polygon' button.
             
@@ -888,15 +929,6 @@ classdef Interaction < handle
             drawnow
         end
         
-        function test(app)
-
-            for i = 1:200
-                pause(0.001)
-                GUI.MoveCrosshair(app, 100+rand(1)*10, 100+rand(1)*10, 2)
-            end
-
-        end
-
         function values = overlayMask(im, mask)
            
             %Overlays mask over image, takes into account different shapes
