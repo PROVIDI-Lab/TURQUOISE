@@ -326,7 +326,7 @@ classdef NiftiUtils < handle
                 elseif viewingAxis == 2 %sagittal projection
                     res          = [res(2), res(3)];
                 else    %axial projection
-                    res          = [res(1), res(2)];
+                    res          = [res(2), res(1)];
                 end
             end
 
@@ -684,9 +684,6 @@ classdef NiftiUtils < handle
 
             %bound to prevent any accidental rounding errors
             ijk(ijk == 0) = 1;
-
-            app.CoordinateInspectorApp.ijkALabel.Text = ...
-                strcat('i: ', num2str(ijk(1)), 'j: ', num2str(ijk(2)), 'k: ', num2str(ijk(3)) );
 
         end
 

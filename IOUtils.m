@@ -36,18 +36,8 @@ classdef IOUtils < handle
 
             %correct orientation for display in matlab
             nii         = NiftiUtils.PermuteFlip(nii);
-
-            %interpolate image based on reference
-%             rwcImg      = NiftiUtils.MoveToRWC(app, nii);
-%             nii.img     = rwcImg;
-
-%             %for testing
-%             imshowpair(nii.img(:,:,round(size(nii.img, 3)/2)), ...
-%                 rwcImg(:,:,round(size(nii.img, 3)/2)))
             
             app.data{index}         = nii;
-            app.d4PerImage(index)   = 1;
-            app.DSlider.Value       = 1;
         
         end
         

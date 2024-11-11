@@ -34,7 +34,6 @@ classdef Plotting < handle
                h(N).EdgeLighting = 'gouraud';
             end
         end
-        
     end
 end
 

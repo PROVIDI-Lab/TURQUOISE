@@ -28,6 +28,13 @@ classdef PluginUtils < handle
                     "Text", name);
 
             end
+
+            %if no plugins found
+            if length(plugins) == 1
+               app.pluginSubMenus{end+1} = uimenu(app.PluginsMenu, ...
+                    "Text", "No plugins found");
+            end
+
         end
 
         function runPlugin(menu, ~, app)

@@ -129,7 +129,7 @@ classdef Study < handle
         function SwitchImage(app, index)
         % Switches workspace and display to a different image.
         % Input:
-        %   app, reference to the RMSStudio app
+        %   app, reference to the app
         %   index, index of image in the available_image_box
             
             if app.imID == index

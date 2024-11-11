@@ -389,6 +389,7 @@ classdef Objects < handle
             
             %Create new mask
             app.userObjects{idx}.createMask(app)
+            app.userObjects{idx}.makeProperties(app)    
             
             %turn mask back on
             app.userObjects{idx}.setVisible(true)
@@ -569,7 +570,6 @@ classdef Objects < handle
             obj.renaming = true;
             obj.data = [];
             obj.points = [];
-            obj.prop = [];
 
             %Remove UOLayer in renderer
             %first find right axis
@@ -685,13 +685,30 @@ classdef Objects < handle
             %%TODO: 
             %   - load image if not previously done
             %   - fix different views
+            %   - multiselect
             
             obj         = app.userObjects{idx};
             
-            targetIdx   = Interaction.PromptTarget(app);
+            targetIdx   = Interaction.PromptTarget(app, true);
+            if isempty(targetIdx)
+                return
+            end
             
+            if length(targetIdx) > 1
+                for i = 1:length(targetIdx)
+                    target = targetIdx(i);
+                    Objects.CopyToTarget(app, target)
+                end
+            else
+                Objects.CopyToTarget(app, targetIdx)
+            end
+
+        end
+
+        function CopyToTarget(app, target)
+
             %find new points from world coordinates
-            tm  = app.transMatPerImage{targetIdx};
+            tm  = app.transMatPerImage{target};
             xyz = [obj.worldCoords, ones(length(obj.points),1)];
             ijk = tm \ xyz';
 
@@ -844,7 +861,6 @@ classdef Objects < handle
                 newObj.points   = obj.points;
                 newObj.name     = obj.name;
                 newObj.imageIdx = obj.imageIdx;
-                newObj.prop     = obj.prop;
                 newObj.ID       = obj.ID;
                 newObj.viewDim  = obj.viewDim;
                 newObj.comment  = obj.comment;
@@ -867,6 +883,8 @@ classdef Objects < handle
                         objects{i}.points,...
                         objects{i}.imageIdx,...
                         objects{i}.type);
+
+                    app.userObjects{i}.makeProperties(app);
                 end
             end
             
@@ -908,23 +926,23 @@ classdef Objects < handle
             end
         end
                 
-        function UOId = FindUOUnderMouse(app, row, column, axID)
+        function UOId = FindUOUnderMouse(app, column, row, axID)
         %Checks all UOs to see which of them matches with the current
         %cursor position, view, slice etc. Returns the corresponding ID.
         
             UOId = -1;
 
-            if column <= 0 || row <= 0
+            if row <= 0 || column <= 0
                 return
             end
             
-            if isnan(column) || isnan(row)
+            if isnan(row) || isnan(column)
                 return
             end
             
             %Get orientation info
             imID        = app.imagePerAxis(axID);
-            ijk         = NiftiUtils.rc2ijk(app, row, column, axID);
+            ijk         = NiftiUtils.rc2ijk(app, column, row, axID);
              
             %Go over all UOs in reverse order
             for i = flip(1:length(app.userObjects))
@@ -960,7 +978,7 @@ classdef Objects < handle
 
                 elseif obj.type == 2
                     
-                    d = MathUtils.CalcDistancePointLine([column, row], ...
+                    d = MathUtils.CalcDistancePointLine([row, column], ...
                         obj.points(1,:), obj.points(2,:));
                     
                     if d <= 5

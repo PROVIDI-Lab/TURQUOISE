@@ -685,11 +685,35 @@ classdef Objects < handle
             %%TODO: 
             %   - load image if not previously done
             %   - fix different views
+            %   - multiselect
             
             obj         = app.userObjects{idx};
             
-            targetIdx   = Interaction.PromptTarget(app);
+            targetIdx   = Interaction.PromptTarget(app, true);
+            if isempty(targetIdx)
+                return
+            end
             
+            GUI.DisableControlsStatus(app)
+
+            if length(targetIdx) > 1
+                for i = 1:length(targetIdx)
+                    target = targetIdx(i);
+                    Objects.CopyToTarget(app, target, obj)
+                end
+            else
+                Objects.CopyToTarget(app, targetIdx, obj)
+            end
+
+            GUI.UpdateUOBox(app);
+            Backups.CreateBackup(app); 
+
+            GUI.RevertControlsStatus(app)
+
+        end
+
+        function CopyToTarget(app, targetIdx, obj)
+
             %find new points from world coordinates
             tm  = app.transMatPerImage{targetIdx};
             xyz = [obj.worldCoords, ones(length(obj.points),1)];
@@ -714,17 +738,21 @@ classdef Objects < handle
 
                 %find prevSlice closest to slc
                 [~, closest]    = min(slcDiff(idx));
-                selection       = prevSlices(idx);
+                selection       = rndPrevSlices(idx);
                 prevSlice       = selection(closest);
 
                 %find all points with matching prevSlice
-                pntIdx          = ijk(obj.viewDim, :) == prevSlice;
+                pntIdx          = round(ijk(obj.viewDim, :)) == prevSlice;
                 tmpPoints       = ijk(1:3, pntIdx)';
                 newPoints       = [newPoints; tmpPoints];
             end
-
-
             points = round(newPoints);
+
+            %Check if target image is loaded, load if not
+            if isempty(app.data{targetIdx})
+                Study.SwitchImage(app, targetIdx)
+            end
+
             %create mask
             newMask = ROI.PointsToMask(app, points, targetIdx, obj.type);
                         
@@ -735,8 +763,6 @@ classdef Objects < handle
                     "worldCoords", obj.worldCoords, ...
                     "name", obj.name,...
                     "imageIdx", targetIdx)
-                
-            GUI.UpdateUOBox(app);
             
             %if the image is being displayed, update it
             axID = find(app.imagePerAxis == targetIdx);
@@ -744,7 +770,6 @@ classdef Objects < handle
                 GUI.InitUORenderer(app, axID)
                 Graphics.UpdateImageForAxis(app, axID)
             end
-            Backups.CreateBackup(app); 
         end
 
         function ChangeUOAdditiveSubtractive(app)
