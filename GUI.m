@@ -9,6 +9,7 @@ classdef GUI < handle
             app.ViewMenu.Enable     = 'on';
             app.AnalyseMenu.Enable  = 'on';
             app.DrawMeasureMenu.Enable     = 'on';
+            app.ctrl = false;
 
             d = uiprogressdlg(app.UIFigure, 'Title',...
                 'New Patient');
@@ -482,7 +483,7 @@ classdef GUI < handle
             the_axis.XLim = [i0New, i1New];
             the_axis.YLim = [j0New, j1New];
 
-            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            Graphics.UpdateInfoOnAxis(app, axID)
 
         end
 
@@ -548,7 +549,7 @@ classdef GUI < handle
             app.dragPoint(3) = hity;
 
             %Update axis info position
-            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            Graphics.UpdateInfoOnAxis(app, axID)
             
         end
         
@@ -1046,12 +1047,7 @@ classdef GUI < handle
                 GUI.DisplayHoverValue(app, column, row, axID)
             end
 
-            if UOId == -1
-                app.UOHoverLabel.Text = "";
-                return
-            end
-
-            GUI.DisplayUOText(app, UOId)
+            GUI.DisplayUOText(app, UOId, axID)
 
         end
 
@@ -1098,26 +1094,27 @@ classdef GUI < handle
 
         end
 
-        function DisplayUOText(app, UOId)
+        function DisplayUOText(app, UOId, axID)
 
-            idx     = Objects.findUOIndex(app, UOId);
-            obj     = app.userObjects{idx};
+            if UOId ~= -1
 
-            if isempty(obj.prop)
-                obj.prop.volume = 0;
-                obj.prop.mean   = 0;
+                idx     = Objects.findUOIndex(app, UOId);
+                obj     = app.userObjects{idx};
+    
+                Name     = obj.name;
+                Volume   = obj.volume / 1000;
+                MeanSig  = obj.meanVal;
+    
+                String   = strcat(Name,                 ...
+                            '\tVolume:%.0f ml \tMean: %.4f');
+                String   = sprintf(String,              ...               
+                                   Volume,              ...
+                                   MeanSig);
+            else
+                String = "";
             end
 
-            Name     = obj.name;
-            Volume   = obj.prop.volume;
-            MeanSig  = obj.prop.mean;
-
-            String   = strcat(Name,                 ...
-                        '\tVolume:%.0f mm^{3} \tMean: %.2f mm^{2}s^{-1}');
-            String   = sprintf(String,              ...               
-                               Volume,              ...
-                               MeanSig);
-            app.UOHoverLabel.Text = String;
+            Graphics.UpdateInfoOnAxis(app, axID, String)
         end
 
         %% Crosshair

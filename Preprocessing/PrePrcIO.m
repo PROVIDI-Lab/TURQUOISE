@@ -3,8 +3,8 @@ classdef PrePrcIO < handle
 
         function SelectData(app)
             
-            if ~isempty(app.filepath)
-                fp = uigetdir(app.filepath, 'Select a subject folder');
+            if ~isempty(app.datasetPath)
+                fp = uigetdir(app.datasetPath, 'Select a subject folder');
             else
                 fp = uigetdir('C:','Select a subject folder');
             end
@@ -14,7 +14,7 @@ classdef PrePrcIO < handle
             drawnow;
             figure(app.UIFigure)
 
-            app.filepath = fp;
+            app.sessionPath = fp;
             app.InputLabel2.Text = fp;
 
             if ~isempty(app.outpath)
@@ -26,8 +26,8 @@ classdef PrePrcIO < handle
         
         function SelectOutPath(app)
 
-            if ~isempty(app.filepath)
-                op = uigetdir(fileparts(app.filepath),...
+            if ~isempty(app.datasetPath)
+                op = uigetdir(fileparts(app.datasetPath),...
                     'Select an output folder');
                 app.ProcessButton.Enable = true;
             else
@@ -46,10 +46,10 @@ classdef PrePrcIO < handle
 
         function SelectT1(app)
             
-            if isempty(app.filepath)
+            if isempty(app.datasetPath)
                 t1p = uigetfile('C', 'Select T1 for registration');
             else
-                t1p = uigetfile(app.filepath, 'Select T1 for registration');
+                t1p = uigetfile(app.datasetPath, 'Select T1 for registration');
             end
 
             if isempty(t1p)
@@ -64,7 +64,7 @@ classdef PrePrcIO < handle
         function makeRMSStudioDir(app)
 
             if app.MultipleimagesCheckBox.Value
-                folders = dir(app.filepath);
+                folders = dir(app.datasetPath);
                 folders = folders(~ismember({folders.name},{'.','..'}));
 
                 for i = 1:length(folders)
@@ -74,7 +74,7 @@ classdef PrePrcIO < handle
                         continue
                     end
 
-                    path = fullfile(app.filepath, folder.name, 'rmsstudio');
+                    path = fullfile(app.datasetPath, folder.name, 'rmsstudio');
                     if ~exist(path, 'dir')
                         mkdir(path);
                     end   
@@ -84,7 +84,7 @@ classdef PrePrcIO < handle
                 app.OutputLabel2.Text = app.filepath;
             else
                 %Single folder
-                path = fullfile(app.filepath, 'rmsstudio');
+                path = fullfile(app.datasetPath, 'rmsstudio');
                 if ~exist(path, 'dir')
                     mkdir(path);
                 end

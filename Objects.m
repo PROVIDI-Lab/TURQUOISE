@@ -694,12 +694,15 @@ classdef Objects < handle
                 return
             end
             
-            GUI.DisableControlsStatus(app)
+            GUI.DisableControlsStatus(app, "Copying")
 
             if length(targetIdx) > 1
                 for i = 1:length(targetIdx)
                     target = targetIdx(i);
                     Objects.CopyToTarget(app, target, obj)
+                    GUI.UpdateProgressDialogue(app, ...
+                        app.sessionNames{target}, ...
+                        i / length(targetIdx))
                 end
             else
                 Objects.CopyToTarget(app, targetIdx, obj)

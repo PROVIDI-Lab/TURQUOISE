@@ -186,17 +186,8 @@ classdef ROI < handle
                 if size(mask, 3) < slcNum
                     return
                 end
-            elseif ax == 2
-                if size(mask, 2) < slcNum
-                    return
-                end
-            elseif ax == 1
-                if size(mask, 1) < slcNum
-                    return
-                end
-            end
+            elseif 
 
-            %Add the slice
             if(ax == 3)
                 mask(:,:,slcNum) = maskSlc;
             elseif(ax == 2)

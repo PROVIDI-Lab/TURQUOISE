@@ -333,9 +333,6 @@ classdef Interaction < handle
             %else, reset
             app.progressDlg.CancelRequested = false;
             GUI.RevertControlsStatus(app)
-            msgbox("If you suspect that the program is encountering " + ...
-                "problems, please save any progress and restart the app")
-
         end
         
         %% Keypresses
@@ -588,12 +585,10 @@ classdef Interaction < handle
         
         function LoadLabelsFromStudy(app)
             %If one of the images in the study is a mask, this copies it
-            %and loads it as the mask for one of the images
+            %and loads it as the mask for the current image
 
             %Get the mask selection
             maskID = Interaction.PromptTarget(app);
-            a = 2;
-            b = 3;
 
             fp = fullfile(app.sessionPath, [ app.sessionNames{maskID} '.nii.gz']);
             if ~ exist(fp, 'file')

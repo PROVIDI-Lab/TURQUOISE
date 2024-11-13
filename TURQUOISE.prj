@@ -85,7 +85,6 @@
     <fileset.resources />
     <fileset.package />
     <fileset.depfun>
-      <file>${PROJECT_ROOT}\Analysis.m</file>
       <file>${PROJECT_ROOT}\BackupObj.m</file>
       <file>${PROJECT_ROOT}\Backups.m</file>
       <file>${PROJECT_ROOT}\CopyRegisterSeg.m</file>
@@ -101,35 +100,13 @@
       <file>${PROJECT_ROOT}\Measurements.m</file>
       <file>${PROJECT_ROOT}\NewDataset.mlapp</file>
       <file>${PROJECT_ROOT}\NewDatasetUtils.m</file>
-      <file>${PROJECT_ROOT}\nifti\affine.m</file>
-      <file>${PROJECT_ROOT}\nifti\bresenham_line3d.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_nii.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_nii_ext.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_nii_img.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_untouch0_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_untouch_header_only.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_untouch_nii.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_img.m</file>
-      <file>${PROJECT_ROOT}\nifti\reslice_nii.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_nii.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_nii_ext.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_untouch0_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_untouch_nii.m</file>
-      <file>${PROJECT_ROOT}\nifti\save_untouch_nii_hdr.m</file>
-      <file>${PROJECT_ROOT}\nifti\verify_nii_ext.m</file>
-      <file>${PROJECT_ROOT}\nifti\xform_nii.m</file>
       <file>${PROJECT_ROOT}\NiftiUtils.m</file>
       <file>${PROJECT_ROOT}\Objects.m</file>
-      <file>${PROJECT_ROOT}\otherLibs\blendedPolymask.m</file>
-      <file>${PROJECT_ROOT}\otherLibs\dpsimplify.m</file>
       <file>${PROJECT_ROOT}\Plotting.m</file>
+      <file>${PROJECT_ROOT}\PluginUtils.m</file>
       <file>${PROJECT_ROOT}\ROI.m</file>
       <file>${PROJECT_ROOT}\ROIPrompt.mlapp</file>
       <file>${PROJECT_ROOT}\SegManager.mlapp</file>
-      <file>${PROJECT_ROOT}\Segmentation.m</file>
       <file>${PROJECT_ROOT}\Study.m</file>
       <file>${PROJECT_ROOT}\UserObj.m</file>
     </fileset.depfun>

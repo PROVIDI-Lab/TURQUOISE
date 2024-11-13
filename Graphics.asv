@@ -171,25 +171,15 @@ classdef Graphics < handle
             set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.4);
         end
 
-        function DrawTmpROIInAxis(app, axID, varargin)
+        function DrawTmpROIInAxis(app, axID)
 
             segmentation = app.tmpMasks{axID};
             if isempty(segmentation)
                 return
             end
 
-            if nargin == 4
-                opacity = varargin{1};
-                color = varargin{2};
-            else
-                opacities = unique(app.tmpRenderer{axID}.AlphaData);
-                opacity = opacities(1);
-                if opacity == 0
-                    return
-                end
-
-                color = squeeze(app.tmpRenderer{axID}.CData(1,1,:))';
-            end
+            color       = app.tmpMaskColor;
+            opacity     = app.tmpMaskOpacity;
 
             imID        = app.imagePerAxis(axID);
             viewAxis    = app.viewPerImage(imID); 
@@ -342,17 +332,16 @@ classdef Graphics < handle
 
         function DrawCrosshairInAxis(app, axID, x, y, sz)
 
-
             %Adjust the crosshair plots
             set(app.crosshairRenderer{axID}(1), 'XData',...
-                [1, sz(2)]);
+                [1, sz(1)]);
             set(app.crosshairRenderer{axID}(1), 'YData',...
                 [y, y]);
 
             set(app.crosshairRenderer{axID}(2), 'XData',...
                 [x, x]);
             set(app.crosshairRenderer{axID}(2), 'YData',...
-                [1, sz(1)]);
+                [1, sz(2)]);
 
         end
 
@@ -395,7 +384,7 @@ classdef Graphics < handle
 
 %% Other
 
-        function UpdateUIAxesLabel(app, axID)
+        function res = GetUIAxesLabel(app, axID)
             %Updates the label on the UIAxes containing the name and slice
             %number of the current image.
             
@@ -406,13 +395,7 @@ classdef Graphics < handle
             maxSize     = size(app.data{imID}.img, viewDim);
             sliceString = [int2str(slice), ' / ', int2str(maxSize)];
             nameString  = app.sessionNames{imID};
-            string      = sprintf('%s\n%s',sliceString, nameString);
-            
-            if axID == 1
-                app.UIAxes1Label.Text = string;
-            else
-                app.UIAxes2Label.Text = string;
-            end
+            res         = sprintf('%s\n%s',sliceString, nameString);
         end        
         
         % Delete all points of manual drawing
@@ -449,8 +432,16 @@ classdef Graphics < handle
                     'Color', col, 'FontSize', 15);
                 t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
                     'Color', col, 'FontSize', 15);
-    
-                app.textRenderer{axID} = [t1, t2, t3, t4];
+
+                s1 = text(the_axis, 5, axisSizeY-15, ...
+                    Graphics.GetUIAxesLabel(app, axID),...
+                    'Color', col, 'FontSize', 15);
+
+                s2 = text(the_axis, 5, 15, ...
+                    '',...
+                    'Color', col, 'FontSize', 15);
+
+                app.textRenderer{axID} = [t1, t2, t3, t4, s1, s2];
             end
         end
 
@@ -488,9 +479,7 @@ classdef Graphics < handle
 
         function UpdateOrientationInfoOnAxis(app, axID)
 
-            %Write axis info
-            delete(app.textRenderer{axID})
-            
+            %Write axis info            
             the_axis    = app.GetAxis(axID);
             axisX0 = the_axis.XLim(1);
             axisX1 = the_axis.XLim(2);
@@ -514,9 +503,30 @@ classdef Graphics < handle
             t4 = text(the_axis, axisXMid, axisY1, orr(4),...
                 'Color', col, 'FontSize', 15);
 
-            app.textRenderer{axID} = [t1, t2, t3, t4];
+            app.textRenderer{axID}(1:4) = [t1, t2, t3, t4];
 
         end
+        
+        function UpdateImAndSliceLabelOnAxis(app, axID)
+            
+            the_axis    = app.GetAxis(axID);
+            axisSizeY = the_axis.YLim(2);
+            col = 'Yellow';
+
+            s1 = text(the_axis, 5, axisSizeY-15, ...
+                Graphics.GetUIAxesLabel(app, axID),...
+                'Color', col, 'FontSize', 15);
+
+            app.textRenderer{axID}(5) = s1;
+
+        end
+
+        function UpdateUOHoverLabelOnAxis(app, axID, text)
+
+            
+
+        end
+
 
         function UpdateAxisScaling(app, axID)
 

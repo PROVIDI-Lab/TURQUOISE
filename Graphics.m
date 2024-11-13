@@ -53,7 +53,7 @@ classdef Graphics < handle
             %Draw user-objects
             Graphics.DrawUserObjects(app, axID);
             Graphics.UpdateUserInteractionsForAxis(app, axID);
-            Graphics.UpdateUIAxesLabel(app, axID);
+            Graphics.UpdateInfoOnAxis(app, axID);
             Graphics.DrawTmpROIInAxis(app, axID);
 
             %Important line: If we don't block callbacks while drawing the
@@ -384,23 +384,21 @@ classdef Graphics < handle
 
 %% Other
 
-        function UpdateUIAxesLabel(app, axID)
+        function res = GetUIAxesLabel(app, axID)
             %Updates the label on the UIAxes containing the name and slice
             %number of the current image.
             
-            imID        = app.imagePerAxis(axID);
-            view        = app.viewPerImage(imID);   %sag, cor, ax
-            viewDim     = NiftiUtils.FindViewingDimension(app, imID);
-            slice       = app.slicePerImage{imID}{view};
-            maxSize     = size(app.data{imID}.img, viewDim);
-            sliceString = [int2str(slice), ' / ', int2str(maxSize)];
-            nameString  = app.sessionNames{imID};
-            string      = sprintf('%s\n%s',sliceString, nameString);
-            
-            if axID == 1
-                app.UIAxes1Label.Text = string;
-            else
-                app.UIAxes2Label.Text = string;
+            try
+                imID        = app.imagePerAxis(axID);
+                view        = app.viewPerImage(imID);   %sag, cor, ax
+                viewDim     = NiftiUtils.FindViewingDimension(app, imID);
+                slice       = app.slicePerImage{imID}{view};
+                maxSize     = size(app.data{imID}.img, viewDim);
+                sliceString = [int2str(slice), ' / ', int2str(maxSize)];
+                nameString  = app.sessionNames{imID};
+                res         = sprintf('%s\n%s',sliceString, nameString);
+            catch
+                res = "";
             end
         end        
         
@@ -438,8 +436,17 @@ classdef Graphics < handle
                     'Color', col, 'FontSize', 15);
                 t4 = text(the_axis, round(axisSizeX/2), axisSizeY-5, orr(4),...
                     'Color', col, 'FontSize', 15);
-    
-                app.textRenderer{axID} = [t1, t2, t3, t4];
+
+                s1 = text(the_axis, 5, axisSizeY-5, ...
+                    Graphics.GetUIAxesLabel(app, axID),...
+                    'Color', col, 'FontSize', 12, ...
+                    'Interpreter', 'none');
+
+                s2 = text(the_axis, 5, 5, ...
+                    '',...
+                    'Color', col, 'FontSize', 12);
+
+                app.textRenderer{axID} = [t1, t2, t3, t4, s1, s2];
             end
         end
 
@@ -470,16 +477,15 @@ classdef Graphics < handle
                 daspect(the_axis, [1,1,1])
             end
 
-
-            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            Graphics.UpdateInfoOnAxis(app, axID)
 
         end
 
-        function UpdateOrientationInfoOnAxis(app, axID)
+        function UpdateInfoOnAxis(app, axID, varargin)
 
-            %Write axis info
             delete(app.textRenderer{axID})
-            
+
+            %Write axis info            
             the_axis    = app.GetAxis(axID);
             axisX0 = the_axis.XLim(1);
             axisX1 = the_axis.XLim(2);
@@ -489,7 +495,7 @@ classdef Graphics < handle
             axisXMid = axisX0 + (axisX1-axisX0) / 2;
             axisYMid = axisY0 + (axisY1-axisY0) / 2;
 
-            col = 'Green';
+            col = 'Yellow';
             imID        = app.imagePerAxis(axID);
             view        = app.viewPerImage(imID);
             orr = NiftiUtils.FindOrientationWithAxis(...
@@ -503,9 +509,25 @@ classdef Graphics < handle
             t4 = text(the_axis, axisXMid, axisY1, orr(4),...
                 'Color', col, 'FontSize', 15);
 
-            app.textRenderer{axID} = [t1, t2, t3, t4];
+            s1 = text(the_axis, 5, axisY1-5, ...
+                Graphics.GetUIAxesLabel(app, axID),...
+                'Color', col, 'FontSize', 12, ...
+                'Interpreter', 'none');
+
+            if nargin == 2
+                str = "";
+            else
+                str = varargin{1};
+            end
+
+            s2 = text(the_axis, 5, 5, ...
+                str,...
+                'Color', col, 'FontSize', 12);
+
+            app.textRenderer{axID} = [t1, t2, t3, t4, s1, s2];
 
         end
+
 
         function UpdateAxisScaling(app, axID)
 

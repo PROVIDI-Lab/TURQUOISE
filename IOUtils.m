@@ -309,8 +309,8 @@ classdef IOUtils < handle
                     
             if ~exist('filepath','var')
                 
-                if ~isempty(app.filepath)
-                    targetDir = fullfile(app.filepath, '..');
+                if ~isempty(app.datasetPath)
+                    targetDir = app.datasetPath;
                     fp = uigetdir(targetDir,'Select a subject folder');
                 else
                     fp = uigetdir('C:','Select a subject folder');
@@ -392,8 +392,9 @@ classdef IOUtils < handle
                 if isempty(dcm2nii)
                     return
                 end
-                cmd = [dcm2nii ' -f %d_%s -z y -o "'                     ...
-                        app.sessionPath '" "'  app.filepath '"'];
+                cmd = [dcm2nii ' -f %d_%s -z y -o "' ...
+                        app.sessionPath '" "'  ...
+                        fullfile(app.sessionPath, '..') '"'];
                 system(cmd);
             end
         end
