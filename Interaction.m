@@ -389,16 +389,21 @@ classdef Interaction < handle
                 
                 switch key
                     case 'control'
-                        app.ctrl    = true;
+                        app.ctrl    = ~app.ctrl;
                     case 'o'
+                        app.ctrl = false;
                         Interaction.LoadStudy(app)
                     case 's'
+                        app.ctrl = false;
                         Interaction.Save(app)
                     case 'z'
+                        app.ctrl = false;
                         Backups.Undo(app)
                     case 'y'
+                        app.ctrl = false;
                         Backups.Redo(app)
                     case 'f2'
+                        app.ctrl = false;
                         Interaction.Reload(app)
                 end
             end
@@ -929,14 +934,7 @@ classdef Interaction < handle
         end
         
         %% Other
-        
-        function ShuffleColors(app)
-        %Shuffles the colors of the measurements & segmentations
-            IX = randperm(size(app.colors_list,1));
-            app.colors_list = app.colors_list(IX,:);
-            Graphics.UpdateImage(app);
-        end
-        
+               
         function Debug(app)
             %Used for quick access to the app state
             disp('Debugging, press "continue"')

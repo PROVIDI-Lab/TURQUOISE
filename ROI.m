@@ -500,6 +500,9 @@ classdef ROI < handle
             %Interpolate
             newMask = blendedPolymask(pointsLst, X, Y ,Z);
 
+            %flip dim 1, todo, test for other views/projections
+            newMask = flip(newMask, 1);
+
             %Get new points from mask
             newPoints = ROI.MaskToPoints(newMask, ...
                 obj.points, obj.viewDim);

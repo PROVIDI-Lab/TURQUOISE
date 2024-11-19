@@ -43,6 +43,18 @@ classdef Objects < handle
             if isempty(obj.comment)
                 obj.comment = '';
             end
+            if isempty(obj.color)
+                %generate a random 'vibrant' color (not grey)
+                %Done by getting one high, medium and low value
+                %then randomly ordering them to get an RGB triplet
+
+                high = (4+rand())/5; %between 0.8 and 1.0
+                medium = (1+rand())/3; %between 1/3 and 2/3
+                low = rand()/4; %between 0 and 0.25
+
+                rgb = [high, medium, low];
+                obj.color = rgb(randperm(3)); %randomly order them
+            end
 
             %if the profile is empty, and no profile was specified, change
             %to app.user_profile. Otherwise, the empty profile was
@@ -816,23 +828,6 @@ classdef Objects < handle
             end
 
         end
-
-        function ShowHist(app,  varargin)
-            %When the addComment in a contextmenu is called.
-            if nargin == 1
-                idx     = app.UOBox.Value;
-                if isempty(idx)
-                    return
-                end
-            else
-                app = varargin{2};
-                idx = varargin{3};
-            end
-
-            obj = app.userObjects{idx};
-            Plotting.ShowHistogram(app, obj);
-
-        end
         
         function InterpSlices(app, varargin)
         %Interpolates any slices in between the existing mask slices 
@@ -858,6 +853,26 @@ classdef Objects < handle
             GUI.RevertControlsStatus(app)
 
         end
+
+        function PickColor(app, varargin)
+            if nargin == 1
+                idx     = app.UOBox.Value;
+                if isempty(idx)
+                    return
+                end
+            else
+                app = varargin{2};
+                idx = varargin{3};
+            end
+
+            obj = app.userObjects{idx};
+            col = uisetcolor(obj.color, "");
+
+            obj.color = col;
+
+            Graphics.UpdateAxes(app);
+
+        end
         %% backups stuff
         
         function bck_objects = CreateObjectBackup(app)
@@ -875,6 +890,7 @@ classdef Objects < handle
                 newObj.ID       = obj.ID;
                 newObj.viewDim  = obj.viewDim;
                 newObj.comment  = obj.comment;
+                newObj.color    = obj.color;
                         
                 bck_objects{i} = newObj;                
             end

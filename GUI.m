@@ -101,7 +101,8 @@ classdef GUI < handle
 
             the_ax  = app.GetAxis(axID);
             rect = round(get(the_ax,'OuterPosition'));
-            col = app.colors_list(objID,:);
+            obj = app.userObjects{objID};
+            col = obj.color;
             im  = cat(3, ones(rect([4 3])) * col(1),...
                          ones(rect([4 3])) * col(2),...
                          ones(rect([4 3])) * col(3));
@@ -765,7 +766,6 @@ classdef GUI < handle
         end
         
         function UpdateMaxContrast(app, value)
-            %Previously MaxvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_maxvalue   = value/100*app.MaxValue;
             cVals           = app.cScalePerImage{app.imID};
@@ -778,7 +778,6 @@ classdef GUI < handle
         end
         
         function UpdateMinContrast(app, value)
-            %Previously MinvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_minvalue = value/100*app.MaxValue;
             cVals           = app.cScalePerImage{app.imID};
@@ -1102,7 +1101,7 @@ classdef GUI < handle
                 obj     = app.userObjects{idx};
     
                 Name     = obj.name;
-                Volume   = obj.volume / 1000;
+                Volume   = obj.volume;
                 MeanSig  = obj.meanVal;
     
                 String   = strcat(Name,                 ...
@@ -1262,10 +1261,10 @@ classdef GUI < handle
             d2 = uimenu(m1, "Text", 'Delete ROI');
 
             %submenu - Other
-            s1 = uimenu(m4,'Text','Copy To');
-            s2 = uimenu(m4, 'Text', 'Add Comment');
-            s3 = uimenu(m4, 'Text', 'Show Histogram');
-            s4 = uimenu(m4, 'Text', 'Interpolate mask slices');
+            o1 = uimenu(m4,'Text','Copy To');
+            o2 = uimenu(m4, 'Text', 'Add Comment');
+            o3 = uimenu(m4, 'Text', 'Interpolate mask slices');
+            o4 = uimenu(m4, 'Text', 'Pick Color');
 
             drawnow     %Necessary to display the cm
             
@@ -1282,14 +1281,14 @@ classdef GUI < handle
             d2.MenuSelectedFcn = ...
                 {@Objects.DeleteUO, app, id};
 
-            s1.MenuSelectedFcn = ...
+            o1.MenuSelectedFcn = ...
                 {@Objects.CopyUOTo, app, id};
-            s2.MenuSelectedFcn = ...
+            o2.MenuSelectedFcn = ...
                 {@Objects.AddComment, app, id};
-            s3.MenuSelectedFcn = ...
-                {@Objects.ShowHist, app, id};
-            s4.MenuSelectedFcn = ...
+            o3.MenuSelectedFcn = ...
                 {@Objects.InterpSlices, app, id};
+            o4.MenuSelectedFcn = ...
+                {@Objects.PickColor, app, id};
 
             cm.Position   = [pos(1), pos(2)];
             cm.Visible    = 'on';

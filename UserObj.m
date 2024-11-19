@@ -16,6 +16,7 @@ classdef UserObj < matlab.mixin.SetGet
        editing      = false     %stores whether the object is being edited
        viewDim                  %Stores the viewing dimension
        comment
+       color
        profile
        volume
        meanVal
@@ -45,7 +46,7 @@ classdef UserObj < matlab.mixin.SetGet
                 V           = ...
                     app.data{obj.imageIdx}.img(:,:,:, axis4D);
                 
-                obj.volume     = length(find(L))*VS^3;
+                obj.volume          = length(find(L))*VS^3/1000; %volume in mL
 
                 obj.meanVal         = mean(V(L(:)));
                 obj.stdVal          = std(V(L(:)));    

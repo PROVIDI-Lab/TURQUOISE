@@ -9,8 +9,9 @@ classdef Study < handle
             %Initialises all objects that are used when working with a
             %study. Called after PrepareStudy.
 
-            %First, remove everything from the screen
-            GUI.ResetViews(app);
+            %First, remove everything from the screen 
+            %Removed to save time, might cause some visual bugs.
+            % GUI.ResetViews(app);
             
             nImages     = length(app.sessionNames);
             if nImages == 0
@@ -87,9 +88,6 @@ classdef Study < handle
             %some stuff double, but it's not a big problem I think..
             IOUtils.LoadUserObjects(app, imList(1))
             IOUtils.LoadUserObjects(app, imList(2))
-
-            GUI.InitUORenderer(app, 1)
-            GUI.InitUORenderer(app, 2)
             
         end
         
@@ -144,10 +142,16 @@ classdef Study < handle
                 GUI.DisableControlsStatus(app)
                 app.imagePerAxis(app.axID) = index;
                 IOUtils.LoadNii(app, index)
+                GUI.UpdateProgressDialogue(app, 'Loading', 1/4)
 
                 GUI.DisplayNewImage(app, index)
+                GUI.UpdateProgressDialogue(app, 'Loading', 2/4)
                 IOUtils.LoadUserObjects(app, index)
+                GUI.UpdateProgressDialogue(app, 'Loading', 3/4)
                 Backups.CreateBackup(app)
+                
+                pause(2)    %keep it here: the GUI needs some time to update
+                GUI.UpdateProgressDialogue(app, 'Loading', 4/4)
                 GUI.RevertControlsStatus(app)
                 return
             end
@@ -173,7 +177,10 @@ classdef Study < handle
             fp = app.sessionPath;
             refs = ones(3,length(app.sessionNames));
         
-            for i = 1:length(app.sessionNames)
+            %Capped to 5 to save time. If as a result the images are
+            %displayed weirdly, this should maybe be increased.
+            %!! when lowered to 3, caused crashes. 
+            for i = 1:min(5,length(app.sessionNames))
                 fn = app.sessionNames{i};
 
                 if(exist(fullfile(fp,[fn '.nii']),'file') > 0)

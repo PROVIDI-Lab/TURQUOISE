@@ -128,19 +128,13 @@ classdef IOUtils < handle
             %Loads userobjects from the disk that correspond to the image
             %at idx.
             folder      = app.sessionNames{idx};
-            direc       = fullfile(app.sessionPath, folder);
 
+            direc       = fullfile(app.sessionPath, folder);
             %First find any segmentations
             segFiles    = [dir(fullfile(direc,'**\*.nii')), ...
                 dir(fullfile(direc, '**\*.nii.gz'))];
             for file = segFiles'
                 
-                profile = IOUtils.GetProfileFromFn( ...
-                    fullfile(file.folder, file.name));
-                if ~strcmp(profile, app.user_profile)
-                    continue
-                end
-
                 basename = erase(file.name, {'.nii', '.gz'});
                 if exist(fullfile(file.folder, [basename, '.json']), 'file')
                     IOUtils.loadSegmentationPoints(...
@@ -367,14 +361,10 @@ classdef IOUtils < handle
 
             for file_id=1:length(files)
                 text        = files(file_id).name; 
-
-                %Removed because load_untouch_header takes a long time for
-                %some reason. Could add it back if needed. Might need to
-                %add other checks as well.
-                % hdr = load_untouch_header_only(fullfile(app.sessionPath,text));
-                % if(hdr.dime.dim(4) == 1) % Only 1 slice
-                %     files2keep(file_id) = false;
-                % end
+                hdr = load_untouch_header_only(fullfile(app.sessionPath,text));
+                if(hdr.dime.dim(4) == 1) % Only 1 slice
+                    files2keep(file_id) = false;
+                end
 
                 text = erase(text, '.nii.gz');
                 app.sessionNames{file_id} = erase(text, '.nii');
@@ -534,13 +524,13 @@ classdef IOUtils < handle
             end
         end
 
-        function profile = GetProfileFromFolder(fp)
+        function profile = GetProfileFromFolder(folder)
             %Gets the profile from the path to a folder with segmentations 
             %assumes that all segmentations are stored as:
             % **/rmsstudio/[image]/[profile]/file
-            % 'fp' should be: **/rmsstudio/[image]/[profile]
+            % 'folder' should be: **/rmsstudio/[image]/[profile]
             
-            [base, folder, ~] = fileparts(fp);
+            [base, folder, ~] = fileparts(folder);
             [~, superfolder, ~] = fileparts(base);
             if strcmp(superfolder, 'rmsstudio') || strcmp(folder, 'rmsstudio')
                 profile = ''; %no profile
