@@ -255,7 +255,7 @@ classdef MathUtils < handle
         end 
 
 
-        function slice = ApplyProjection(app, imQ, ID, d4, ...
+        function slice = ApplyProjection(app, imQ, maskQ, ID, d4, ...
                 imOrr, proj, sliceNum)
 
             %Takes a 3D array and returns a slice from a certain projection
@@ -272,7 +272,11 @@ classdef MathUtils < handle
             if imQ
                 arr = app.data{ID}.img(:,:,:,d4);
             else
-                arr = app.userObjects{ID}.data(:,:,:,d4);
+                if maskQ
+                    arr = app.userObjects{ID}.data(:,:,:,d4);
+                else
+                    arr = app.userObjects{ID}.outlineData(:,:,:,d4);
+                end
             end
 
             slice = MathUtils.ApplyProjectionToArray( ...

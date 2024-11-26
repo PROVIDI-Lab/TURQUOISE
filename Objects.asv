@@ -906,13 +906,8 @@ classdef Objects < handle
             app.userObjects = cell(length(objects), 1);
             
             for i = 1:length(objects)
-
+               
                 app.userObjects{i} = objects{i};
-
-                if objects{i}.deleted
-                    continue
-                end
-                
                 if objects{i}.type == 1 || objects{i}.type == 3
                     app.userObjects{i}.data = ...
                         ROI.PointsToMask(app, ...

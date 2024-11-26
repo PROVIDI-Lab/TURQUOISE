@@ -5,7 +5,9 @@ classdef UserObj < matlab.mixin.SetGet
        type                     %ROI = 1, measurement = 2, ...
        additive     = true      %Additive or subtractive ROI
        visible      = true      %Stores whether to display
+       maskQ        = true      %Whether to be displayed as a mask. if false, display outline
        data                     %Seg, other
+       outlineData              %only the outside parts of the segmentation
        points                   %ROIPoints, drawing points
        worldCoords              %ROIPoints, stored as world coordinates
        name                     %Name of the object
@@ -73,11 +75,56 @@ classdef UserObj < matlab.mixin.SetGet
             obj.data    = ROI.PointsToMask(app,...
                 pts, app.imID, obj.type);            
         end
+
+        function createOutline(obj)
+            %creates a mask wheter only the outside 2 px are visible
+
+            %find all slices
+            [x,y,z] = ind2sub(size(obj.data), find(obj.data));
+
+            if isempty(x)
+                return
+            end
+
+            tmp = [x,y,z];
+            slices = unique(tmp(:, obj.viewDim));
+
+            obj.outlineData = false(size(obj.data));
+
+
+            for i = 1:length(slices)
+                slice = slices(i);
+
+                if obj.viewDim == 1
+                    maskSlc    = squeeze(obj.data(slice, :, :));
+                elseif obj.viewDim == 2
+                    maskSlc     = squeeze(obj.data(:, slice, :));
+                else
+                    maskSlc     = squeeze(obj.data(:, :, slice));
+                end
+                
+                eroded = imerode(maskSlc, strel('disk', 3));
+                outline = maskSlc - eroded;
+                outline = outline > 0;
+
+                if obj.viewDim == 1
+                    obj.outlineData(slice, :, :)  = outline;
+                elseif obj.viewDim == 2
+                    obj.outlineData(:, slice, :)  = outline;
+                else
+                    obj.outlineData(:, :, slice)  = outline;
+                end
+            end
+
+        end
         
         function setVisible(obj, visible, ~)
-            
              obj.visible              = visible;
         end   
+
+        function setMask(obj, maskQ, ~)
+            obj.maskQ = maskQ;
+        end
         
     end
 end

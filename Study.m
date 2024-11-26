@@ -38,8 +38,6 @@ classdef Study < handle
                 app.user_profile = '';
             end
             
-            Backups.ClearBackups(app)
-            
             %Find if any files have user objects associated with them
             Study.FindUOsOnDisk(app)
 
@@ -79,8 +77,6 @@ classdef Study < handle
             
             %Initialize the window
             GUI.InitGUI(app)
-            Backups.ClearBackups(app)
-            Backups.CreateBackup(app)
             Study.ToggleUnsavedProgress(app, false)
             close(d);
 
@@ -89,6 +85,7 @@ classdef Study < handle
             IOUtils.LoadUserObjects(app, imList(1))
             IOUtils.LoadUserObjects(app, imList(2))
             
+            Backups.ClearBackups(app)
         end
         
         function FindUOsOnDisk(app)
@@ -177,10 +174,7 @@ classdef Study < handle
             fp = app.sessionPath;
             refs = ones(3,length(app.sessionNames));
         
-            %Capped to 5 to save time. If as a result the images are
-            %displayed weirdly, this should maybe be increased.
-            %!! when lowered to 3, caused crashes. 
-            for i = 1:min(5,length(app.sessionNames))
+            for i = 1:length(app.sessionNames)
                 fn = app.sessionNames{i};
 
                 if(exist(fullfile(fp,[fn '.nii']),'file') > 0)

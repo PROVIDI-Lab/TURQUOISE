@@ -135,7 +135,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{viewAxis};
 
             imSlice     = MathUtils.ApplyProjection(...
-                app, true, imID, d4, imageOr, viewAxis, slice);
+                app, true, false, imID, d4, imageOr, viewAxis, slice);
 
             % figure;
             % imshow(imSlice,[])
@@ -156,7 +156,7 @@ classdef Graphics < handle
             slice       = app.slicePerImage{imID}{viewAxis};
 
             maskSlice   = MathUtils.ApplyProjection(...
-                app, false, idx, 1, imageOr, viewAxis, slice);
+                app, false, obj.maskQ, idx, 1, imageOr, viewAxis, slice);
 
             %Very ugly expression..
             %Basically creates an RGB version of imslice multiplied by the
@@ -164,9 +164,14 @@ classdef Graphics < handle
             set(app.UORenderer{axID}{obj.ID},'CData', ...
                 repmat(reshape(obj.color, [1,1,3]), size(maskSlice)) .*...
                     repmat(maskSlice, 1,1,3));
-            %Set the UO to be slightly transparent
+
+            %Adjust transparency
             %TODO, get transparency from a setting
-            set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.3);
+            if obj.maskQ
+                set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice*0.3);
+            else
+                set(app.UORenderer{axID}{obj.ID},'AlphaData', maskSlice);
+            end
         end
 
         function DrawTmpROIInAxis(app, axID)

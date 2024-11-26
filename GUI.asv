@@ -9,6 +9,7 @@ classdef GUI < handle
             app.ViewMenu.Enable     = 'on';
             app.AnalyseMenu.Enable  = 'on';
             app.DrawMeasureMenu.Enable     = 'on';
+            app.ctrl = false;
 
             d = uiprogressdlg(app.UIFigure, 'Title',...
                 'New Patient');
@@ -100,7 +101,8 @@ classdef GUI < handle
 
             the_ax  = app.GetAxis(axID);
             rect = round(get(the_ax,'OuterPosition'));
-            col = app.colors_list(objID,:);
+            obj = app.userObjects{objID};
+            col = obj.color;
             im  = cat(3, ones(rect([4 3])) * col(1),...
                          ones(rect([4 3])) * col(2),...
                          ones(rect([4 3])) * col(3));
@@ -482,7 +484,7 @@ classdef GUI < handle
             the_axis.XLim = [i0New, i1New];
             the_axis.YLim = [j0New, j1New];
 
-            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            Graphics.UpdateInfoOnAxis(app, axID)
 
         end
 
@@ -548,7 +550,7 @@ classdef GUI < handle
             app.dragPoint(3) = hity;
 
             %Update axis info position
-            Graphics.UpdateOrientationInfoOnAxis(app, axID)
+            Graphics.UpdateInfoOnAxis(app, axID)
             
         end
         
@@ -764,7 +766,6 @@ classdef GUI < handle
         end
         
         function UpdateMaxContrast(app, value)
-            %Previously MaxvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_maxvalue   = value/100*app.MaxValue;
             cVals           = app.cScalePerImage{app.imID};
@@ -777,7 +778,6 @@ classdef GUI < handle
         end
         
         function UpdateMinContrast(app, value)
-            %Previously MinvalSliderValueChanging
             %Calculates the new cScale based on the slider value
             next_minvalue = value/100*app.MaxValue;
             cVals           = app.cScalePerImage{app.imID};
@@ -928,12 +928,21 @@ classdef GUI < handle
                 end
             end
 
+            foundEmpty = false;
+            for i = 1:length(profileLst)
+                if isempty(profileLst{i})
+                    foundEmpty = true;
+                    profileLst{i} = 'None';
+                end
+            end
+
+            %Add 'none' if not present
+            if ~foundEmpty
+                profileLst{end+1} = 'None';
+            end
+
             %Add these profiles to the listbox
             app.ProfileListBox.Items = profileLst;
-
-            %Add 'none'
-            idx     = size(app.ProfileListBox.Items, 2) + 1;
-            app.ProfileListBox.Items{idx}       = 'None';
 
             %Finally, go over all UOs again, to toggle their presence per
             %profile
@@ -946,21 +955,28 @@ classdef GUI < handle
                     continue
                 end
 
+
+                profile = app.userObjects{i}.profile;
+                if isempty(profile)
+                    profile = 'None';
+                end
+
+                for ii = 1:length(profileLst)
+                    if strcmp(profileLst{ii}, profile)
+                        style = uistyle("Icon", "uoIcon.png");
+                        addStyle(app.ProfileListBox, style, "item", ...
+                            ii)
+                        profileLst{ii} = [];
+                        break
+                    end
+                end
+
                 if isempty(app.userObjects{i}.profile)
                     style = uistyle("Icon", "uoIcon.png");
                     addStyle(app.ProfileListBox, style, "item", ...
                         length(app.ProfileListBox.Items))
                 else
-                    for ii = 1:length(profileLst)
-                        if strcmp(profileLst{ii}, ...
-                                app.userObjects{i}.profile)
-                            style = uistyle("Icon", "uoIcon.png");
-                            addStyle(app.ProfileListBox, style, "item", ...
-                                ii)
-                            profileLst{ii} = [];
-                            break
-                        end
-                    end
+                    
                 end
             end
 
@@ -1046,12 +1062,7 @@ classdef GUI < handle
                 GUI.DisplayHoverValue(app, column, row, axID)
             end
 
-            if UOId == -1
-                app.UOHoverLabel.Text = "";
-                return
-            end
-
-            GUI.DisplayUOText(app, UOId)
+            GUI.DisplayUOText(app, UOId, axID)
 
         end
 
@@ -1098,26 +1109,27 @@ classdef GUI < handle
 
         end
 
-        function DisplayUOText(app, UOId)
+        function DisplayUOText(app, UOId, axID)
 
-            idx     = Objects.findUOIndex(app, UOId);
-            obj     = app.userObjects{idx};
+            if UOId ~= -1
 
-            if isempty(obj.prop)
-                obj.prop.volume = 0;
-                obj.prop.mean   = 0;
+                idx     = Objects.findUOIndex(app, UOId);
+                obj     = app.userObjects{idx};
+    
+                Name     = obj.name;
+                Volume   = obj.volume;
+                MeanSig  = obj.meanVal;
+    
+                String   = strcat(Name,                 ...
+                            '\tVolume:%.0f ml \tMean: %.4f');
+                String   = sprintf(String,              ...               
+                                   Volume,              ...
+                                   MeanSig);
+            else
+                String = "";
             end
 
-            Name     = obj.name;
-            Volume   = obj.prop.volume;
-            MeanSig  = obj.prop.mean;
-
-            String   = strcat(Name,                 ...
-                        '\tVolume:%.0f mm^{3} \tMean: %.2f mm^{2}s^{-1}');
-            String   = sprintf(String,              ...               
-                               Volume,              ...
-                               MeanSig);
-            app.UOHoverLabel.Text = String;
+            Graphics.UpdateInfoOnAxis(app, axID, String)
         end
 
         %% Crosshair
@@ -1207,9 +1219,6 @@ classdef GUI < handle
                 ijk         = NiftiUtils.rc2ijk(app, row, column, axID);
             end
 
-            if axID == 2
-                disp([row, column]
-
             %Find slice and the image if needed
             slice       = ijk(viewDim);
             if ~isempty(app.slicePerImage{imID})
@@ -1260,18 +1269,23 @@ classdef GUI < handle
             m0 = uimenu(cm,'Text','Edit Points');
             m1 = uimenu(cm,'Text','Delete');
             m2 = uimenu(cm,'Text','Rename');
-            m3 = uimenu(cm,'Text','Toggle Visibility');
+            m3 = uimenu(cm,'Text','View');
             m4 = uimenu(cm, 'Text', 'More');
 
             %submenu - Delete
             d1 = uimenu(m1, 'Text', 'Delete Slice');
             d2 = uimenu(m1, "Text", 'Delete ROI');
 
+            %Submenu - View
+            v1 = uimenu(m3, 'Text', "Toggle Visibility");
+            v2 = uimenu(m3, 'Text', "Toggle Mask / Outline");
+            v3 = uimenu(m3, 'Text', 'Pick Color');
+
             %submenu - Other
-            s1 = uimenu(m4,'Text','Copy To');
-            s2 = uimenu(m4, 'Text', 'Add Comment');
-            s3 = uimenu(m4, 'Text', 'Show Histogram');
-            s4 = uimenu(m4, 'Text', 'Interpolate mask slices');
+            o1 = uimenu(m4,'Text','Copy To');
+            o2 = uimenu(m4, 'Text', 'Add Comment');
+            o3 = uimenu(m4, 'Text', 'Interpolate mask slices');
+            
 
             drawnow     %Necessary to display the cm
             
@@ -1280,22 +1294,25 @@ classdef GUI < handle
                 {@Objects.EditUO, app, id};
             m2.MenuSelectedFcn = ...
                 {@Objects.RenameUO, app, id};
-            m3.MenuSelectedFcn = ...
-                {@Objects.ToggleVisibleUO, app, id};
 
             d1.MenuSelectedFcn = ...
                 {@Objects.DeleteUOSlice, app, id};
             d2.MenuSelectedFcn = ...
                 {@Objects.DeleteUO, app, id};
 
-            s1.MenuSelectedFcn = ...
+            o1.MenuSelectedFcn = ...
                 {@Objects.CopyUOTo, app, id};
-            s2.MenuSelectedFcn = ...
+            o2.MenuSelectedFcn = ...
                 {@Objects.AddComment, app, id};
-            s3.MenuSelectedFcn = ...
-                {@Objects.ShowHist, app, id};
-            s4.MenuSelectedFcn = ...
+            o3.MenuSelectedFcn = ...
                 {@Objects.InterpSlices, app, id};
+
+            v1.MenuSelectedFcn = ...
+                {@Objects.ToggleVisibleUO, app, id};
+            v2.MenuSelectedFcn = ...
+                {@Objects.ToggleMaskOutline, app, id};
+            v3.MenuSelectedFcn = ...
+                {@Objects.PickColor, app, id};
 
             cm.Position   = [pos(1), pos(2)];
             cm.Visible    = 'on';

@@ -928,15 +928,25 @@ classdef GUI < handle
                 end
             end
 
+            foundEmpty = false;
+            for i = 1:length(profileLst)
+                if isempty(profileLst{i})
+                    foundEmpty = true;
+                    profileLst{i} = 'None';
+                end
+            end
+
+            %Add 'none' if not present
+            if ~foundEmpty
+                profileLst{end+1} = 'None';
+            end
+
             %Add these profiles to the listbox
             app.ProfileListBox.Items = profileLst;
 
-            %Add 'none'
-            idx     = size(app.ProfileListBox.Items, 2) + 1;
-            app.ProfileListBox.Items{idx}       = 'None';
-
             %Finally, go over all UOs again, to toggle their presence per
             %profile
+            profilePresent = false(size(profileLst));
             for i = 1:length(app.userObjects)
                 if app.userObjects{i}.deleted
                     continue
@@ -946,23 +956,23 @@ classdef GUI < handle
                     continue
                 end
 
-                if isempty(app.userObjects{i}.profile)
-                    style = uistyle("Icon", "uoIcon.png");
-                    addStyle(app.ProfileListBox, style, "item", ...
-                        length(app.ProfileListBox.Items))
-                else
-                    for ii = 1:length(profileLst)
-                        if strcmp(profileLst{ii}, ...
-                                app.userObjects{i}.profile)
-                            style = uistyle("Icon", "uoIcon.png");
-                            addStyle(app.ProfileListBox, style, "item", ...
-                                ii)
-                            profileLst{ii} = [];
-                            break
-                        end
+
+                profile = app.userObjects{i}.profile;
+                if isempty(profile)
+                    profile = 'None';
+                end
+
+                for ii = 1:length(profileLst)
+                    if strcmp(profileLst{ii}, profile)
+                        profilePresent(ii) = true;
+                        break
                     end
                 end
             end
+
+            style = uistyle("Icon", "uoIcon.png");
+            addStyle(app.ProfileListBox, style, "item", ...
+                find(profilePresent))
 
             %Set the value to the current user_profile, if possible
             if any(strcmp(app.ProfileListBox.Items, app.user_profile))
@@ -1253,18 +1263,23 @@ classdef GUI < handle
             m0 = uimenu(cm,'Text','Edit Points');
             m1 = uimenu(cm,'Text','Delete');
             m2 = uimenu(cm,'Text','Rename');
-            m3 = uimenu(cm,'Text','Toggle Visibility');
+            m3 = uimenu(cm,'Text','View');
             m4 = uimenu(cm, 'Text', 'More');
 
             %submenu - Delete
             d1 = uimenu(m1, 'Text', 'Delete Slice');
             d2 = uimenu(m1, "Text", 'Delete ROI');
 
+            %Submenu - View
+            v1 = uimenu(m3, 'Text', "Toggle Visibility");
+            v2 = uimenu(m3, 'Text', "Toggle Mask / Outline");
+            v3 = uimenu(m3, 'Text', 'Pick Color');
+
             %submenu - Other
             o1 = uimenu(m4,'Text','Copy To');
             o2 = uimenu(m4, 'Text', 'Add Comment');
             o3 = uimenu(m4, 'Text', 'Interpolate mask slices');
-            o4 = uimenu(m4, 'Text', 'Pick Color');
+            
 
             drawnow     %Necessary to display the cm
             
@@ -1273,8 +1288,6 @@ classdef GUI < handle
                 {@Objects.EditUO, app, id};
             m2.MenuSelectedFcn = ...
                 {@Objects.RenameUO, app, id};
-            m3.MenuSelectedFcn = ...
-                {@Objects.ToggleVisibleUO, app, id};
 
             d1.MenuSelectedFcn = ...
                 {@Objects.DeleteUOSlice, app, id};
@@ -1287,7 +1300,12 @@ classdef GUI < handle
                 {@Objects.AddComment, app, id};
             o3.MenuSelectedFcn = ...
                 {@Objects.InterpSlices, app, id};
-            o4.MenuSelectedFcn = ...
+
+            v1.MenuSelectedFcn = ...
+                {@Objects.ToggleVisibleUO, app, id};
+            v2.MenuSelectedFcn = ...
+                {@Objects.ToggleMaskOutline, app, id};
+            v3.MenuSelectedFcn = ...
                 {@Objects.PickColor, app, id};
 
             cm.Position   = [pos(1), pos(2)];
