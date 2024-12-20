@@ -1367,6 +1367,11 @@ classdef GUI < handle
         end
 
         function UpdateProgressDialogue(app, varargin)
+            %Don't handle calls to deleted dlgs
+            if ~exist("app.progressDlg","var")
+                return
+            end
+
             if nargin == 3
                 msg = varargin{1};
                 val = varargin{2};

@@ -659,11 +659,11 @@ classdef Interaction < handle
         end
         
         
-        function PerformAutomaticEllipseMeasurement(app)
-            % Called when the user presses the 'measure auto' button.
-            
-            Measurements.PerformAutomaticEllipseMeasurement(app)
-        end
+        % function PerformAutomaticEllipseMeasurement(app)
+        %     % Called when the user presses the 'measure auto' button.
+        % 
+        %     Measurements.PerformAutomaticEllipseMeasurement(app)
+        % end
         
         function MeasureLine(app)
         %Toggles 
@@ -692,76 +692,76 @@ classdef Interaction < handle
         end
         
         
-        function AlignLeftRight(app, alignment)
-            %Switches the alignment between the two views 
-            
-            if isempty(app.Align)
-                app.Align = '';
-            end
-            
-            %Turn off alignment when pressing on the same button
-            if strcmp(alignment, app.Align)
-                app.Align = '';
-            else
-                app.Align = alignment;
-            end
-            
-            GUI.UpdateAlignButtons(app)
-        end
-        
-        function choice = RegisterSelectedImageToDialog(app)
-            %Called when the user presses the 'align labels' button. 
-            %Prompts the user for an image to which the current labels 
-            %should be registered, then registers them.
-            
-            IOUtils.SaveSegmentations(app);
-            
-            GUI.DisableControlsStatus(app);
-            app.UIFigure.Visible = 'off';
-            drawnow;
-            
-            d = dialog('Position',                                      ...
-                       [300 300 250 150],                               ...
-                       'Name',                                          ...
-                       'Select Target');
-            uicontrol('Parent',d,                                 ...
-                'Style','text',                                         ...
-                'Position',[20 80 210 40],                              ...
-                'String','Select the registration target');
-            
-            uicontrol('Parent',d,                               ...
-                'Style','popup',                                        ...
-                'Position',[75 70 100 25],                              ...
-                'String',app.sessionNames,              ...
-                'Callback',@popup_callback);
-            
-            uicontrol('Parent',d,                                 ...
-                'Position',[89 20 70 25],                               ...
-                'String','Align!',                                      ...
-                'Callback','delete(gcf)');
-            
-            choice = app.sessionNames{1};
-            
-            % Wait for d to close before running to completion
-            uiwait(d);
-            app.UIFigure.Visible = 'on';
-            GUI.RevertControlsStatus(app);
-            
-            function popup_callback(popup, ~)
-                idx = popup.Value;
-                popup_items = popup.String;
-                % This code uses dot notation to get properties.
-                % Dot notation runs in R2014b and later.
-                % For R2014a and earlier:
-                % idx = get(popup,'Value');
-                % popup_items = get(popup,'String');
-                choice = char(popup_items(idx,:));
-                delete(gcf);
-                app.UIFigure.Visible = 'on';
-                drawnow
-                MathUtils.PerformElastixRegistration(app,choice);
-            end
-        end
+        % function AlignLeftRight(app, alignment)
+        %     %Switches the alignment between the two views 
+        % 
+        %     if isempty(app.Align)
+        %         app.Align = '';
+        %     end
+        % 
+        %     %Turn off alignment when pressing on the same button
+        %     if strcmp(alignment, app.Align)
+        %         app.Align = '';
+        %     else
+        %         app.Align = alignment;
+        %     end
+        % 
+        %     GUI.UpdateAlignButtons(app)
+        % end
+        % 
+        % function choice = RegisterSelectedImageToDialog(app)
+        %     %Called when the user presses the 'align labels' button. 
+        %     %Prompts the user for an image to which the current labels 
+        %     %should be registered, then registers them.
+        % 
+        %     IOUtils.SaveSegmentations(app);
+        % 
+        %     GUI.DisableControlsStatus(app);
+        %     app.UIFigure.Visible = 'off';
+        %     drawnow;
+        % 
+        %     d = dialog('Position',                                      ...
+        %                [300 300 250 150],                               ...
+        %                'Name',                                          ...
+        %                'Select Target');
+        %     uicontrol('Parent',d,                                 ...
+        %         'Style','text',                                         ...
+        %         'Position',[20 80 210 40],                              ...
+        %         'String','Select the registration target');
+        % 
+        %     uicontrol('Parent',d,                               ...
+        %         'Style','popup',                                        ...
+        %         'Position',[75 70 100 25],                              ...
+        %         'String',app.sessionNames,              ...
+        %         'Callback',@popup_callback);
+        % 
+        %     uicontrol('Parent',d,                                 ...
+        %         'Position',[89 20 70 25],                               ...
+        %         'String','Align!',                                      ...
+        %         'Callback','delete(gcf)');
+        % 
+        %     choice = app.sessionNames{1};
+        % 
+        %     % Wait for d to close before running to completion
+        %     uiwait(d);
+        %     app.UIFigure.Visible = 'on';
+        %     GUI.RevertControlsStatus(app);
+        % 
+        %     function popup_callback(popup, ~)
+        %         idx = popup.Value;
+        %         popup_items = popup.String;
+        %         % This code uses dot notation to get properties.
+        %         % Dot notation runs in R2014b and later.
+        %         % For R2014a and earlier:
+        %         % idx = get(popup,'Value');
+        %         % popup_items = get(popup,'String');
+        %         choice = char(popup_items(idx,:));
+        %         delete(gcf);
+        %         app.UIFigure.Visible = 'on';
+        %         drawnow
+        %         MathUtils.PerformElastixRegistration(app,choice);
+        %     end
+        % end
         
         function UpdateSlice(app, value, axID)
         %Updates the slice to the new value, then updates the GUI

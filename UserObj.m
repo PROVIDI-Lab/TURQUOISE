@@ -44,11 +44,11 @@ classdef UserObj < matlab.mixin.SetGet
                 axis4D      = app.d4PerImage(obj.imageIdx);
                 L           = obj.data == 1;
                 VS          = ...
-                    min(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
+                    prod(app.data{obj.imageIdx}.hdr.dime.pixdim(2:4));
                 V           = ...
                     app.data{obj.imageIdx}.img(:,:,:, axis4D);
                 
-                obj.volume          = length(find(L))*VS^3/1000; %volume in mL
+                obj.volume          = length(find(L))*VS/1000; %volume in mL
 
                 obj.meanVal         = mean(V(L(:)));
                 obj.stdVal          = std(V(L(:)));    

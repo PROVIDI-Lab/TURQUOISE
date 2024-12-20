@@ -3,13 +3,13 @@
     <param.appname>TURQUOISE</param.appname>
     <param.icon />
     <param.icons />
-    <param.version>1.0</param.version>
-    <param.authnamewatermark />
-    <param.email />
+    <param.version>0.6.0</param.version>
+    <param.authnamewatermark>Cyrano Chatziantoniou</param.authnamewatermark>
+    <param.email>c.chatziantoniou-3@umcutrecht.nl</param.email>
     <param.company />
     <param.summary />
     <param.description />
-    <param.screenshot />
+    <param.screenshot>${PROJECT_ROOT}\Splash.png</param.screenshot>
     <param.guid />
     <param.installpath.string>\TURQUOISE\</param.installpath.string>
     <param.installpath.combo>option.installpath.programfiles</param.installpath.combo>
@@ -45,13 +45,9 @@
     <unset>
       <param.icon />
       <param.icons />
-      <param.version />
-      <param.authnamewatermark />
-      <param.email />
       <param.company />
       <param.summary />
       <param.description />
-      <param.screenshot />
       <param.guid />
       <param.installpath.string />
       <param.installpath.combo />
@@ -82,7 +78,120 @@
     <fileset.main>
       <file>${PROJECT_ROOT}\TURQUOISE.mlapp</file>
     </fileset.main>
-    <fileset.resources />
+    <fileset.resources>
+      <file>D:\Code\dcm2nii\abdo256.nii.gz</file>
+      <file>D:\Code\dcm2nii\carp.nii.gz</file>
+      <file>D:\Code\dcm2nii\ch256.nii.gz</file>
+      <file>D:\Code\dcm2nii\chris_MRA.nii.gz</file>
+      <file>D:\Code\dcm2nii\chris_t1.nii.gz</file>
+      <file>D:\Code\dcm2nii\chris_t2.nii.gz</file>
+      <file>D:\Code\dcm2nii\COPYING.TXT</file>
+      <file>D:\Code\dcm2nii\ct.nii.gz</file>
+      <file>D:\Code\dcm2nii\dcm2niix.exe</file>
+      <file>D:\Code\dcm2nii\lut</file>
+      <file>D:\Code\dcm2nii\manual.pdf</file>
+      <file>D:\Code\dcm2nii\mni152_2009_256.nii.gz</file>
+      <file>D:\Code\dcm2nii\mni152_2009bet.nii.gz</file>
+      <file>D:\Code\dcm2nii\motor.nii.gz</file>
+      <file>D:\Code\dcm2nii\MRIcroGL.exe</file>
+      <file>D:\Code\dcm2nii\MRIcroGL.ini</file>
+      <file>D:\Code\dcm2nii\MRIcroGL64.exe</file>
+      <file>D:\Code\dcm2nii\MRIcroGL64.ini</file>
+      <file>D:\Code\dcm2nii\pigz.exe</file>
+      <file>D:\Code\dcm2nii\script</file>
+      <file>D:\Code\dcm2nii\shaders</file>
+      <file>D:\Code\dcm2nii\templates</file>
+      <file>D:\Code\dcm2nii\visiblehuman.nii.gz</file>
+      <file>${PROJECT_ROOT}\nifti\affine.m</file>
+      <file>${PROJECT_ROOT}\nifti\Align.m</file>
+      <file>${PROJECT_ROOT}\nifti\bipolar.m</file>
+      <file>${PROJECT_ROOT}\nifti\bresenham_line3d.m</file>
+      <file>${PROJECT_ROOT}\nifti\chompsep.m</file>
+      <file>${PROJECT_ROOT}\nifti\clip_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\collapse_nii_scan.m</file>
+      <file>${PROJECT_ROOT}\nifti\concatpath.m</file>
+      <file>${PROJECT_ROOT}\nifti\datenum2.m</file>
+      <file>${PROJECT_ROOT}\nifti\deletewithsemaphores.m</file>
+      <file>${PROJECT_ROOT}\nifti\displayerrorstruct.m</file>
+      <file>${PROJECT_ROOT}\nifti\existfile.c</file>
+      <file>${PROJECT_ROOT}\nifti\existfile.m</file>
+      <file>${PROJECT_ROOT}\nifti\expand_nii_scan.m</file>
+      <file>${PROJECT_ROOT}\nifti\extra_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\FAQ.pdf</file>
+      <file>${PROJECT_ROOT}\nifti\findfiles.m</file>
+      <file>${PROJECT_ROOT}\nifti\flip_lr.m</file>
+      <file>${PROJECT_ROOT}\nifti\generateemptyfile.m</file>
+      <file>${PROJECT_ROOT}\nifti\get_nii_frame.m</file>
+      <file>${PROJECT_ROOT}\nifti\getfiledate.m</file>
+      <file>${PROJECT_ROOT}\nifti\gethostname.m</file>
+      <file>${PROJECT_ROOT}\nifti\getusername.m</file>
+      <file>${PROJECT_ROOT}\nifti\history.mat</file>
+      <file>${PROJECT_ROOT}\nifti\license.txt</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_nii_img.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch0_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_header_only.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\load_untouch_nii_img.m</file>
+      <file>${PROJECT_ROOT}\nifti\make_ana.m</file>
+      <file>${PROJECT_ROOT}\nifti\make_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\mat_into_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\mbdelete.m</file>
+      <file>${PROJECT_ROOT}\nifti\mbload.m</file>
+      <file>${PROJECT_ROOT}\nifti\mbtime.m</file>
+      <file>${PROJECT_ROOT}\nifti\multicore.html</file>
+      <file>${PROJECT_ROOT}\nifti\multicoredemo.m</file>
+      <file>${PROJECT_ROOT}\nifti\NIfTI_tools.pdf</file>
+      <file>${PROJECT_ROOT}\nifti\nii_splitter.m</file>
+      <file>${PROJECT_ROOT}\nifti\pad_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\postprocessdemo.m</file>
+      <file>${PROJECT_ROOT}\nifti\printTensor.m</file>
+      <file>${PROJECT_ROOT}\nifti\README.txt</file>
+      <file>${PROJECT_ROOT}\nifti\regexptokens.m</file>
+      <file>${PROJECT_ROOT}\nifti\removefilesemaphore.m</file>
+      <file>${PROJECT_ROOT}\nifti\reslice_nii.asv</file>
+      <file>${PROJECT_ROOT}\nifti\reslice_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_file_menu.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_orient.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_orient_ui.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_select_file.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_xhair.m</file>
+      <file>${PROJECT_ROOT}\nifti\rri_zoom_menu.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch0_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_header_only.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_nii_hdr.m</file>
+      <file>${PROJECT_ROOT}\nifti\save_untouch_slice.m</file>
+      <file>${PROJECT_ROOT}\nifti\setfilesemaphore.m</file>
+      <file>${PROJECT_ROOT}\nifti\startmulticoremaster.m</file>
+      <file>${PROJECT_ROOT}\nifti\startmulticoreslave.m</file>
+      <file>${PROJECT_ROOT}\nifti\tempdir2.m</file>
+      <file>${PROJECT_ROOT}\nifti\testfun.m</file>
+      <file>${PROJECT_ROOT}\nifti\textwrap2.m</file>
+      <file>${PROJECT_ROOT}\nifti\translatedatestr.m</file>
+      <file>${PROJECT_ROOT}\nifti\UnitVectors.m</file>
+      <file>${PROJECT_ROOT}\nifti\unxform_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\UseANALYZE.pdf</file>
+      <file>${PROJECT_ROOT}\nifti\userfeedback.m</file>
+      <file>${PROJECT_ROOT}\nifti\verify_nii_ext.m</file>
+      <file>${PROJECT_ROOT}\nifti\view_nii.m</file>
+      <file>${PROJECT_ROOT}\nifti\view_nii_menu.m</file>
+      <file>${PROJECT_ROOT}\nifti\writeFDT.m</file>
+      <file>${PROJECT_ROOT}\nifti\xform_nii.m</file>
+      <file>${PROJECT_ROOT}\otherLibs\blendedPolymask.m</file>
+      <file>${PROJECT_ROOT}\otherLibs\dpsimplify.m</file>
+      <file>${PROJECT_ROOT}\otherLibs\license_blendedPolymask.txt</file>
+      <file>${PROJECT_ROOT}\otherLibs\license_dpsimplify.txt</file>
+      <file>${PROJECT_ROOT}\subApps\AIHelper.mlapp</file>
+      <file>${PROJECT_ROOT}\subApps\ContourPicker.mlapp</file>
+      <file>${PROJECT_ROOT}\subApps\PatientReport.mlapp</file>
+    </fileset.resources>
     <fileset.package />
     <fileset.depfun>
       <file>${PROJECT_ROOT}\BackupObj.m</file>
@@ -107,6 +216,7 @@
       <file>${PROJECT_ROOT}\ROI.m</file>
       <file>${PROJECT_ROOT}\ROIPrompt.mlapp</file>
       <file>${PROJECT_ROOT}\SegManager.mlapp</file>
+      <file>${PROJECT_ROOT}\Segmentation.m</file>
       <file>${PROJECT_ROOT}\Study.m</file>
       <file>${PROJECT_ROOT}\UserObj.m</file>
     </fileset.depfun>

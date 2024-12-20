@@ -274,6 +274,7 @@ classdef NewDatasetUtils < handle
 
             res = X\log(single(input_img)');
             ADC = res(1,:);
+            ADC(isnan(ADC)) = 0;
             ADC(ADC < 0) = 0;
             ADC = reshape(ADC, [sx, sy, sz]);
             ADC(bckGrndIdx) = 0;
@@ -300,24 +301,29 @@ classdef NewDatasetUtils < handle
             if sum(IX_high) < 2
                 IX_high = false(length(uniqueBVals), 1);
                 IX_high(end-1:end) = true;
+            end
+            if sum(IX_low) < 2
                 IX_low = false(length(uniqueBVals), 1);
-                IX_low(1:end-2) = true;
+                IX_low(1:2) = true;
             end
 
             %high
             Xh = [-uniqueBVals(IX_high)' ones(sum(IX_high==1),1)];
 	        HighD = Xh\log(input_img(:,IX_high))'; 
+            HighD(isnan(HighD)) = 0;
             HighD(HighD < 0) = 0;
             HighD(HighD == inf) = 0;
 
             %low
             Xl = [-uniqueBVals(IX_low)' ones(sum(IX_low==1),1)]; 
 	        LowD = Xl\log(input_img(:,IX_low))';
+            LowD(isnan(LowD)) = 0;
             LowD(LowD < 0) = 0;
             LowD(LowD == inf) = 0;
 
             %f
-            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);	        
+            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);
+            f(isnan(f)) = 0;
             f(f < 0) = 0;
             f(f == inf) = 0;
 

@@ -18,9 +18,13 @@ classdef NewDatasetUtils < handle
 
             if isempty(niiFiles)
                 if isempty(dcmFiles)
-                    errordlg("No files found.", "File error")
-                    status = 0;
-                    return
+                    selection = uiconfirm(app.UIFigure, ...
+                        "No .dcm files found. Continue anyway?", ...
+                        "File error", "Icon","warning");
+                    if strcmp(selection, "Cancel")
+                        status = 0;
+                        return
+                    end
                 end
             else    %no need to convert
                 return
@@ -56,6 +60,9 @@ classdef NewDatasetUtils < handle
 
                 for j = 1:length(sessionFolders)
                     sFolder = sessionFolders(j);
+                    if ~sFolder.isdir
+                        continue
+                    end
                     inpath = fullfile(sFolder.folder, sFolder.name);
                     outpath = fullfile(inpath, 'rmsstudio');
                     mkdir(outpath)
@@ -98,7 +105,7 @@ classdef NewDatasetUtils < handle
                     dcm2nii = dcm2nii(1);
                 end
 
-                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');                
+                dcm2nii = strcat(dcm2nii.path, '\dcm2niix');      
                 
             else
                 dcm2niiDir  = uigetdir('C:', 'Please locate dcm2nii');
@@ -108,6 +115,14 @@ classdef NewDatasetUtils < handle
                 end
                 addpath(dcm2niiDir)
                 dcm2nii     = fullfile(dcm2niiDir, 'dcm2niix');
+
+                if exist(dcm2nii, 'file')
+                    msgbox(strcat("Found dmc2niix at: ", dcm2nii))
+                else
+                    msgbox("didn't find dcm2niix, please try again")
+                    dcm2nii = NewDatasetUtils.FindDcm2nii();
+                end
+
             end
             
         end
@@ -218,6 +233,10 @@ classdef NewDatasetUtils < handle
     
                 %check for correct number of b-vals
                 [sx,sy,sz,st] = size(nii.img);
+
+                if st == 1 %only 1 bval - can't compute ADC
+                    return
+                end
     
                 if ~NewDatasetUtils.correctBvals(bvals, st)
                     bvals = NewDatasetUtils.getCorrectBvals(st, fn);
@@ -288,17 +307,20 @@ classdef NewDatasetUtils < handle
             %high
             Xh = [-uniqueBVals(IX_high)' ones(sum(IX_high==1),1)];
 	        HighD = Xh\log(input_img(:,IX_high))'; 
+            HighD(isnan(HighD)) = 0;
             HighD(HighD < 0) = 0;
             HighD(HighD == inf) = 0;
 
             %low
             Xl = [-uniqueBVals(IX_low)' ones(sum(IX_low==1),1)]; 
 	        LowD = Xl\log(input_img(:,IX_low))';
+            LowD(isnan(LowD)) = 0;
             LowD(LowD < 0) = 0;
             LowD(LowD == inf) = 0;
 
             %f
-            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);	        
+            f = abs(input_img(:,1) - exp(HighD(2,:)'))./input_img(:,1);
+            f(isnan(f)) = 0;
             f(f < 0) = 0;
             f(f == inf) = 0;
 
@@ -374,12 +396,12 @@ classdef NewDatasetUtils < handle
             bvalVec = str2num(output{1});
             if NewDatasetUtils.correctBvals(bvalVec, st)
                 
-                bvalfn = strrep(fn, '.nii.gz', '.bval');
-                [fnDir, fnName, ~] = fileparts(fn);
-                bvalFn = fullfile(fnDir, [fnName, '.bval']);
+                bvalFn = strrep(fn, '.nii.gz', '.bval');
+                bvalFn = strrep(bvalFn, '.nii', '.bval');
+
                 
                 fid = fopen(bvalFn, 'wt' );
-                fprintf(fid, output);
+                fprintf(fid, '%s', output{:});
                 fclose(fid);
 
             else
