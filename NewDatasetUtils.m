@@ -222,6 +222,9 @@ classdef NewDatasetUtils < handle
                 [sx,sy,sz,st] = size(nii.img);
 
                 fn = NewDatasetUtils.makeBvalFile(st, fn);
+                if isempty(fn)
+                    return
+                end
                 bvals = sort(load(fn));
 
             else    %.bval input
@@ -391,12 +394,17 @@ classdef NewDatasetUtils < handle
         end
 
         function bvalFn = makeBvalFile(st, fn)
+            bvalFn = '';
             msg = ['Incorrect (number of) b-values found. Please enter the correct ',...
                     num2str(st), ' b-values, separated with spaces. ',...
                     fn];
             output = inputdlg(msg);
-
+            if isempty(output)
+                return
+            end
             bvalVec = str2num(output{1});
+
+            
             if NewDatasetUtils.correctBvals(bvalVec, st)
                 
                 bvalFn = strrep(fn, '.nii.gz', '.bval');

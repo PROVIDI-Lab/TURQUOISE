@@ -100,8 +100,7 @@ classdef ROI < handle
             imageOr     = strfind('csa', or(5)); 
         
             %preallocate the mask
-            imSize  = size(app.data{imID}.img);
-            mask    = false(imSize(1:3));
+            mask    = false(size(app.data{imID}.img));
 
             if type == 3
                 maskSlc     = ROI.GetCircularMask(points, mask);
@@ -513,21 +512,10 @@ classdef ROI < handle
 
         %% Combining masks
 
-        function combinedMask = CombineMasks(masks)
-            %Combines multiple masks based on their additive or subtractive
-            %properties
-            
-            base = zeros(size(masks{1}.data));
-    
-            for i = 1:length(masks)
-                if masks{i}.additive
-                    base = base + masks{i}.data;
-                else
-                    base = base - masks{i}.data;
-                end
-            end
+        function combinedMask = CombineMasks(mask)
 
-            combinedMask = base > 0;
+            
+
         end
                 
     end

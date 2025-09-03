@@ -174,47 +174,22 @@ classdef Objects < handle
             end
         end
 
-        function IDs = GetAllUOIDsForImage(app, varargin)
-            %Returns the object.ID for each non-deleted object matching the 
-            % image and profile
-            index = varargin{1};
-
-            if nargin == 2
-                selectDeleted = false;
-            elseif nargin == 3
-                selectDeleted = varargin{2};
-            end
-            
-            IDs = [];
-            for i = 1:length(app.userObjects)
-                obj = app.userObjects{i};
-                if obj.imageIdx ~= index
-                    continue
-                end
-
-                if ~strcmp(app.user_profile, obj.profile)
-                    continue
-                end
-
-                if selectDeleted && obj.deleted
-                    continue
-                end
-                IDs(end+1) = obj.ID;
-            end
-        end
-
         function idx = GetAllUOIdxForImage(app, varargin)
             %Returns the index of the objects in app.userObjects for each 
             % non-deleted object matching the image and profile
-            index = varargin{1};
-
-            selectDeleted = true;
-            checkProfile  = true;
+            
+            index = app.imID;
+            checkDeleted = true;
+            checkProfile = true;
             switch nargin
+                case 2
+                    index = varargin{1};
                 case 3
-                    selectDeleted = varargin{2};
+                    index = varargin{1};
+                    checkDeleted = varargin{2};
                 case 4
-                    selectDeleted = varargin{2};
+                    index = varargin{1};
+                    checkDeleted = varargin{2};
                     checkProfile = varargin{3};
             end
                     
@@ -229,7 +204,7 @@ classdef Objects < handle
                     continue
                 end
 
-                if selectDeleted && obj.deleted
+                if checkDeleted && obj.deleted
                     continue
                 end
                 idx(end+1) = i;

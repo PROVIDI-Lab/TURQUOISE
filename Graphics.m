@@ -542,12 +542,14 @@ classdef Graphics < handle
                 app.cScalePerImage{imID} = [0 10];
             end
 
-            try
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
-            catch
-                app.cScalePerImage{imID} = [0 10];
-                set(the_axis, 'CLim', app.cScalePerImage{imID});
-            end
+            set(the_axis, 'CLim', app.cScalePerImage{imID});
+
+            % try
+            %     set(the_axis, 'CLim', app.cScalePerImage{imID});
+            % catch
+            %     app.cScalePerImage{imID} = [0 10];
+            %     set(the_axis, 'CLim', app.cScalePerImage{imID});
+            % end
         end
 
 

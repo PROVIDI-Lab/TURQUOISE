@@ -36,8 +36,8 @@ classdef Database < handle
 
            %check if any patients were found. If not, throw exception
            if isempty(app.PatientsListBox.Items)
-               errordlg(strjoin('No patients were found. ', ...
-                   'Check if folder is accessible.'));
+               errordlg(strjoin("No patients were found. ", ...
+                   "Check if folder is accessible."));
                GUI.RevertControlsStatus(app)
                return
            end

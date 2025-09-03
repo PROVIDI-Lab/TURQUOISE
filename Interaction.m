@@ -67,6 +67,7 @@ classdef Interaction < handle
             %Updates the UOBox and draws new UOs belonging to the other
             %profile
 
+            IOUtils.LoadUserObjects(app, app.imID)
             GUI.UpdateUOBox(app)
 
             %Draw new UORenderer layers
@@ -84,124 +85,118 @@ classdef Interaction < handle
     
     function SwitchViewAndFocus(app, newAxID,~)
         % Switches the program to another UIAxis
+        % Input: newAxID - idx of view that was pressed
 
-        % Input: new_view_idx - idx of view that was pressed
-        %        caller_name - object that was pressed, used to manage
-        %        calling this function from unknown sources (not
-        %        pre-defined).
+        if isempty(app.sessionNames) %return if no images loaded
+            return
+        end
+        app.axID    = newAxID;
 
-            if isempty(app.sessionNames)
-                return
-            end
+        %Switch to the correct image
+        app.imID   = app.imagePerAxis(newAxID);
+        GUI.SwitchAxis(app, newAxID)
+    end
+    
+    function MouseClickedInImage(app, hit)
+        %Handles clicks in the image area. Calls functions depending on
+        %the state of various buttons.
+        %Input: hit - the location where the mouse was pressed.
         
-%             GUI.DisableAllButtonsAndActions(app);           
-            app.axID    = newAxID;
-
-            %Switch to the correct image
-            app.imID   = app.imagePerAxis(newAxID);
-            GUI.SwitchAxis(app, newAxID)
+        if isempty(app.data)
+            return
+        end
+        if isempty(app.data{app.imID})
+            return
+        end
+        if app.busyStatus   %Don't do anything if the app is busy
+            return
         end
         
-        function MouseClickedInImage(app,hit)
-            %Handles clicks in the image area. Calls functions depending on
-            %the state of various buttons.
-            %Input: hit - the location where the mouse was pressed.
-            
-            if isempty(app.data)
-                return
-            end
-            if isempty(app.data{app.imID})
-                return
-            end
-            if app.busyStatus   %Don't do anything if the app is busy
-                return
-            end
-            
-            %Check if the screen that was pressed is different from the
-            %current view.
-            if (hit.Source.Parent == app.UIAxes1                       ...
-                    && app.axID == 2)       ||                  ...
-                (hit.Source.Parent == app.UIAxes2                       ...
-                    && app.axID == 1)       &&                  ...
-                    hit.Button == 1
-            
-                    %Switch focus to the screen that was pressed
-                    if(hit.Source.Parent == app.UIAxes1)
-                        Interaction.SwitchViewAndFocus(...
-                        app,1,'View1Button');
-                    else
-                        Interaction.SwitchViewAndFocus(...
-                        app,2,'View2Button');
-                    end
-            end
-            
-            %Find image position of hit
-            column      = round(hit.IntersectionPoint(1));
-            row         = round(hit.IntersectionPoint(2));
-
-            %Flip j, because we want bottom left as 0,0
-            imID        = app.imagePerAxis(app.axID);  
-            sz          = NiftiUtils.FindInPlaneResolution(app, imID);
-            row         = sz(2) - row + 1;
-            %Bound j, to prevent errors
-            row         = min(row, sz(2));
-            row         = max(row, 1);
-
-            app.CoordinateInspectorApp.viewpixALabel.Text = strcat('c: ', num2str(column), ', r: ', num2str(row));
-
-            
-            
-            %%%%
-            %Do stuff based on drawing mode           
-            if(app.drawing.mode == 1)
-                % Here we are manually drawing an ROI
-                if hit.Button == 1
-                    ROI.AddPointToPolygon(app,column,row);
-                elseif hit.Button == 3  %right mouse button, finish drawing
-                    if(size(app.points{app.axID},1) <= 3)
-                        return
-                    end
-                    Interaction.PromptName(app);
-                    app.drawing.mode                        = 0;
-                    app.DrawPolygonButton.BackgroundColor   = ...
-                                            [.96 .96 .96];
-                    GUI.ResetCursor(app)
-                end
-            
-            elseif(app.drawing.mode == 3)
-                % Here we are adding a manual measurement
-                Measurements.MouseMeasurementLines(app,hit,column,row);
-                
-            elseif(app.drawing.mode == 4)
-                % Here we are using the automatic ROI drawing
-                app.ContourPickerApp.PosSelected(column,row, app.axID);   
-            
-            elseif hit.Button == 2  %mmb
-                %Here we adjust the contrast
-                GUI.StartChangingContrast(app, hit, column, row)
-                
-            elseif hit.Button == 3  %rmb
-                %Here we open a contextmenu when clicking a UO
-                id = Objects.FindUOUnderMouse(app, column, row, app.axID);
-
-                if id > 0
-                    C = get(app.UIFigure, 'CurrentPoint');
-                    GUI.UOContextMenu(app, id, C) 
-                    return
+        %Check if the screen that was pressed is different from the
+        %current view.
+        if (hit.Source.Parent == app.UIAxes1                       ...
+                && app.axID == 2)       ||                  ...
+            (hit.Source.Parent == app.UIAxes2                       ...
+                && app.axID == 1)       &&                  ...
+                hit.Button == 1
+        
+                %Switch focus to the screen that was pressed
+                if(hit.Source.Parent == app.UIAxes1)
+                    Interaction.SwitchViewAndFocus(...
+                    app,1,'View1Button');
                 else
-                    %rmb + drag is pan image
-                    GUI.StartDragging(app, hit, column, row)
+                    Interaction.SwitchViewAndFocus(...
+                    app,2,'View2Button');
                 end
-            else
-                %If not doing anything else, move the cursor and other
-                %panels around
-                GUI.ButtonDown(app, hit)
-                GUI.MoveCrosshair(app, column, row)
-            end
-            
-            Graphics.UpdateUserInteractions(app)
-            
         end
+        
+        %Find image position of hit
+        column      = round(hit.IntersectionPoint(1));
+        row         = round(hit.IntersectionPoint(2));
+
+        %Flip j, because we want bottom left as 0,0
+        imID        = app.imagePerAxis(app.axID);  
+        sz          = NiftiUtils.FindInPlaneResolution(app, imID);
+        row         = sz(2) - row + 1;
+        %Bound j, to prevent errors
+        row         = min(row, sz(2));
+        row         = max(row, 1);
+
+        app.CoordinateInspectorApp.viewpixALabel.Text = strcat('c: ', num2str(column), ', r: ', num2str(row));
+
+        
+        
+        %%%%
+        %Do stuff based on drawing mode           
+        if(app.drawing.mode == 1)
+            % Here we are manually drawing an ROI
+            if hit.Button == 1
+                ROI.AddPointToPolygon(app,column,row);
+            elseif hit.Button == 3  %right mouse button, finish drawing
+                if(size(app.points{app.axID},1) <= 3)
+                    return
+                end
+                Interaction.PromptName(app);
+                app.drawing.mode                        = 0;
+                app.DrawPolygonButton.BackgroundColor   = ...
+                                        [.96 .96 .96];
+                GUI.ResetCursor(app)
+            end
+        
+        elseif(app.drawing.mode == 3)
+            % Here we are adding a manual measurement
+            Measurements.MouseMeasurementLines(app,hit,column,row);
+            
+        elseif(app.drawing.mode == 4)
+            % Here we are using the automatic ROI drawing
+            app.ContourPickerApp.PosSelected(column,row, app.axID);   
+        
+        elseif hit.Button == 2  %mmb
+            %Here we adjust the contrast
+            GUI.StartChangingContrast(app, hit, column, row)
+            
+        elseif hit.Button == 3  %rmb
+            %Here we open a contextmenu when clicking a UO
+            id = Objects.FindUOUnderMouse(app, column, row, app.axID);
+
+            if id > 0
+                C = get(app.UIFigure, 'CurrentPoint');
+                GUI.UOContextMenu(app, id, C) 
+                return
+            else
+                %rmb + drag is pan image
+                GUI.StartDragging(app, hit, column, row)
+            end
+        else
+            %If not doing anything else, move the cursor and other
+            %panels around
+            GUI.ButtonDown(app, hit)
+            GUI.MoveCrosshair(app, column, row)
+        end
+        
+        Graphics.UpdateUserInteractions(app)
+        
+    end
         
         function MouseReleasedInImage(app, hit)
         %When editing an ROIpoint, finalize the editing
@@ -383,6 +378,9 @@ classdef Interaction < handle
                         GUI.RevertControlsStatus(app)
                     case 'm'
                         Interaction.MagicDraw(app)
+                    case 'p'
+                        a = Interaction.PromptMask(app);
+                        disp(fullfile(app.sessionPath, app.sessionNames{app.imID}, a));
                 end
                 
             elseif contains(modifier, 'control')
@@ -881,7 +879,11 @@ classdef Interaction < handle
                    'Callback',@select);
             
             %Default
-            choice = {};
+            if multiselect
+                choice = [];
+            else
+                choice = app.sessionNames{1};
+            end
                
             % Wait for d to close before running to completion
             uiwait(d);
@@ -932,6 +934,84 @@ classdef Interaction < handle
             app.user_profile = newProfile;
             Interaction.SwitchUserProfile(app)
         end
+
+        function choice = PromptMask(app, varargin)
+            %The user is prompted for a mask target
+
+            if nargin == 1
+                multiselect = false;
+                name = app.sessionNames{app.imID};
+            else
+                multiselect = varargin{1};
+                if nargin == 2
+                    name = app.sessionNames{app.imID};
+                else
+                    name = varargin{2};
+                end
+            end
+            
+            %get mask files to choose from
+            nameDir = strrep(name, '.gz', '');
+            nameDir = strrep(nameDir, '.nii', '');
+            masks = dir(fullfile(app.sessionPath, nameDir, '*.nii.gz'));
+            masks = {masks.name};
+            d = dialog('Position',[300 300 500 250],'Name','Select mask target');
+
+            
+            if multiselect
+                uicontrol(...
+                       'Parent',    d,...
+                       'Style',     'listbox',...
+                       'Value',     [],...
+                       'Min',       0, ...
+                       'Max',       100, ...
+                       'Position',  [40 50 420 180],...
+                       'String',    masks,...
+                       'Callback',  @popup_callback);
+
+                uicontrol(...
+                    'Parent',    d,...
+                    'Style',     'text',...
+                    'Position',  [20 20 200 30],...
+                    'String',    'Hold ctrl to select multiple targets.')
+            else
+                uicontrol(...
+                   'Parent',    d,...
+                   'Style',     'popup',...
+                   'Position',  [40 50 420 30],...
+                   'String',    masks,...
+                   'Callback',  @popup_callback);
+            end
+
+            uicontrol('Parent',d,...
+                   'Position',[380 20 70 25],...
+                   'String','Select',...
+                   'Callback',@select);
+            
+            %Default
+            if multiselect
+                choice = [];
+            else
+                choice = masks{1};
+            end
+
+            if isempty(masks)
+                msg = strcat("No masks found for image target: ", name);
+                errordlg(msg);
+                return
+            end
+               
+            % Wait for d to close before running to completion
+            uiwait(d);
+
+            function popup_callback(popup,~)
+               choice = masks{popup.Value};
+            end
+           
+            function select(~, ~)
+               delete(gcf);
+            end
+        end
         
         %% Other
                
@@ -944,36 +1024,7 @@ classdef Interaction < handle
         function ForceRedraw(app)
             drawnow
         end
-        
-        function values = overlayMask(im, mask)
-           
-            %Overlays mask over image, takes into account different shapes
-            minx = min(size(im,1), size(mask,1));
-            miny = min(size(im,2), size(mask,2));
-            
-            newMask = mask(1:minx, 1:miny, :);
-            newIm   = im(1:minx, 1:miny, :);
-            
-            values = newIm(newMask);            
-        end
-        
-        function HideAllTooltips(app)
-           
-            
-            for i = 1:length(app.userObjects)
-                app.userObjects{i}.setBoxVisible(false) 
-            end
-%             Graphics.UpdateImage(app)            
-            
-        end         
-            
-
-        
-        
-        
-        
-        
-        
+                
         
     end
 end

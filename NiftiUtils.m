@@ -23,7 +23,10 @@ classdef NiftiUtils < handle
 
             img = nii.img;
             img = flip(img, 1);
-            img = permute(img, [2,1,3]);
+            order = 1:length(size(img));
+            order(1) = 2;
+            order(2) = 1;
+            img = permute(img, order);
             nii.img = img;
         end
 
@@ -62,6 +65,8 @@ classdef NiftiUtils < handle
         end
 
         function [xref, yref] = GetSliceBoundary(app, axID, view, slice)
+            %Returns the min and max values (in image coordinates) for the
+            %current slice
 
             imID        = app.imagePerAxis(axID);
             tm          = app.transMatPerImage{imID};
@@ -89,38 +94,38 @@ classdef NiftiUtils < handle
 
         end
 
-        function [x,y,z] = GetMeshgridFromHeader(hdr)
-            %Calculates a grid for the image in real world coordinates. To
-            %be used in interpolation
-
-            srow_x = hdr.hist.srow_x;
-            srow_y = hdr.hist.srow_y;
-            srow_z = hdr.hist.srow_z;
-            tm = [srow_x; srow_y; srow_z];
-
-            dim = [hdr.dime.dim(2);...
-                   hdr.dime.dim(3);...
-                   hdr.dime.dim(4);];
-
-            %Create basic grid
-            [x, y, z]   = ndgrid(...
-                            1 : 1 : dim(1),...
-                            1 : 1 : dim(2),...
-                            1 : 1 : dim(3));
-            grid        = [reshape(x, 1, []);...
-                           reshape(y, 1, []);...
-                           reshape(z, 1, []);
-                           ones(1,numel(x))];
-
-            %Transform to get positions of voxels
-            grid    = tm * grid;
-
-            %Reshape to usable arrays.
-            x       = reshape(grid(1,:), dim');
-            y       = reshape(grid(2,:), dim');
-            z       = reshape(grid(3,:), dim');
-
-        end
+        % function [x,y,z] = GetMeshgridFromHeader(hdr)
+        %     %Calculates a grid for the image in real world coordinates. To
+        %     %be used in interpolation
+        % 
+        %     srow_x = hdr.hist.srow_x;
+        %     srow_y = hdr.hist.srow_y;
+        %     srow_z = hdr.hist.srow_z;
+        %     tm = [srow_x; srow_y; srow_z];
+        % 
+        %     dim = [hdr.dime.dim(2);...
+        %            hdr.dime.dim(3);...
+        %            hdr.dime.dim(4);];
+        % 
+        %     %Create basic grid
+        %     [x, y, z]   = ndgrid(...
+        %                     1 : 1 : dim(1),...
+        %                     1 : 1 : dim(2),...
+        %                     1 : 1 : dim(3));
+        %     grid        = [reshape(x, 1, []);...
+        %                    reshape(y, 1, []);...
+        %                    reshape(z, 1, []);
+        %                    ones(1,numel(x))];
+        % 
+        %     %Transform to get positions of voxels
+        %     grid    = tm * grid;
+        % 
+        %     %Reshape to usable arrays.
+        %     x       = reshape(grid(1,:), dim');
+        %     y       = reshape(grid(2,:), dim');
+        %     z       = reshape(grid(3,:), dim');
+        % 
+        % end
 
         function or = FindOrientation(tm)
             %Finds the orientation of the nifti image based on the header
@@ -333,257 +338,257 @@ classdef NiftiUtils < handle
 
         end
 
-        function [xq,yq,zq] = GetDisplayGrid(app, axID)
-            %In order to find the display grid, we take the current
-            %reference r_m and create a grid in the plane of the selected
-            %image orientation.
-            %The grid size (in world coordinates) is based on the zoom
-            %level. The grid spacing is based on the size of the window.
-
-            
-            %find viewing dimension, as described in findViewingDimension
-            imID        = app.imagePerAxis(axID);
-            viewAxis    = app.viewPerImage(imID); 
-            tm          = app.transMatPerImage{imID};
-            or          = NiftiUtils.FindOrientation(tm);
-            imageOr     = strfind('csa', or(5)); 
-            or_Mat      = [3,2,1; 2,3,1; 1,2,3];
-            view        = or_Mat(imageOr, viewAxis);    %final projection
-            slice       = app.slicePerImage{imID}{viewAxis};
-
-            %Make grid spacing based on image dimensions
-            hdr     = app.data{imID}.hdr;
-            dim     = [hdr.dime.dim(2);...
-                        hdr.dime.dim(3);...
-                        hdr.dime.dim(4)];
-            slice = slice - dim(view)/2;
-
-            dim(view)   = [];
-            dimx = dim(1);
-            dimy = dim(2);
-%             dimx        = max(dim);
-%             dimy        = max(dim);
-
-            if view == 1 
-                [xq, yq, zq] = meshgrid(1, ...
-                                        1:1:dimx,...
-                                        1:1:dimy);                
-            elseif view == 2 
-                [xq, yq, zq] = meshgrid(1:1:dimx,...   
-                                        1,...
-                                        1:1:dimy);                
-            elseif view == 3 
-                [xq, yq, zq] = meshgrid(1:1:dimx,...
-                                        1:1:dimy, ...
-                                        1);
-            end
-
-            gridDim     = size(xq);
-            grid        = [reshape(xq, 1, []);...
-                           reshape(yq, 1, []);...
-                           reshape(zq, 1, []);
-                           ones(1,numel(xq))];
-
-            %Turn on for visualisation
-%             gridO       = tm * grid;
-%             xqO       = reshape(gridO(1,:), gridDim);
-%             yqO       = reshape(gridO(2,:), gridDim);
-%             zqO       = reshape(gridO(3,:), gridDim);
-            
-            %Create transformation matrix used to go from image plane to
-            %scanner coordinates.
-            %start with the transformation matrix of the current image,
-            %then scale by the difference between the scan resolution and 
-            %the display resolution
-            %Next, adapt the transformation matrix to user settings
-            %(zooming & scrolling)
-
-            params  = app.viewingParams;
-            tm      = NiftiUtils.AdaptTransMat(...
-                            tm, dim(1), dim(2), slice, view, params);
-
-            %Transform grid to get sampling locations
-            grid    = tm * grid;
-
-%             turn on for visualisation
+%         function [xq,yq,zq] = GetDisplayGrid(app, axID)
+%             %In order to find the display grid, we take the current
+%             %reference r_m and create a grid in the plane of the selected
+%             %image orientation.
+%             %The grid size (in world coordinates) is based on the zoom
+%             %level. The grid spacing is based on the size of the window.
+% 
+% 
+%             %find viewing dimension, as described in findViewingDimension
+%             imID        = app.imagePerAxis(axID);
+%             viewAxis    = app.viewPerImage(imID); 
+%             tm          = app.transMatPerImage{imID};
+%             or          = NiftiUtils.FindOrientation(tm);
+%             imageOr     = strfind('csa', or(5)); 
+%             or_Mat      = [3,2,1; 2,3,1; 1,2,3];
+%             view        = or_Mat(imageOr, viewAxis);    %final projection
+%             slice       = app.slicePerImage{imID}{viewAxis};
+% 
+%             %Make grid spacing based on image dimensions
+%             hdr     = app.data{imID}.hdr;
+%             dim     = [hdr.dime.dim(2);...
+%                         hdr.dime.dim(3);...
+%                         hdr.dime.dim(4)];
+%             slice = slice - dim(view)/2;
+% 
+%             dim(view)   = [];
+%             dimx = dim(1);
+%             dimy = dim(2);
+% %             dimx        = max(dim);
+% %             dimy        = max(dim);
+% 
+%             if view == 1 
+%                 [xq, yq, zq] = meshgrid(1, ...
+%                                         1:1:dimx,...
+%                                         1:1:dimy);                
+%             elseif view == 2 
+%                 [xq, yq, zq] = meshgrid(1:1:dimx,...   
+%                                         1,...
+%                                         1:1:dimy);                
+%             elseif view == 3 
+%                 [xq, yq, zq] = meshgrid(1:1:dimx,...
+%                                         1:1:dimy, ...
+%                                         1);
+%             end
+% 
+%             gridDim     = size(xq);
+%             grid        = [reshape(xq, 1, []);...
+%                            reshape(yq, 1, []);...
+%                            reshape(zq, 1, []);
+%                            ones(1,numel(xq))];
+% 
+%             %Turn on for visualisation
+% %             gridO       = tm * grid;
+% %             xqO       = reshape(gridO(1,:), gridDim);
+% %             yqO       = reshape(gridO(2,:), gridDim);
+% %             zqO       = reshape(gridO(3,:), gridDim);
+% 
+%             %Create transformation matrix used to go from image plane to
+%             %scanner coordinates.
+%             %start with the transformation matrix of the current image,
+%             %then scale by the difference between the scan resolution and 
+%             %the display resolution
+%             %Next, adapt the transformation matrix to user settings
+%             %(zooming & scrolling)
+% 
+%             params  = app.viewingParams;
+%             tm      = NiftiUtils.AdaptTransMat(...
+%                             tm, dim(1), dim(2), slice, view, params);
+% 
+%             %Transform grid to get sampling locations
+%             grid    = tm * grid;
+% 
+% %             turn on for visualisation
+% %             xq       = reshape(grid(1,:), gridDim);
+% %             yq       = reshape(grid(2,:), gridDim);
+% %             zq       = reshape(grid(3,:), gridDim);
+% %             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(...
+% % app.data{imID}.hdr);
+% %             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
+% %             hold on
+% %             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
+% % %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end),...
+% % 5, 'red')
+% %             xlabel('x')
+% %             ylabel('y')
+% %             zlabel('z')
+% %             hold off
+% 
+%             %Lastly, use the inverse of the original image 
+%             % transformation matrix to get ijk coordinate sampling 
+%             % positions.
+%             grid        = app.transMatPerImage{imID} \ grid;
+% 
+%             %Reshape to usable arrays.
 %             xq       = reshape(grid(1,:), gridDim);
 %             yq       = reshape(grid(2,:), gridDim);
 %             zq       = reshape(grid(3,:), gridDim);
-%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(...
-% app.data{imID}.hdr);
-%             scatter3(x(1:501:end), y(1:501:end),z(1:501:end), 10)
-%             hold on
-%             scatter3(xq(1:21:end), yq(1:21:end), zq(1:21:end), 5)
-% %             scatter3(xqO(1:20:end), yqO(1:20:end), zqO(1:20:end),...
-% 5, 'red')
-%             xlabel('x')
-%             ylabel('y')
-%             zlabel('z')
-%             hold off
-
-            %Lastly, use the inverse of the original image 
-            % transformation matrix to get ijk coordinate sampling 
-            % positions.
-            grid        = app.transMatPerImage{imID} \ grid;
-
-            %Reshape to usable arrays.
-            xq       = reshape(grid(1,:), gridDim);
-            yq       = reshape(grid(2,:), gridDim);
-            zq       = reshape(grid(3,:), gridDim);
-                        
-
-        end
-
-        function tm = AdaptTransMat(tm, resx, resy, slice, ...
-                view, params)
-        %Makes the following changes to the transformation matrix:
-        %   Applies scaling and translation as defined by
-        %user input. Scaling = zooming, translation is scrolling.
-        %   Non-viewing axes are centered around the reference.
-
-        %Input:
-        %   tm      - transformation matrix before any changes are made
-        %   resGrid - size of the (square) sampling grid
-        %   resx    - image dimension in the x axis
-        %   resy    - image dimension in the y axis
-        %   slice   - offset in viewing axis (for scrolling)
-        %   view    - index to go from ijk to desired projection
-        %   params  - other offsets and scale factors to be used
-
-            %Zoom in image plane
-            zoomFactor  = params(4);
-            zoomTm      = tm(1:3,1:3);
-            zoomTm      = zoomTm * zoomFactor;
-            tm(1:3,1:3) = zoomTm;
-
-            %translation
-            delta = params(1:3);
-            tm(view,4) = delta(view);   %Center view halfway the scan
-
-            %overlay centres & scroll
-            %If ijk coordinates to center are provided, use those. If not,
-            %center halfway the image (including view-axis slice).
-
-            imAxes              = [1,2,3];
-            imAxes(view)        = [];
-            halfPoint           = ones(4,1);
-            halfPoint(imAxes)   = [resx/2, resy/2];
-            halfPoint(view)     = slice;    %scroll through view axis
-
-            halfPointDist       = tm * halfPoint;
-            deltaCenter         = params(1:3)' - halfPointDist(1:3);
-            tm(1:3,4)           = tm(1:3,4) + deltaCenter;
-        end
-
-        function [xq,yq,zq] = Get3DGrid(hdr, tm, offset)
-            %In order to find the 3D grid, we take the current
-            %reference r_m and create a grid 
-            
-            %Make grid spacing based on image dimensions
-            dim     = [hdr.dime.dim(2);...
-                        hdr.dime.dim(3);...
-                        hdr.dime.dim(4)];
-
-            imOrr   = NiftiUtils.FindOrientation(tm);
-            
-            if strcmp(imOrr(5), 's')
-                [yq, zq, xq] = meshgrid(1:1:dim(1),...
-                                        1:1:dim(2), ...
-                                        1:1:dim(3));             
-            elseif strcmp(imOrr(5), 'c')
-                [xq, zq, yq] = meshgrid(1:1:dim(1),...
-                                        1:1:dim(2), ...
-                                        1:1:dim(3));            
-            elseif strcmp(imOrr(5), 'a')
-                [xq, yq, zq] = meshgrid(1:1:dim(1),...
-                                        1:1:dim(2), ...
-                                        1:1:dim(3));
-            end
-            
-            gridDim     = size(xq);
-            grid        = [reshape(xq, 1, []);...
-                           reshape(yq, 1, []);...
-                           reshape(zq, 1, []);
-                           ones(1,numel(xq))];
-            
-            %Translate the transformation matrix
-            newTM   = tm;
-
-            halfPoint           = [dim(1)/2, dim(2)/2, dim(3)/2, 1];
-            halfPointDist       = tm * halfPoint';
-            deltaCenter         = offset' - halfPointDist(1:3);
-            newTM(1:3,4)        = tm(1:3,4) + deltaCenter;
-
-            %Transform grid to get sampling locations
-            grid    = newTM * grid;
-
-            %Lastly, use the inverse of the original image 
-            % transformation matrix to get ijk coordinate sampling 
-            % positions.
-            grid        = tm \ grid;
-
-            %Reshape to usable arrays.
-            xq       = reshape(grid(1,:), gridDim);
-            yq       = reshape(grid(2,:), gridDim);
-            zq       = reshape(grid(3,:), gridDim);
-        end
-
-
-        function img = MoveToRWC(app, nii)
-            %Interpolates image based on real world reference from the
-            %study
-
-            d4 = size(nii.img, 4);
-            tm = NiftiUtils.getTransformationMatrix(nii.hdr);
-            img = zeros(size(nii.img));
-
-            for i = 1:d4
-                imData = nii.img(:,:,:,i);
-                [xq, yq, zq] = NiftiUtils.Get3DGrid(nii.hdr, tm, ...
-                    app.viewingParams(1:3));
-
-                newImData = interp3(imData, xq, yq, zq, 'linear', 0);
-                img(:,:,:,i) = newImData;
-            end
-
-        end
-
-        function showGrid(app, axID, xq, yq, zq)
-
-            imID        = app.imagePerAxis(axID);
-            d4          = app.d4PerImage(imID);
-            imData      = app.data{imID}.img(:,:,:,d4);
-
-            [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
-            grid        = [reshape(x, 1, []);...
-                           reshape(y, 1, []);...
-                           reshape(z, 1, []);
-                           ones(1,numel(x))];
-
-            %Transform to get positions of voxels
-            tm          = app.transMatPerImage{imID};
-            gridk    = tm \ grid;
-
-            %Reshape to usable arrays.
-            dim = size(imData);
-            xk       = reshape(gridk(1,:), dim);
-            yk       = reshape(gridk(2,:), dim);
-            zk       = reshape(gridk(3,:), dim);
 % 
-            %plot
-            scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
-            xlabel('i')
-            ylabel('j')
-            zlabel('k')
-            hold on
-            [sx,sy,sz] = size(imData);
-            scatter3([0,sx,0,0,sx,sx,0,sx], [0,0,sy,0,sy,0,sy,sy],...
-                [0,0,0,sz,0,sz,sz,sz])
-            hold on 
-            scatter3(xk(1:200:end), yk(1:200:end),zk(1:200:end), 10)
-            hold off
+% 
+%         end
+% 
+%         function tm = AdaptTransMat(tm, resx, resy, slice, ...
+%                 view, params)
+%         %Makes the following changes to the transformation matrix:
+%         %   Applies scaling and translation as defined by
+%         %user input. Scaling = zooming, translation is scrolling.
+%         %   Non-viewing axes are centered around the reference.
+% 
+%         %Input:
+%         %   tm      - transformation matrix before any changes are made
+%         %   resGrid - size of the (square) sampling grid
+%         %   resx    - image dimension in the x axis
+%         %   resy    - image dimension in the y axis
+%         %   slice   - offset in viewing axis (for scrolling)
+%         %   view    - index to go from ijk to desired projection
+%         %   params  - other offsets and scale factors to be used
+% 
+%             %Zoom in image plane
+%             zoomFactor  = params(4);
+%             zoomTm      = tm(1:3,1:3);
+%             zoomTm      = zoomTm * zoomFactor;
+%             tm(1:3,1:3) = zoomTm;
+% 
+%             %translation
+%             delta = params(1:3);
+%             tm(view,4) = delta(view);   %Center view halfway the scan
+% 
+%             %overlay centres & scroll
+%             %If ijk coordinates to center are provided, use those. If not,
+%             %center halfway the image (including view-axis slice).
+% 
+%             imAxes              = [1,2,3];
+%             imAxes(view)        = [];
+%             halfPoint           = ones(4,1);
+%             halfPoint(imAxes)   = [resx/2, resy/2];
+%             halfPoint(view)     = slice;    %scroll through view axis
+% 
+%             halfPointDist       = tm * halfPoint;
+%             deltaCenter         = params(1:3)' - halfPointDist(1:3);
+%             tm(1:3,4)           = tm(1:3,4) + deltaCenter;
+%         end
 
-        end
+        % function [xq,yq,zq] = Get3DGrid(hdr, tm, offset)
+        %     %In order to find the 3D grid, we take the current
+        %     %reference r_m and create a grid 
+        % 
+        %     %Make grid spacing based on image dimensions
+        %     dim     = [hdr.dime.dim(2);...
+        %                 hdr.dime.dim(3);...
+        %                 hdr.dime.dim(4)];
+        % 
+        %     imOrr   = NiftiUtils.FindOrientation(tm);
+        % 
+        %     if strcmp(imOrr(5), 's')
+        %         [yq, zq, xq] = meshgrid(1:1:dim(1),...
+        %                                 1:1:dim(2), ...
+        %                                 1:1:dim(3));             
+        %     elseif strcmp(imOrr(5), 'c')
+        %         [xq, zq, yq] = meshgrid(1:1:dim(1),...
+        %                                 1:1:dim(2), ...
+        %                                 1:1:dim(3));            
+        %     elseif strcmp(imOrr(5), 'a')
+        %         [xq, yq, zq] = meshgrid(1:1:dim(1),...
+        %                                 1:1:dim(2), ...
+        %                                 1:1:dim(3));
+        %     end
+        % 
+        %     gridDim     = size(xq);
+        %     grid        = [reshape(xq, 1, []);...
+        %                    reshape(yq, 1, []);...
+        %                    reshape(zq, 1, []);
+        %                    ones(1,numel(xq))];
+        % 
+        %     %Translate the transformation matrix
+        %     newTM   = tm;
+        % 
+        %     halfPoint           = [dim(1)/2, dim(2)/2, dim(3)/2, 1];
+        %     halfPointDist       = tm * halfPoint';
+        %     deltaCenter         = offset' - halfPointDist(1:3);
+        %     newTM(1:3,4)        = tm(1:3,4) + deltaCenter;
+        % 
+        %     %Transform grid to get sampling locations
+        %     grid    = newTM * grid;
+        % 
+        %     %Lastly, use the inverse of the original image 
+        %     % transformation matrix to get ijk coordinate sampling 
+        %     % positions.
+        %     grid        = tm \ grid;
+        % 
+        %     %Reshape to usable arrays.
+        %     xq       = reshape(grid(1,:), gridDim);
+        %     yq       = reshape(grid(2,:), gridDim);
+        %     zq       = reshape(grid(3,:), gridDim);
+        % end
+
+
+        % function img = MoveToRWC(app, nii)
+        %     %Interpolates image based on real world reference from the
+        %     %study
+        % 
+        %     d4 = size(nii.img, 4);
+        %     tm = NiftiUtils.getTransformationMatrix(nii.hdr);
+        %     img = zeros(size(nii.img));
+        % 
+        %     for i = 1:d4
+        %         imData = nii.img(:,:,:,i);
+        %         [xq, yq, zq] = NiftiUtils.Get3DGrid(nii.hdr, tm, ...
+        %             app.viewingParams(1:3));
+        % 
+        %         newImData = interp3(imData, xq, yq, zq, 'linear', 0);
+        %         img(:,:,:,i) = newImData;
+        %     end
+        % 
+        % end
+
+%         function showGrid(app, axID, xq, yq, zq)
+% 
+%             imID        = app.imagePerAxis(axID);
+%             d4          = app.d4PerImage(imID);
+%             imData      = app.data{imID}.img(:,:,:,d4);
+% 
+%             [x,y,z] = NiftiUtils.GetMeshgridFromHeader(app.data{imID}.hdr);
+%             grid        = [reshape(x, 1, []);...
+%                            reshape(y, 1, []);...
+%                            reshape(z, 1, []);
+%                            ones(1,numel(x))];
+% 
+%             %Transform to get positions of voxels
+%             tm          = app.transMatPerImage{imID};
+%             gridk    = tm \ grid;
+% 
+%             %Reshape to usable arrays.
+%             dim = size(imData);
+%             xk       = reshape(gridk(1,:), dim);
+%             yk       = reshape(gridk(2,:), dim);
+%             zk       = reshape(gridk(3,:), dim);
+% % 
+%             %plot
+%             scatter3(xq(1:20:end), yq(1:20:end), zq(1:20:end), 5)
+%             xlabel('i')
+%             ylabel('j')
+%             zlabel('k')
+%             hold on
+%             [sx,sy,sz] = size(imData);
+%             scatter3([0,sx,0,0,sx,sx,0,sx], [0,0,sy,0,sy,0,sy,sy],...
+%                 [0,0,0,sz,0,sz,sz,sz])
+%             hold on 
+%             scatter3(xk(1:200:end), yk(1:200:end),zk(1:200:end), 10)
+%             hold off
+% 
+%         end
 
         function xyz = ijk2xyz(tm, ijk)
             %Converts image coordinates to world coordinates with the help

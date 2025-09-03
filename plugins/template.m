@@ -11,7 +11,7 @@ classdef template   %rename to your choice of plugin name
             %startup, so no images etc are loaded.
         end
 
-        function Excecute() %runs when the plugin is selected from the menu
+        function Excecute(obj) %runs when the plugin is selected from the menu
             %Your code here
         end
     end

@@ -1,0 +1,91 @@
+classdef spectralDeconvolutionPlugin   
+    properties
+        app     % pointer to the TURQUOISE app.
+    end
+
+    methods (Access = public)
+        function obj = spectralDeconvolutionPlugin(app)    
+            obj.app = app;  %initialize the app
+            
+            %You can add more code here, but this will all be run on app
+            %startup, so no images etc are loaded.
+        end
+
+        function Excecute(obj) %runs when the plugin is selected from the menu
+            
+            targets = Interaction.PromptTarget(obj.app, true);
+            if isempty(targets)
+                return
+            end
+
+            %Loop over each image
+            for i = 1:length(targets)
+
+                target = targets(i);
+                %check if already loaded. Load if not
+                if isempty(obj.app.data{targets(i)})
+                    IOUtils.LoadNii(obj.app, target)
+                end
+
+                %get target fn
+                targetFn = obj.app.sessionNames{target};
+                
+                %get bval & bvec fns
+                if contains(targetFn, '.nii.gz')
+                    bvalFn = strrep(targetFn, '.nii.gz', '.bval');
+                    bvecFn = strrep(targetFn, '.nii.gz', '.bvec');
+                else
+                    bvalFn = strrep(targetFn, '.nii', '.bval');
+                    bvecFn = strrep(targetFn, '.nii', '.bvec');
+                end
+
+                %find bvals
+
+
+                %prompt mask
+                mask = Interaction.PromptMask(obj.app, true, targetFn);
+                if isempty(mask)
+                    return
+                end
+                maskFn = fullfile(obj.app.sessionPath, ...
+                    obj.app.sessionNames{target}, mask);
+
+                MRTQuant.PerformSpectralDeconvolution( ...
+                    'nii_file', fullfile(obj.app.sessionPath, targetFn), ...
+                    'bval_file', fullfile(obj.app.sessionPath, bvalFn), ...
+                    'bvec_file', fullfile(obj.app.sessionPath, bvecFn), ...
+                    'mask_file', maskFn, ...
+                    'min_bval', min(bvals), ...
+                    'max_bva')
+            end
+
+            %Use one of the earlier images to create the new nii file
+            out_nii = obj.app.data{targets(1)};
+            out_nii.img = imDiff;
+            
+            %Flip to go from Matlab coordinates to 'normal' coordinates
+            out_nii = NiftiUtils.FlipPermute(out_nii);
+
+            %Get the names of the target images to create a new name
+            im1Name = obj.app.sessionNames{targets(1)};
+            im2Name = obj.app.sessionNames{targets(2)};
+            out_name = ['Diff_' im1Name '-' im2Name '.nii.gz'];
+
+            %Get the current folder path to create the output path
+            out_path = fullfile(obj.app.sessionPath, out_name);
+
+            %Write the new image
+            save_untouch_nii(out_nii, out_path)
+
+            %Reload the study
+            IOUtils.PrepareStudy(obj.app, obj.app.sessionPath)
+
+        end
+    end
+
+    methods (Access = private)
+        %Add any sub-functions here.
+
+    end
+       
+end

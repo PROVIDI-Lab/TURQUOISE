@@ -84,7 +84,7 @@ classdef GUI < handle
             app.UORenderer{axID} = {};
 
             %Draw new ones for the objects on that image
-            UOIDs = Objects.GetAllUOIDsForImage(app, ...
+            UOIDs = Objects.GetAllUOIdxForImage(app, ...
                 app.imagePerAxis(axID));
             for i = 1:length(UOIDs)
                 GUI.AddUOLayer(app, axID, UOIDs(i))
@@ -130,7 +130,7 @@ classdef GUI < handle
             %previous tmpRenderer and draw a new one for all
             %userObjects on that image.
 
-            app.tmpRenderer{axID} = [];
+            app.tmpRenderer{axID}
             app.tmpMasks{axID} = [];
 
             the_ax  = app.GetAxis(axID);
@@ -259,6 +259,7 @@ classdef GUI < handle
             Graphics.ResetTextRenderer(app)
             GUI.UpdateSliceSlider(app)
             GUI.UpdateMinMaxSlider(app)
+            Graphics.UpdateAxisScaling(app, app.axID);
             GUI.UpdateUOBox(app)
             GUI.ChangeListBoxValue(app, index)
             GUI.UpdateAxisButtons(app)
@@ -286,14 +287,6 @@ classdef GUI < handle
             GUI.Update4DSlider(app)
         end
 
-
-        
-        function DisplayError(app)
-            %Changes the statuslamp to show an error has occurred
-            app.AvailableimagesListBox.Enable = 'on';
-            app.StatusLamp.Color     = [0.9100 0.4100 0.1700];
-            app.StatusLampLabel.Text = 'Error';
-        end
         
         %% Scrolling & zooming the axes
         
@@ -403,7 +396,7 @@ classdef GUI < handle
 
 
         
-        function ZoomAxis(app, axID, scrollCount, event)
+        function ZoomAxis(app, axID, scrollCount, ~)
             %Zooms the image, additionally translates the current viewpoint
             %to keep the cursor mostly centered during zooming
             
@@ -601,13 +594,13 @@ classdef GUI < handle
 
     %% Sliders && UI elements
 
-        function SensitivitySlider(app)
-        %Sets the sensitivityslider value to the program
-            value = app.SensitivitySlider.Value;
-            value = round(value);
-            app.SensitivitySlider.Value = value;
-            app.drawing.magic_sensitivity = value; 
-        end
+        % function SensitivitySlider(app)
+        % %Sets the sensitivityslider value to the program
+        %     value = app.SensitivitySlider.Value;
+        %     value = round(value);
+        %     app.SensitivitySlider.Value = value;
+        %     app.drawing.magic_sensitivity = value; 
+        % end
         
         function UpdateSliceSlider(app)
         % Sets the limits and current value of the slice slider. To be
@@ -946,6 +939,7 @@ classdef GUI < handle
 
             %Finally, go over all UOs again, to toggle their presence per
             %profile
+            profilePresent = false(size(profileLst));
             for i = 1:length(app.userObjects)
                 if app.userObjects{i}.deleted
                     continue
@@ -963,22 +957,15 @@ classdef GUI < handle
 
                 for ii = 1:length(profileLst)
                     if strcmp(profileLst{ii}, profile)
-                        style = uistyle("Icon", "uoIcon.png");
-                        addStyle(app.ProfileListBox, style, "item", ...
-                            ii)
-                        profileLst{ii} = [];
+                        profilePresent(ii) = true;
                         break
                     end
                 end
-
-                if isempty(app.userObjects{i}.profile)
-                    style = uistyle("Icon", "uoIcon.png");
-                    addStyle(app.ProfileListBox, style, "item", ...
-                        length(app.ProfileListBox.Items))
-                else
-                    
-                end
             end
+
+            style = uistyle("Icon", "uoIcon.png");
+            addStyle(app.ProfileListBox, style, "item", ...
+                find(profilePresent))
 
             %Set the value to the current user_profile, if possible
             if any(strcmp(app.ProfileListBox.Items, app.user_profile))
@@ -1373,6 +1360,11 @@ classdef GUI < handle
         end
 
         function UpdateProgressDialogue(app, varargin)
+            %Don't handle calls to deleted dlgs
+            if ~exist("app.progressDlg","var")
+                return
+            end
+
             if nargin == 3
                 msg = varargin{1};
                 val = varargin{2};

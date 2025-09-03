@@ -11,7 +11,6 @@ classdef UserObj < matlab.mixin.SetGet
        points                   %ROIPoints, drawing points
        worldCoords              %ROIPoints, stored as world coordinates
        name                     %Name of the object
-       prop                     %Other properties
        ID                       %Which userObj is this
        deleted      = false     %Stores if the userObj has been deleted
        renaming     = false     %Stores whether the object is to be renamed

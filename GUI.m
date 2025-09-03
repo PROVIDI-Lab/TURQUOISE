@@ -84,7 +84,7 @@ classdef GUI < handle
             app.UORenderer{axID} = {};
 
             %Draw new ones for the objects on that image
-            UOIDs = Objects.GetAllUOIDsForImage(app, ...
+            UOIDs = Objects.GetAllUOIdxForImage(app, ...
                 app.imagePerAxis(axID));
             for i = 1:length(UOIDs)
                 GUI.AddUOLayer(app, axID, UOIDs(i))
@@ -259,6 +259,7 @@ classdef GUI < handle
             Graphics.ResetTextRenderer(app)
             GUI.UpdateSliceSlider(app)
             GUI.UpdateMinMaxSlider(app)
+            Graphics.UpdateAxisScaling(app, app.axID);
             GUI.UpdateUOBox(app)
             GUI.ChangeListBoxValue(app, index)
             GUI.UpdateAxisButtons(app)
@@ -286,14 +287,6 @@ classdef GUI < handle
             GUI.Update4DSlider(app)
         end
 
-
-        
-        function DisplayError(app)
-            %Changes the statuslamp to show an error has occurred
-            app.AvailableimagesListBox.Enable = 'on';
-            app.StatusLamp.Color     = [0.9100 0.4100 0.1700];
-            app.StatusLampLabel.Text = 'Error';
-        end
         
         %% Scrolling & zooming the axes
         
@@ -403,7 +396,7 @@ classdef GUI < handle
 
 
         
-        function ZoomAxis(app, axID, scrollCount, event)
+        function ZoomAxis(app, axID, scrollCount, ~)
             %Zooms the image, additionally translates the current viewpoint
             %to keep the cursor mostly centered during zooming
             
@@ -601,13 +594,13 @@ classdef GUI < handle
 
     %% Sliders && UI elements
 
-        function SensitivitySlider(app)
-        %Sets the sensitivityslider value to the program
-            value = app.SensitivitySlider.Value;
-            value = round(value);
-            app.SensitivitySlider.Value = value;
-            app.drawing.magic_sensitivity = value; 
-        end
+        % function SensitivitySlider(app)
+        % %Sets the sensitivityslider value to the program
+        %     value = app.SensitivitySlider.Value;
+        %     value = round(value);
+        %     app.SensitivitySlider.Value = value;
+        %     app.drawing.magic_sensitivity = value; 
+        % end
         
         function UpdateSliceSlider(app)
         % Sets the limits and current value of the slice slider. To be
@@ -691,6 +684,9 @@ classdef GUI < handle
                 app.MinValue = 0;
             end
             app.MaxValue = max(V(:));
+            if app.MaxValue == Inf
+                app.MaxValue = 1000;
+            end
             app.cScalePerImage{app.imID} = [app.MinValue, app.MaxValue];
 %             app.cMinValue = app.MinValue;
 %             app.cMaxValue = app.MaxValue;

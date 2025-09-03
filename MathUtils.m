@@ -1,6 +1,6 @@
 % A. De Luca - UMC Utrecht - alberto@isi.uu.nl
-% Math utilities for RMS Studio
-% v1: 14/03/2019
+% Math utilities for TURQUOISE
+
 classdef MathUtils < handle
     
     methods (Static)
@@ -264,6 +264,7 @@ classdef MathUtils < handle
             %input:
             %app,   RMSstudio pointer
             %imQ,   True if loading an image, false if loading an ROI
+            %maskQ, True if loading the roi mask, false if loading outline
             %ID,    imID or ROI ID
             %d4,    4th axis if loading an image
             %imOrr,  orientation of the array. 1=cor, 2= sag, 3 = ax

@@ -33,6 +33,8 @@ classdef IOUtils < handle
             %Load the file
             nii         = load_untouch_nii(name);
             nii.img     = single(nii.img);
+            nii.img(nii.img == Inf) = 0;
+            nii.img(nii.img == -Inf) = 0;
 
             %correct orientation for display in matlab
             nii         = NiftiUtils.PermuteFlip(nii);
@@ -432,6 +434,19 @@ classdef IOUtils < handle
             
             nii         = app.data{obj.imageIdx};
             nii.img     = obj.data;
+
+            %get rid of any higher dimensions
+            if nii.hdr.dime.dim(1) > 3 && length(size(obj.data)) == 3
+                nii.hdr.dime.dim(1) = 3;
+                nii.hdr.dime.dim(2:4) = size(obj.data);
+            end
+            
+            %check if dimensions are correct
+            if nii.hdr.dime.dim(1) == 3 && nii.hdr.dime.dim(5) > 1
+                nii.hdr.dime.dim(5) = 1;
+            end
+
+
             
             %Undo the permutation done when reading the nii
             nii = NiftiUtils.FlipPermute(nii);
