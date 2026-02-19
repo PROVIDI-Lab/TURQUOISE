@@ -1,5 +1,5 @@
-# RMSStudio
-A repository for the RMS analysis tool: RMSStudio
+# TURQUOISE
+TUmoR QUantification, prOcessIng, and SEgmentation with TURQUOISE
 
 
 Creating a dataset. The program assumes the following organisation for the input Dicom files:
@@ -18,7 +18,7 @@ E.g.
 
 
 # A note on orientation & coordinates
-There are many different (confusing) ways to navigate MR images. RMSStudio uses four of them. The main three are world coordinates (xyz), patient directions (LR, AP, SI), and image coordinates (ijk). As Matlab uses a different origin when interacting with an image (top left) we add a fourth system (row, column or rc). 
+There are many different (confusing) ways to navigate MR images. TURQUOISE uses four of them. The main three are world coordinates (xyz), patient directions (LR, AP, SI), and image coordinates (ijk). As Matlab uses a different origin when interacting with an image (top left) we add a fourth system (row, column or rc). 
 
 The program has many built-in functions to switch between coordinate systems.
 -    ijk2xyz converts from image coordinates to world coordinates
