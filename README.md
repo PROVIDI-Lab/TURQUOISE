@@ -1,3 +1,5 @@
+<img alt="workflow" src="https://github.com/user-attachments/assets/daf3639f-8def-46cc-b59b-b715c9564557" />
+
 # TURQUOISE
 TUmoR QUantification, prOcessIng, and SEgmentation of oncological multicenter MRI data
 
@@ -28,17 +30,17 @@ Quantitative imaging biomarkers can be computed and visualized within defined re
 ## Features
 Key features of TURQUOISE include:
 
--GUI-based quantitative imaging workflow
--Cohort-level dataset management
--Manual and semi-automated segmentation tools
--Support for multicenter and longitudinal datasets
--Automatic generation of ADC and IVIM maps
--Built-in tools for ROI-based quantitative analysis
--Plugin framework for advanced analysis methods
--Multiple segmentation profiles for inter/intra-rater studies
--Offline operation for secure clinical research environments
+- GUI-based quantitative imaging workflow
+- Cohort-level dataset management
+- Manual and semi-automated segmentation tools
+- Support for multicenter and longitudinal datasets
+- Automatic generation of ADC and IVIM maps
+- Built-in tools for ROI-based quantitative analysis
+- Plugin framework for advanced analysis methods
+- Multiple segmentation profiles for inter/intra-rater studies
+- Offline operation for secure clinical research environments
 
-##Creating a dataset
+## Creating a dataset
 
 To initialize a dataset:
 
@@ -53,36 +55,46 @@ To initialize a dataset:
 
 The dataset will then be available in the launcher.
 
-The program assumes the following organisation for the input Dicom files:
--   Top-level folder
--     Patients
--         Session(s) <-- subfolder required even if only one session is present
--           Scans (optional)
--              Dicom files
+The program assumes the following organisation for the input DICOM files:
 
-E.g.
--   Folder
--     PID0001
--         Session01
--             001.dcm
--             002.dcm
+```bash
+├── Study_name
+      └── PatientID
+            └── SessionXX          
+                  └── ScanName        (Optional)
+                        ├── 001.dcm
+                        ├── 002.dcm
+                        └── ...
+```
+
+Example
+```bash
+├──Study_name
+      └── PID0001
+            └── Session01
+                ├── 001.dcm
+                └── ...
+            └── Session02
+                ├── 001.dcm
+                └── ...
+```
 
 ## Plugins
 TURQUOISE includes a lightweight plugin system that allows new processing methods to be integrated into the software without modifying the core application.
 Example plugins are included in the repository. The Wiki contains a Plugin Guide.
 
-##Citation
+## Citation
 
 If you use TURQUOISE in your research, please cite:
 [TBD]
 
-##Contact
+## Contact
 
 Developed by the PROVIDI Lab
 Image Sciences Institute
 UMC Utrecht
 
-## A note on orientation & coordinates
+### A note on orientation & coordinates
 There are many different (confusing) ways to navigate MR images. TURQUOISE uses four of them. The main three are world coordinates (xyz), patient directions (LR, AP, SI), and image coordinates (ijk). As Matlab uses a different origin when interacting with an image (top left) we add a fourth system (row, column or rc). 
 
 The program has many built-in functions to switch between coordinate systems.
